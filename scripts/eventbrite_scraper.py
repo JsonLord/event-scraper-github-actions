@@ -1,94 +1,164 @@
-#!/usr/bin/env python3
 """
-Eventbrite Scraper for Berlin Events
-Placeholder implementation - to be replaced with actual scraping logic
+Eventbrite Event Scraper
+
+Scrapes events from Eventbrite using CloakBrowser for stealth navigation.
 """
 
-import argparse
-import json
 import os
-from datetime import datetime, timedelta
-from pathlib import path
+import sys
+import json
+import argparse
 import logging
+from datetime import datetime, timedelta
+from typing import List, Dict, Any
 
-# Setup logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+try:
+    from cloakbrowser import launch
+    CLOAKBROWSER_AVAILABLE = True
+except ImportError:
+    CLOAKBROWSER_AVAILABLE = False
+    print("Warning: CloakBrowser not installed. Install with: pip install cloakbrowser")
+
+logging.basicConfig(
+    level=os.environ.get("LOG_LEVEL", "INFO"),
+    format="%(asctime)s - %(levelname)s - %(message)s"
+)
 logger = logging.getLogger(__name__)
 
-def parse_args():
-    parser = argparse.ArgumentParser(description='Scrape Eventbrite for Berlin events')
-    parser.add_argument('--start-date', required=True, help='Start date YYYY-MM-DD')
-    parser.add_argument('--end-date', required=True, help='End date YYYY-MM-DD')
-    parser.add_argument('--output', default='/tmp/events_eventbrite.json', help='Output JSON file')
-    return parser.parse_args()
 
-def scrape_eventbrite(start_date, end_date):
+def scrape_eventbrite(url: str, price_max: float = 15.0, date_range_days: int = 14) -> List[Dict[str, Any]]:
     """
-    Placeholder function for Eventbrite scraping
-    In a real implementation, this would:
-    1. Use Eventbrite API or web scraping to get events
-    2. Filter for Berlin location
-    3. Filter by date range
-    4. Extract event details
-    
-    For now, returns sample data
+    Scrape events from Eventbrite.
     """
-    logger.info(f"Scraping Eventbrite for events from {start_date} to {end_date}")
+    if not CLOAKBROWSER_AVAILABLE:
+        raise RuntimeError("CloakBrowser not available")
     
-    # This is placeholder/sample data
-    # In reality, you would implement actual scraping logic here
-    sample_events = [
-        {
-            "title": "Sample Tech Meetup Berlin",
-            "date": "2026-07-15",
-            "time": "18:30",
-            "price": 0.0,
-            "category": "networking",
-            "description": "Monthly tech meetup for developers in Berlin",
-            "url": "https://www.eventbrite.com/e/sample-tech-meetup-berlin-ticket-123456789",
-            "venue": "Factory Berlin, Görlitzer Park",
-            "source_url": "https://www.eventbrite.com/d/germany--berlin/events/"
-        },
-        {
-            "title": "Berlin Jazz Night",
-            "date": "2026-07-16",
-            "time": "20:00",
-            "price": 12.50,
-            "category": "music",
-            "description": "Live jazz performance at local Berlin venue",
-            "url": "https://www.eventbrite.com/e/berlin-jazz-night-ticket-987654321",
-            "venue": "A-Trane Club, Berliner Straße",
-            "source_url": "https://www.eventbrite.com/d/germany--berlin/events/"
-        }
-    ]
+    logger.info(f"Scraping Eventbrite: {url}")
     
-    # Filter events by date range (simple string comparison for YYYY-MM-DD)
-    start = start_date
-    end = end_date
-    filtered_events = [
-        event for event in sample_events 
-        if start <= event["date"] <= end
-    ]
-    
-    logger.info(f"Found {len(filtered_events)} events in date range")
-    return filtered_events
-
-def main():
-    args = parse_args()
+    browser = None
+    context = None
     
     try:
-        events = scrape_eventbrite(args.start_date, args.end_date)
-        
-        # Write results to output file
-        with open(args.output, 'w') as f:
-            json.dump(events, f, indent=2, ensure_ascii=False)
-        
-        logger.info(f"Saved {len(events)} events to {args.output}")
-        return 0
-        
+        # Launch CloakBrowser with stealth settings
+        browser = launch(headless=True, humanize=True)
+        context = browser.new_context()
+        page = context.new_page()
+
+        # Navigate to the URL
+        logger.info(f"Navigating to {url}")
+        page.goto(url, wait_until="networkidle", timeout=60000)
+
+        # Wait for content to load
+        page.wait_for_timeout(5000)
+
+        # Extract events using specific Eventbrite selectors
+        events = []
+
+        # Eventbrite event selectors
+        elements = page.query_selector_all('li.search-main-content__events-list-item, div.search-event-card-wrapper, div.discover-horizontal-event-card')
+
+        if not elements or len(elements) == 0:
+            logger.warning("No events found with primary selectors, trying fallback...")
+            elements = page.query_selector_all('article, [data-testid="event-card"]')
+
+        for i, element in enumerate(elements[:40]):
+            try:
+                # Title
+                title_elem = element.query_selector('h3, h2, [class*="title"]')
+                title_text = title_elem.inner_text().strip() if title_elem else f"Event {i+1}"
+
+                # Date and time
+                date_elem = element.query_selector('[class*="date"], [class*="time"], div.event-card-details__status')
+                date_text = date_elem.inner_text().strip() if date_elem else ""
+
+                # Price - Eventbrite often shows price in a specific badge or list item
+                price_elem = element.query_selector('div.event-card__price, [class*="price"]')
+                price_text = price_elem.inner_text().strip() if price_elem else "Free"
+
+                # Parse price
+                price = 0.0
+                if "free" in price_text.lower() or "gratis" in price_text.lower():
+                    price = 0.0
+                else:
+                    import re
+                    price_match = re.search(r'(\d+[,.]\d+)', price_text)
+                    if price_match:
+                        price = float(price_match.group(1).replace(',', '.'))
+
+                if price > price_max:
+                    continue
+
+                # Venue
+                venue_elem = element.query_selector('[class*="venue"], [class*="location"]')
+                venue_text = venue_elem.inner_text().strip() if venue_elem else "Berlin"
+
+                # URL
+                link_elem = element.query_selector('a.event-card-link, a')
+                event_url = link_elem.get_attribute('href') if link_elem else url
+                if event_url and not event_url.startswith('http'):
+                    event_url = f"https://www.eventbrite.de{event_url}"
+
+                # Description (usually truncated on list view)
+                desc_text = f"Event at {venue_text} on {date_text}"
+
+                # Create event object with standardized schema
+                event = {
+                    "title": title_text,
+                    "date": datetime.now().strftime("%Y-%m-%d"), # Simplified parsing
+                    "time": "",
+                    "price": price,
+                    "category": "social",
+                    "description": desc_text,
+                    "url": event_url,
+                    "venue": venue_text,
+                    "source_url": url
+                }
+
+                events.append(event)
+                logger.info(f"Extracted: {title_text} - {price}€")
+
+            except Exception as e:
+                logger.debug(f"Error extracting event {i}: {e}")
+                continue
+
+        return events
+
     except Exception as e:
         logger.error(f"Error scraping Eventbrite: {e}")
-        return 1
+        raise
+    finally:
+        if context: context.close()
+        if browser: browser.close()
 
-if __name__ == '__main__':
-    exit(main())
+
+def main():
+    parser = argparse.ArgumentParser(description="Eventbrite Scraper")
+    parser.add_argument("--url", default="https://www.eventbrite.de/d/germany/berlin/events/", help="URL to scrape")
+    parser.add_argument("--output", required=True, help="Output JSON file")
+    parser.add_argument("--price-max", type=float, default=15.0, help="Max price")
+    parser.add_argument("--date-days", type=int, default=14, help="Date range")
+    parser.add_argument("--save-html", action="store_true", help="Save HTML")
+
+    args = parser.parse_args()
+    
+    try:
+        events = scrape_eventbrite(args.url, args.price_max, args.date_days)
+        
+        output = {
+            "source": args.url,
+            "scraped_at": datetime.now().isoformat(),
+            "event_count": len(events),
+            "events": events
+        }
+
+        with open(args.output, "w") as f:
+            json.dump(output, f, indent=2)
+        
+        print(f"✓ Scraped {len(events)} events to {args.output}")
+        
+    except Exception as e:
+        logger.error(f"Scraping failed: {e}")
+        sys.exit(1)
+
+if __name__ == "__main__":
+    main()

@@ -1,4 +1,4 @@
-name: Weekly Event Scraper with Jules Review
+name: Weekly Event Scraper with Autonomous Repair
 
 on:
   schedule:
@@ -9,16 +9,15 @@ on:
       urls:
         description: 'Comma-separated URLs to scrape (optional)'
         required: false
-        default: ''
+        default: 'https://rausgegangen.de/en/berlin/tipps-fuer-heute/,https://www.eventbrite.de/d/germany/berlin/events/,https://www.meetup.com/berlin/events/'
 
 jobs:
-  # Step 1: Initial scrape with CloakBrowser using per-URL scraper files
-  initial-scrape:
+  autonomous-scrape:
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+    timeout-minutes: 180
     strategy:
       matrix:
-        url_data: ${{ fromJson(inputs.urls != '' && format('["${{ github.event.inputs.urls }}"]') || '["https://rausgegangen.de/en/berlin/tipps-fuer-heute/","https://www.eventbrite.de/d/germany/berlin/events/","https://www.meetup.com/berlin/events/"]') }}
+        url_data: ["https://rausgegangen.de/en/berlin/tipps-fuer-heute/", "https://www.eventbrite.de/d/germany/berlin/events/", "https://www.meetup.com/berlin/events/"]
       fail-fast: false
     env:
       TARGET_URL: ${{ matrix.url_data }}
@@ -36,181 +35,88 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-          pip install cloakbrowser python-dotenv pyyaml
+          pip install cloakbrowser python-dotenv pyyaml requests beautifulsoup4 lxml
 
-      - name: Configure environment
-        run: |
-          echo "JULES_API_KEY=${{ secrets.JULES_API_KEY }}" >> $GITHUB_ENV
-
-      - name: Extract site name
-        id: site-info
-        run: |
-          URL="${TARGET_URL}"
-          SITE_NAME=$(echo "$URL" | sed -E 's|https?://(www\.)?||' | sed -E 's|/.*||' | sed 's/\./_/g')
-          echo "site_name=$SITE_NAME" >> $GITHUB_OUTPUT
-          echo "site_url=$URL" >> $GITHUB_OUTPUT
-
-      - name: Run site-specific scraper
-        continue-on-error: true
-        id: run-scraper
-        run: |
-          echo "Scraping ${{ steps.site-info.outputs.site_name }}..."
-          
-          # Check if site-specific scraper exists
-          SCRAPER_FILE="scripts/${{ steps.site-info.outputs.site_name }}_scraper.py"
-          if [ -f "$SCRAPER_FILE" ]; then
-            echo "Using site-specific scraper: $SCRAPER_FILE"
-            python "$SCRAPER_FILE" \
-              --url "${{ steps.site-info.outputs.site_url }}" \
-              --output "data/raw_${{ steps.site-info.outputs.site_name }}.json" \
-              --save-html || echo "scraper_failed=true" >> $GITHUB_OUTPUT
-          else
-            echo "No site-specific scraper found, using default CloakBrowser scraper"
-            python scripts/jules_cloak_scraper.py \
-              --url "${{ steps.site-info.outputs.site_url }}" \
-              --site-name "${{ steps.site-info.outputs.site_name }}" \
-              --output "data/raw_${{ steps.site-info.outputs.site_name }}.json" \
-              --save-html
-          fi
-
-      - name: Fallback to default scraper
-        if: steps.run-scraper.outcome == 'failure'
-        run: |
-          echo "Fallback: Using default CloakBrowser scraper for ${{ steps.site-info.outputs.site_name }}"
-          python scripts/jules_cloak_scraper.py \
-            --url "${{ steps.site-info.outputs.site_url }}" \
-            --site-name "${{ steps.site-info.outputs.site_name }}" \
-            --output "data/raw_${{ steps.site-info.outputs.site_name }}.json" \
-            --save-html
-
-      - name: Upload raw results
-        uses: actions/upload-artifact@v4
-        with:
-          name: raw-${{ steps.site-info.outputs.site_name }}
-          path: |
-            data/raw_${{ steps.site-info.outputs.site_name }}.json
-            data/html/${{ steps.site-info.outputs.site_name }}.html
-          retention-days: 7
-
-  # Step 2: Create new branch with scrape results
-  create-scrape-branch:
-    needs: initial-scrape
-    runs-on: ubuntu-latest
-    outputs:
-      branch_name: ${{ steps.create-branch.outputs.branch_name }}
-    
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Download all raw results
-        uses: actions/download-artifact@v4
-        with:
-          pattern: raw-*
-          path: data/
-          merge-multiple: true
-
-      - name: Create scrape branch
-        id: create-branch
-        run: |
-          BRANCH_NAME="scrape/weekly-$(date +%Y%m%d-%H%M%S)"
-          echo "branch_name=$BRANCH_NAME" >> $GITHUB_OUTPUT
-          
-          git config --global user.name 'GitHub Actions'
-          git config --global user.email 'actions@github.com'
-          
-          git checkout -b "$BRANCH_NAME"
-          
-          # Copy all raw data to docs/ for Jules review
-          mkdir -p docs/scrape-data
-          cp data/raw_*.json docs/scrape-data/ 2>/dev/null || true
-          cp -r data/html/ docs/scrape-data/ 2>/dev/null || true
-          
-          git add docs/scrape-data/
-          git commit -m "Weekly scrape results $(date +%Y-%m-%d)" || echo "No changes"
-          
-          git push origin "$BRANCH_NAME"
-          echo "Created branch: $BRANCH_NAME"
-
-  # Step 3: Send branch to Jules for manual review and improvement
-  jules-review:
-    needs: create-scrape-branch
-    runs-on: ubuntu-latest
-    timeout-minutes: 180
-    env:
-      SCRAPE_BRANCH: ${{ needs.create-scrape-branch.outputs.branch_name }}
-    
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ env.SCRAPE_BRANCH }}
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-          pip install python-dotenv pyyaml
+      - name: Install CloakBrowser Binary
+        run: python -m cloakbrowser install
 
       - name: Configure environment
         run: |
           echo "JULES_API_KEY=${{ secrets.JULES_API_KEY }}" >> $GITHUB_ENV
           echo "GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}" >> $GITHUB_ENV
 
-      - name: Run Jules manual review
+      - name: Extract site info
+        id: site-info
         run: |
-          echo "Starting Jules manual review of scraped events..."
+          URL="${TARGET_URL}"
+          SITE_NAME=$(echo "$URL" | sed -E 's|https?://(www\.)?||' | sed -E 's|/.*||' | sed 's/\./_/g')
+          echo "site_name=$SITE_NAME" >> $GITHUB_OUTPUT
           
-          python scripts/jules_manual_review.py \
-            --branch "$SCRAPE_BRANCH" \
-            --category-config "config/categories.yaml" \
-            --output "docs/scrape-data/review_results.json"
-          
-          # Apply improvements to scraper files
-          python scripts/apply_jules_improvements.py \
-            --review-results "docs/scrape-data/review_results.json" \
-            --output-dir "scripts/"
+          # Determine which script to use
+          if [[ "$URL" == *"rausgegangen"* ]]; then
+            echo "script=scripts/rausgegangen_scraper.py" >> $GITHUB_OUTPUT
+          elif [[ "$URL" == *"eventbrite"* ]]; then
+            echo "script=scripts/eventbrite_scraper.py" >> $GITHUB_OUTPUT
+          elif [[ "$URL" == *"meetup"* ]]; then
+            echo "script=scripts/meetup_scraper.py" >> $GITHUB_OUTPUT
+          else
+            echo "script=scripts/jules_cloak_scraper.py" >> $GITHUB_OUTPUT
+          fi
 
-      - name: Commit improvements
+      - name: Run Autonomous Repair Scrape
+        run: |
+          python scripts/autonomous_repair.py \
+            --script "${{ steps.site-info.outputs.script }}" \
+            --url "${TARGET_URL}" \
+            --site-name "${{ steps.site-info.outputs.site_name }}" \
+            --retries 3
+
+      - name: Upload results
+        uses: actions/upload-artifact@v4
+        with:
+          name: scrape-${{ steps.site-info.outputs.site_name }}
+          path: |
+            data/raw_${{ steps.site-info.outputs.site_name }}.json
+            data/html/${{ steps.site-info.outputs.site_name }}.html
+          retention-days: 7
+
+  aggregate-and-deploy:
+    needs: autonomous-scrape
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download all results
+        uses: actions/download-artifact@v4
+        with:
+          pattern: scrape-*
+          path: data/
+          merge-multiple: true
+
+      - name: Aggregate events
+        run: |
+          python -c "
+          import json, glob, os
+          all_events = []
+          for f in glob.glob('data/raw_*.json'):
+              with open(f) as j:
+                  all_events.extend(json.load(j).get('events', []))
+          os.makedirs('docs', exist_ok=True)
+          with open('docs/events.json', 'w') as out:
+              json.dump({'events': all_events, 'count': len(all_events)}, out)
+          "
+
+      - name: Commit improvements (if any)
         run: |
           git config --global user.name 'GitHub Actions'
           git config --global user.email 'actions@github.com'
-          
-          git add scripts/
-          git add docs/scrape-data/
-          
-          git diff --staged --quiet || git commit -m "Jules review: improved scrapers and added missed events"
-          git push origin "$SCRAPE_BRANCH"
+          git add scripts/*.py
+          git diff --staged --quiet || git commit -m "Auto-repair: updated scraper scripts"
+          git push || echo "No changes to push or push failed"
 
-      - name: Create PR
-        uses: peter-evans/create-pull-request@v6
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          base: main
-          branch: ${{ env.SCRAPE_BRANCH }}
-          title: "Weekly Event Scrape - Jules Review Complete"
-          body: |
-            ## Weekly Event Scrape Results
-            
-            **Scraped at:** $(date -u +"%Y-%m-%d %H:%M:%S UTC")
-            
-            ### Jules Review Summary
-            - Manual review completed by Jules AI
-            - Missed events identified and added
-            - Scraper files improved to catch similar patterns
-            - Events categorized using config/categories.yaml
-            
-            ### Changes
-            - Updated scraper scripts with improved selectors
-            - Added missed events to event lists
-            - All events categorized by type
-            
-            ### Next Steps
-            Review and merge to deploy to GitHub Pages.
-          labels: weekly-scrape, jules-review
-          delete-branch: false
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./docs
