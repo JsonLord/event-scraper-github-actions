@@ -1,0 +1,147 @@
+# Event Categories Configuration
+# Define categories and their keywords for automatic classification
+
+categories:
+  music:
+    keywords:
+      - concert
+      - live music
+      - band
+      - DJ
+      - club
+      - party
+      - dance
+      - festival
+      - gig
+      - acoustic
+      - orchestra
+      - symphony
+      - jazz
+      - rock
+      - pop
+      - electronic
+      - techno
+      - house
+    priority: 1
+
+  dance:
+    keywords:
+      - dance
+      - ballet
+      - contemporary
+      - hip hop
+      - salsa
+      - tango
+      - choreography
+      - performance
+    priority: 2
+
+  social:
+    keywords:
+      - meetup
+      - networking
+      - social
+      - gathering
+      - community
+      - friends
+      - party
+      - celebration
+      - pub crawl
+      - workshop
+      - seminar
+      - talk
+      - lecture
+    priority: 3
+
+  networking:
+    keywords:
+      - business
+      - professional
+      - startup
+      - entrepreneur
+      - tech
+      - conference
+      - summit
+      - expo
+      - trade show
+      - career
+      - job fair
+    priority: 4
+
+  sports:
+    keywords:
+      - sport
+      - fitness
+      - marathon
+      - cycling
+      - running
+      - football
+      - soccer
+      - basketball
+      - yoga
+      - training
+      - competition
+    priority: 5
+
+  culture:
+    keywords:
+      - museum
+      - exhibition
+      - art
+      - gallery
+      - theater
+      - cinema
+      - film
+      - documentary
+      - history
+      - culture
+      - heritage
+    priority: 6
+
+  food:
+    keywords:
+      - food
+      - restaurant
+      - cuisine
+      - cooking
+      - chef
+      - tasting
+      - market
+      - fair
+      - beer
+      - wine
+      - festival
+    priority: 7
+
+  family:
+    keywords:
+      - family
+      - kids
+      - children
+      - kids
+      - playground
+      - zoo
+      - aquarium
+      - workshop
+      - activity
+    priority: 8
+
+  free:
+    keywords:
+      - free
+      - gratis
+      - no cost
+      - complimentary
+      - open access
+    priority: 9
+
+# Default category for unclassified events
+default_category: social
+
+# Price thresholds for classification
+price_filters:
+  max_price: 15  # Maximum price to include
+  free_threshold: 0  # Events at or below this are "free"
+
+# Date range
+date_range_days: 14  # Only include events within this many days
