@@ -5,7 +5,6 @@ This module provides a Python client for interacting with the Jules API,
 enabling automated coding sessions for event scraping tasks.
 """
 
-import requests
 import os
 import json
 from typing import Optional, Dict, Any, List
@@ -52,6 +51,14 @@ class JulesClient:
     
     def _make_request(self, method: str, endpoint: str, **kwargs) -> Dict[str, Any]:
         """Make a request to the Jules API"""
+        try:
+            import requests
+        except ImportError as e:
+            raise JulesClientError(
+                "The 'requests' package is required for Jules API calls. "
+                "Install project dependencies with `pip install -r requirements.txt`."
+            ) from e
+
         url = f"{JULES_API_BASE}/{endpoint}"
         headers = {
             "X-Goog-Api-Key": self.api_key,

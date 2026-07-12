@@ -22,8 +22,18 @@ logger = logging.getLogger(__name__)
 class AutonomousRepair:
     def __init__(self, max_retries: int = 3):
         self.max_retries = max_retries
-        self.analyzer = CompletenessAnalyzer()
-        self.generator = ScraperGenerator()
+        self.analyzer = None
+        self.generator = None
+
+    def _get_analyzer(self) -> CompletenessAnalyzer:
+        if self.analyzer is None:
+            self.analyzer = CompletenessAnalyzer()
+        return self.analyzer
+
+    def _get_generator(self) -> ScraperGenerator:
+        if self.generator is None:
+            self.generator = ScraperGenerator()
+        return self.generator
 
     def run_scraper(self, script_path: str, url: str, output_path: str, html_path: str) -> bool:
         """Run a scraper and return True if successful (found events)."""
@@ -37,7 +47,8 @@ class AutonomousRepair:
             "python3", script_path,
             "--url", url,
             "--output", output_path,
-            "--save-html"
+            "--save-html",
+            "--html-output", html_path,
         ]
 
         try:
@@ -112,7 +123,7 @@ class AutonomousRepair:
                     except:
                         pass
 
-            analysis = self.analyzer.analyze(site_name, raw_html, scraped_events)
+            analysis = self._get_analyzer().analyze(site_name, raw_html, scraped_events)
 
             if not analysis.get("needs_update", True) and len(scraped_events) == 0:
                 # If Jules thinks it doesn't need an update but we got 0 events,
@@ -123,7 +134,7 @@ class AutonomousRepair:
             with open(script_path, 'r') as f:
                 current_code = f.read()
 
-            new_code = self.generator.generate(site_name, analysis, current_code)
+            new_code = self._get_generator().generate(site_name, analysis, current_code)
 
             if new_code:
                 with open(script_path, 'w') as f:

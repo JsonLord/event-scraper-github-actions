@@ -23,6 +23,7 @@ def parse_args():
     parser.add_argument('--price-max', type=float, default=15.0)
     parser.add_argument('--date-days', type=int, default=14)
     parser.add_argument('--save-html', action='store_true')
+    parser.add_argument('--html-output', help='Path where fetched page content should be saved')
     return parser.parse_args()
 
 def get_jina_content(url: str) -> str:
@@ -82,9 +83,9 @@ def main():
     markdown = get_jina_content(args.url)
     
     if args.save_html:
-        os.makedirs("data/html", exist_ok=True)
-        site_name = args.url.split('/')[-2] or "rausgegangen"
-        with open(f"data/html/{site_name}.html", 'w') as f:
+        html_output = args.html_output or f"data/html/{args.url.split('/')[-2] or 'rausgegangen'}.html"
+        os.makedirs(os.path.dirname(html_output), exist_ok=True)
+        with open(html_output, 'w') as f:
             f.write(markdown)
     
     events = extract_events_from_markdown(markdown, args.url)

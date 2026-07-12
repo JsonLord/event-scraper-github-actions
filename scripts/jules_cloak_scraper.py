@@ -23,7 +23,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from jules_client import JulesClient, JulesClientError
 
 try:
-    from cloakbrowser import launch
+    from cloakbrowser import launch, launch_persistent_context
     CLOAKBROWSER_AVAILABLE = True
 except ImportError:
     CLOAKBROWSER_AVAILABLE = False

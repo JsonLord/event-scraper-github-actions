@@ -36,7 +36,7 @@ if ENV_FILE.exists():
 # In a real implementation, these would be set via environment variables
 DESK_AGENT_HOST = os.environ.get('DESK_AGENT_HOST', 'localhost')
 DESK_AGENT_PORT = os.environ.get('DESK_AGENT_PORT', '7860')
-DESK_AGENT_ENABLED = os.environ.get('DESK_AGENT_ENABLED = os.environ.get('DESK_AGENT_ENABLED', 'false').lower() == 'true'
+DESK_AGENT_ENABLED = os.environ.get('DESK_AGENT_ENABLED', 'false').lower() == 'true'
 
 # Setup logging
 logging.basicConfig(
