@@ -9,8 +9,11 @@ import sys
 import json
 import argparse
 import logging
+import re
 from datetime import datetime, timedelta
 from typing import List, Dict, Any
+
+import requests
 
 try:
     from cloakbrowser import launch
@@ -31,7 +34,8 @@ def scrape_eventbrite(url: str, price_max: float = 15.0, date_range_days: int = 
     Scrape events from Eventbrite.
     """
     if not CLOAKBROWSER_AVAILABLE:
-        raise RuntimeError("CloakBrowser not available")
+        logger.warning("CloakBrowser not available; using Jina Reader fallback")
+        return scrape_eventbrite_with_jina(url, price_max)
     
     logger.info(f"Scraping Eventbrite: {url}")
     
@@ -121,14 +125,79 @@ def scrape_eventbrite(url: str, price_max: float = 15.0, date_range_days: int = 
                 logger.debug(f"Error extracting event {i}: {e}")
                 continue
 
-        return events
+        if events:
+            return events
+
+        logger.warning("CloakBrowser produced 0 Eventbrite events; using Jina Reader fallback")
+        return scrape_eventbrite_with_jina(url, price_max)
 
     except Exception as e:
-        logger.error(f"Error scraping Eventbrite: {e}")
-        raise
+        logger.error(f"Error scraping Eventbrite with CloakBrowser: {e}")
+        return scrape_eventbrite_with_jina(url, price_max)
     finally:
         if context: context.close()
         if browser: browser.close()
+
+
+def fetch_jina_content(url: str) -> str:
+    """Fetch a readable page snapshot via Jina Reader."""
+    jina_url = f"https://r.jina.ai/{url}"
+    headers = {}
+    if os.environ.get("JINA_API_KEY"):
+        headers["Authorization"] = f"Bearer {os.environ['JINA_API_KEY']}"
+    response = requests.get(jina_url, headers=headers, timeout=30)
+    response.raise_for_status()
+    return response.text
+
+
+def parse_price(price_text: str) -> float:
+    if "free" in price_text.lower() or "gratis" in price_text.lower():
+        return 0.0
+    price_match = re.search(r'(\d+[,.]\d+|\d+)\s*(?:€|EUR)', price_text, re.IGNORECASE)
+    return float(price_match.group(1).replace(',', '.')) if price_match else 0.0
+
+
+def scrape_eventbrite_with_jina(url: str, price_max: float = 15.0) -> List[Dict[str, Any]]:
+    """Fallback parser for GitHub Actions when browser automation is blocked."""
+    markdown = fetch_jina_content(url)
+    events = []
+    seen = set()
+
+    for line in markdown.splitlines():
+        text = line.strip()
+        if not text or len(text) < 8:
+            continue
+        if not re.search(r'eventbrite|tickets?|free|gratis|€|berlin|\d{1,2}:\d{2}', text, re.IGNORECASE):
+            continue
+
+        link_match = re.search(r'\[([^\]]{5,160})\]\((https?://[^)]+)\)', text)
+        title = link_match.group(1).strip() if link_match else re.sub(r'[#*_`>-]', '', text).strip()
+        event_url = link_match.group(2) if link_match else url
+
+        if len(title) < 5 or title.lower() in seen:
+            continue
+
+        price = parse_price(text)
+        if price > price_max:
+            continue
+
+        seen.add(title.lower())
+        events.append({
+            "title": title[:180],
+            "date": datetime.now().strftime("%Y-%m-%d"),
+            "time": "",
+            "price": price,
+            "category": "social",
+            "description": text[:500],
+            "url": event_url,
+            "venue": "Berlin",
+            "source_url": url
+        })
+
+        if len(events) >= 40:
+            break
+
+    return events
 
 
 def main():
@@ -138,11 +207,20 @@ def main():
     parser.add_argument("--price-max", type=float, default=15.0, help="Max price")
     parser.add_argument("--date-days", type=int, default=14, help="Date range")
     parser.add_argument("--save-html", action="store_true", help="Save HTML")
+    parser.add_argument("--html-output", help="Path where fetched page content should be saved")
 
     args = parser.parse_args()
     
     try:
         events = scrape_eventbrite(args.url, args.price_max, args.date_days)
+        if args.save_html:
+            html_output = args.html_output or "data/html/eventbrite.html"
+            os.makedirs(os.path.dirname(html_output), exist_ok=True)
+            try:
+                with open(html_output, "w") as f:
+                    f.write(fetch_jina_content(args.url))
+            except Exception as e:
+                logger.warning(f"Could not save Eventbrite HTML snapshot: {e}")
         
         output = {
             "source": args.url,

@@ -31,7 +31,13 @@ class ScraperGenerator:
     """
     
     def __init__(self, agent_id: str = "jules-1"):
-        self.jules = JulesClient(agent_id)
+        self.agent_id = agent_id
+        self.jules = None
+
+    def _get_jules(self) -> JulesClient:
+        if self.jules is None:
+            self.jules = JulesClient(self.agent_id)
+        return self.jules
     
     def generate(
         self,
@@ -99,7 +105,8 @@ class ScraperGenerator:
         """
         
         try:
-            session = self.jules.create_session(
+            jules = self._get_jules()
+            session = jules.create_session(
                 prompt=prompt,
                 title=f"Scraper Generator: {source}",
                 source_id=os.environ.get("JULES_SOURCE_ID"),
@@ -110,7 +117,7 @@ class ScraperGenerator:
             logger.info(f"Created generation session: {session_id}")
             
             # Wait for completion
-            result = self.jules.wait_for_session(session_id, timeout=1800)
+            result = jules.wait_for_session(session_id, timeout=1800)
             
             # Extract code
             code = self._extract_code(result)
