@@ -1,0 +1,168 @@
+name: Event Scraper with Auto-Improvement
+
+on:
+  schedule:
+    # Run Monday-Friday at 5 PM UTC (matches original cron)
+    - cron: '0 17 * * 1-5'
+  workflow_dispatch:
+    inputs:
+      site_url:
+        description: 'Target URL to scrape'
+        required: false
+        default: ''
+      site_name:
+        description: 'Site name'
+        required: false
+        default: ''
+
+jobs:
+  scrape-events:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install cloakbrowser python-dotenv
+
+      - name: Configure environment
+        run: |
+          echo "JULES_API_KEY=${{ secrets.JULES_API_KEY }}" >> $GITHUB_ENV
+          echo "GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}" >> $GITHUB_ENV
+          echo "EVENT_PRICE_MAX=15" >> $GITHUB_ENV
+          echo "EVENT_DATE_RANGE_DAYS=14" >> $GITHUB_ENV
+
+      - name: Run event scraper
+        id: scrape
+        run: |
+          SITE_URL="${{ github.event.inputs.site_url || 'https://rausgegangen.de/en/berlin/tipps-fuer-heute/' }}"
+          SITE_NAME="${{ github.event.inputs.site_name || 'Rausgegangen Berlin' }}"
+          
+          python scripts/jules_cloak_scraper.py \
+            --url "$SITE_URL" \
+            --site-name "$SITE_NAME" \
+            --output data/events.json \
+            --price-max 15 \
+            --date-days 14
+          
+          EVENT_COUNT=$(python -c "import json; data=json.load(open('data/events.json')); print(data.get('event_count', 0))")
+          echo "event_count=$EVENT_COUNT" >> $GITHUB_OUTPUT
+
+      - name: Upload events as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: events-${{ github.run_id }}
+          path: data/events.json
+          retention-days: 30
+
+      - name: Save HTML for validation
+        if: always()
+        run: |
+          mkdir -p data/html
+          mv data/site.html data/html/ 2>/dev/null || true
+
+      - name: Commit and push events
+        run: |
+          git config --global user.name 'GitHub Actions'
+          git config --global user.email 'actions@github.com'
+          
+          git add data/events.json
+          git diff --staged --quiet || git commit -m "Update events: ${{ steps.scrape.outputs.event_count }} events [skip ci]"
+          git push
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./data
+          keep_files: true
+
+  validate-and-improve:
+    needs: scrape-events
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install cloakbrowser python-dotenv
+
+      - name: Configure environment
+        run: |
+          echo "JULES_API_KEY=${{ secrets.JULES_API_KEY }}" >> $GITHUB_ENV
+          echo "GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}" >> $GITHUB_ENV
+
+      - name: Download events artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: events-${{ github.run_id }}
+          path: data/
+
+      - name: Run validation to find missed events
+        id: validation
+        run: |
+          # This would run validation logic to find events that were missed
+          # For now, create a placeholder
+          echo '{"missed_events": [], "validation_status": "placeholder"}' > data/validation_result.json
+          echo "has_missed=false" >> $GITHUB_OUTPUT
+
+      - name: Run improvement cycle if missed events found
+        if: steps.validation.outputs.has_missed == 'true'
+        run: |
+          python scripts/scraper_improvement_cycle.py \
+            --site-name "Rausgegangen Berlin" \
+            --site-url "https://rausgegangen.de/en/berlin/tipps-fuer-heute/" \
+            --scraper-file scripts/rausgegangen_scraper.py \
+            --scraped-events data/events.json \
+            --missed-events data/missed_events.json \
+            --output scripts/improved_rausgegangen_scraper.py
+
+      - name: Create PR with improvements
+        if: steps.validation.outputs.has_missed == 'true'
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: "Auto-improve scraper based on validation [skip ci]"
+          branch: auto-improve/scraper-${{ github.run_id }}
+          title: "Auto-improved scraper for better event detection"
+          body: |
+            ## Scraper Improvement Report
+            
+            This PR contains automatically improved scraper code generated by Jules AI.
+            
+            ### Analysis
+            - Events scraped: Check previous run
+            - Missed events: Found during validation
+            - Improvement: General adaptation to catch similar events
+            
+            ### Changes
+            - Updated selectors and parsing logic
+            - Added support for missed event patterns
+            - Maintained existing functionality
+            
+            Please review before merging.
+          labels: auto-improvement, jules-ai
+
+      - name: Upload validation report
+        uses: actions/upload-artifact@v4
+        with:
+          name: validation-${{ github.run_id }}
+          path: data/validation_result.json
+          retention-days: 30

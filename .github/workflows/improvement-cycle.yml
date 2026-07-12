@@ -1,0 +1,75 @@
+name: Scraper Improvement Cycle
+
+on:
+  schedule:
+    - cron: '0 18 * * 0'  # Sundays at 6 PM UTC (same as original cron)
+  workflow_dispatch:  # Allow manual triggers
+
+jobs:
+  improve:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+        
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        
+    - name: Run scraper improvement cycle
+      env:
+        # Pass through any needed environment variables
+        DESK_AGENT_ENABLED: "false"
+      run: |
+        echo "Running scraper improvement cycle..."
+        python scripts/scraper_improvement_cycle.py
+        
+    - name: Check if scraper scripts were modified
+      id: git-check
+      run: |
+        # Configure git
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        
+        # Check if any scraper scripts were modified
+        if git diff --quiet HEAD -- scripts/*.py; then
+          echo "no_changes" >> $GITHUB_OUTPUT
+        else
+          echo "changes_detected" >> $GITHUB_OUTPUT
+          # Show what changed
+          git diff --stat
+        fi
+        
+    - name: Commit and push improved scrapers
+      if: steps.git-check.outputs.changes_detected == 'changes_detected'
+      run: |
+        echo "Committing improved scraper scripts..."
+        git add scripts/*.py
+        git commit -m "🤖 Auto-improve scrapers: $(date +%Y-%m-%d %H:%M:%S) [skip ci]" || echo "Commit failed"
+        git push origin HEAD:${{ github.ref }}
+        
+    - name: Generate improvement report
+      if: success()
+      run: |
+        echo "Generating improvement report..."
+        mkdir -p improvement-reports
+        
+        # Copy improvement reports if they exist
+        if [ -d ".hermes/event-scraper/" ]; then
+          cp .hermes/event-scraper/scraper_improvement_report_*.md improvement-reports/ 2>/dev/null || true
+        fi
+        
+    - name: Upload improvement artifacts
+      if: always()
+      uses: actions/upload-artifact@v3
+      with:
+        name: improvement-reports
+        path: improvement-reports/

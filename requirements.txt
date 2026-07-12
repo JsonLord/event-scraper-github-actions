@@ -1,0 +1,18 @@
+# Requirements for Event Scraper System
+# Combines requirements from all scripts
+
+# Core Python packages (mostly built-in, but explicitly listed for clarity)
+# datetime, pathlib, typing, argparse, json, logging, os, random, re, 
+# subprocess, sys, time are all built-in
+
+# Third-party packages
+requests==2.31.0          # HTTP requests (used in firecrawl_validation.py, validate_events.py)
+PyYAML==6.0               # YAML parsing (used in weekly-event-scraper.py, validate_events.py, config handling)
+python-dotenv==1.0.0      # Environment variable loading from .env file
+
+# Stealth browser for anti-bot bypass (auto-downloads Chromium binary)
+cloakbrowser==0.4.8       # Drop-in Playwright replacement with 66 C++ stealth patches
+
+# Optional: For enhanced web scraping
+beautifulsoup4==4.12.2    # HTML parsing for event extraction
+lxml==4.9.3               # Fast XML/HTML parsing (backend for BeautifulSoup)

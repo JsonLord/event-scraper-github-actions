@@ -1,0 +1,148 @@
+name: Weekly Event Scraper
+
+on:
+  schedule:
+    - cron: '0 17 * * 0-4'  # Monday-Friday at 5 PM UTC (same as original cron)
+  workflow_dispatch:  # Allow manual triggers from GitHub UI
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+        
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        
+    - name: Run weekly event scraper
+      env:
+        # Note: For desk_agent_2.0, we'll need to handle this differently
+        # In GitHub Actions, localhost won't work. This is a placeholder.
+        # In production, you'd need to expose your desk_agent_2.0 service
+        # or modify the script to work without it for GitHub Actions
+        DESK_AGENT_ENABLED: "false"
+      run: |
+        echo "Running weekly event scraper..."
+        python scripts/weekly-event-scraper.py
+        
+    - name: Generate GitHub Pages content
+      if: success()
+      run: |
+        echo "Generating GitHub Pages content..."
+        mkdir -p docs
+        
+        # Export recent events to JSON for GitHub Pages
+        if [ -f "data/events.db" ]; then
+          sqlite3 data/events.db "SELECT title, date, time, price, category, description, source_url FROM events WHERE date >= date('now', '-7 days') ORDER BY date, time LIMIT 100;" > docs/events.json || echo "No events.db found or error exporting"
+        else
+          echo "[]" > docs/events.json
+        fi
+        
+        # Copy weekly report if it exists
+        if [ -f ".hermes/event-scraper/weekly-report.md" ]; then
+          mkdir -p docs/reports
+          cp .hermes/event-scraper/weekly-report.md docs/reports/weekly-report-$(date +%Y%m%d).md
+        fi
+        
+        # Create simple index.html
+        cat > docs/index.html << 'EOF'
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Events Overview</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <div class="container mx-auto px-4 py-8">
+        <h1 class="text-3xl font-bold text-center mb-8">Weekly Events Overview</h1>
+        <div id="loading" class="text-center py-8">
+            <div class="animate-spin rounded-full border-4 border-t-blue-500 w-12 h-12 mx-auto"></div>
+            <p class="mt-4">Loading events...</p>
+        </div>
+        <div id="events-container" class="hidden space-y-6">
+            <!-- Events will be populated here -->
+        </div>
+        <div id="error-message" class="hidden text-center py-8 text-red-500">
+            <p>Failed to load events. Please try again later.</p>
+        </div>
+    </div>
+
+    <script>
+        // Fetch and display events
+        fetch('events.json')
+            .then(response => {
+                if (!response.ok) throw new Error('Network response was not ok');
+                return response.json();
+            })
+            .then(events => {
+                document.getElementById('loading').classList.add('hidden');
+                if (events.length === 0) {
+                    document.getElementById('error-message').innerHTML = '<p>No events found for the past week.</p>';
+                    document.getElementById('error-message').classList.remove('hidden');
+                    return;
+                }
+                
+                document.getElementById('events-container').classList.remove('hidden');
+                const container = document.getElementById('events-container');
+                
+                events.forEach(event => {
+                    const eventDiv = document.createElement('div');
+                    eventDiv.className = 'bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow';
+                    
+                    const priceDisplay = event.price === null ? 'Free' : `€${parseFloat(event.price).toFixed(2)}`;
+                    
+                    eventDiv.innerHTML = `
+                        <div class="flex justify-between items-start mb-2">
+                            <h2 class="text-xl font-semibold text-gray-800 flex-1">${event.title}</h2>
+                            <span class="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">${event.category}</span>
+                        </div>
+                        <div class="grid grid-cols-2 gap-4 text-sm text-gray-600 mb-4">
+                            <div><strong>Date:</strong> <span class="font-normal">${event.date}</span></div>
+                            <div><strong>Time:</strong> <span class="font-normal">${event.time || 'TBD'}</span></div>
+                            <div><strong>Price:</strong> <span class="font-normal">${priceDisplay}</span></div>
+                            <div><strong>Source:</strong> <a href="${event.source_url}" target="_blank" class="underline text-blue-600 hover:text-blue-800">Link</a">Link</a></div>
+                        </div>
+                        <p class="text-gray-700">${event.description || 'No description available'}</p>
+                    `;
+                    
+                    container.appendChild(eventDiv);
+                });
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                document.getElementById('loading').classList.add('hidden');
+                document.getElementById('error-message').classList.remove('hidden');
+            });
+    </script>
+</body>
+</html>
+EOF
+        
+    - name: Deploy to GitHub Pages
+      if: success()
+      uses: peaceiris/actions-gh-pages@v3
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        publish_dir: ./docs
+        keep_files: false
+        
+    - name: Upload artifacts
+      if: always()
+      uses: actions/upload-artifact@v3
+      with:
+        name: scraper-logs
+        path: |
+          .hermes/event-scraper/logs/
+          !.hermes/event-scraper/logs/*.lock

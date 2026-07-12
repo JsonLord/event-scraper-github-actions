@@ -1,0 +1,41 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+*.pyd
+*.egg-info/
+.env
+.venv/
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Data
+*.db
+*.sqlite
+*.sqlite3
+
+# Logs
+*.log
+logs/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# Misc
+.env.local
+.env.*.local
+
+# Specific to this project
+.hermes/
+event-scraper/
