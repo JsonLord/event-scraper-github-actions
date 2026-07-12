@@ -51,6 +51,8 @@ jobs:
           echo "site_url=$URL" >> $GITHUB_OUTPUT
 
       - name: Run site-specific scraper
+        continue-on-error: true
+        id: run-scraper
         run: |
           echo "Scraping ${{ steps.site-info.outputs.site_name }}..."
           
@@ -61,7 +63,7 @@ jobs:
             python "$SCRAPER_FILE" \
               --url "${{ steps.site-info.outputs.site_url }}" \
               --output "data/raw_${{ steps.site-info.outputs.site_name }}.json" \
-              --save-html
+              --save-html || echo "scraper_failed=true" >> $GITHUB_OUTPUT
           else
             echo "No site-specific scraper found, using default CloakBrowser scraper"
             python scripts/jules_cloak_scraper.py \
@@ -70,6 +72,16 @@ jobs:
               --output "data/raw_${{ steps.site-info.outputs.site_name }}.json" \
               --save-html
           fi
+
+      - name: Fallback to default scraper
+        if: steps.run-scraper.outcome == 'failure'
+        run: |
+          echo "Fallback: Using default CloakBrowser scraper for ${{ steps.site-info.outputs.site_name }}"
+          python scripts/jules_cloak_scraper.py \
+            --url "${{ steps.site-info.outputs.site_url }}" \
+            --site-name "${{ steps.site-info.outputs.site_name }}" \
+            --output "data/raw_${{ steps.site-info.outputs.site_name }}.json" \
+            --save-html
 
       - name: Upload raw results
         uses: actions/upload-artifact@v4
