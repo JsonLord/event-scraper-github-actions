@@ -74,4 +74,3 @@ Last updated: $(date -u +"%Y-%m-%d %H:%M:%S UTC")
 ## Next Validation
 Scheduled to run daily at 5:00 PM UTC
 EOF
-EOF
