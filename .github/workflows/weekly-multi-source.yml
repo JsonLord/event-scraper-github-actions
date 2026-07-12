@@ -1,4 +1,4 @@
-name: Weekly Multi-Source Event Scraper
+name: Weekly Multi-Source Scraper with Jules Analysis
 
 on:
   schedule:
@@ -7,44 +7,18 @@ on:
   workflow_dispatch:
     inputs:
       urls:
-        description: 'Comma-separated URLs to scrape (optional, overrides config)'
+        description: 'Comma-separated URLs to scrape (optional)'
         required: false
         default: ''
 
 jobs:
-  load-config:
+  # Step 1: Initial scrape with CloakBrowser (all sources in parallel)
+  initial-scrape:
     runs-on: ubuntu-latest
-    outputs:
-      urls: ${{ steps.config.outputs.urls }}
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Load URLs from config
-        id: config
-        run: |
-          # Check if manual override provided
-          if [ -n "${{ github.event.inputs.urls }}" ]; then
-            urls="${{ github.event.inputs.urls }}"
-          else
-            # Load from config.yaml or use default
-            urls="https://rausgegangen.de/en/berlin/tipps-fuer-heute/
-https://www.eventbrite.de/d/germany/berlin/events/
-https://www.meetup.com/berlin/events/"
-          fi
-          
-          # Output as JSON array for matrix strategy
-          urls_json=$(echo "$urls" | tr '\n' ',' | sed 's/,$//' | sed 's/,/","/g' | sed 's/^/["/' | sed 's/$/"]/')
-          echo "urls=$urls_json" >> $GITHUB_OUTPUT
-          echo "Will scrape: $urls_json"
-
-  scrape-all-sources:
-    needs: load-config
-    runs-on: ubuntu-latest
-    timeout-minutes: 120
+    timeout-minutes: 90
     strategy:
       matrix:
-        url_data: ${{ fromJson(needs.load-config.outputs.urls) }}
+        url_data: ${{ fromJson(inputs.urls != '' && format('["${{ github.event.inputs.urls }}"]') || '["https://rausgegangen.de/en/berlin/tipps-fuer-heute/","https://www.eventbrite.de/d/germany/berlin/events/","https://www.meetup.com/berlin/events/"]') }}
       fail-fast: false
     env:
       TARGET_URL: ${{ matrix.url_data }}
@@ -62,126 +36,59 @@ https://www.meetup.com/berlin/events/"
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-          pip install cloakbrowser python-dotenv
+          pip install cloakbrowser python-dotenv beautifulsoup4 lxml
 
       - name: Configure environment
         run: |
           echo "JULES_API_KEY=${{ secrets.JULES_API_KEY }}" >> $GITHUB_ENV
           echo "GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}" >> $GITHUB_ENV
-          echo "EVENT_PRICE_MAX=15" >> $GITHUB_ENV
-          echo "EVENT_DATE_RANGE_DAYS=14" >> $GITHUB_ENV
 
-      - name: Extract site name from URL
+      - name: Extract site name
         id: site-info
         run: |
-          # Extract domain name for site identifier
           URL="${TARGET_URL}"
           SITE_NAME=$(echo "$URL" | sed -E 's|https?://(www\.)?||' | sed -E 's|/.*||' | sed 's/\./_/g')
           echo "site_name=$SITE_NAME" >> $GITHUB_OUTPUT
           echo "site_url=$URL" >> $GITHUB_OUTPUT
-          echo "Processing: $SITE_NAME - $URL"
 
-      - name: Run scraper with CloakBrowser + Jules
-        id: scrape
+      - name: Scrape with CloakBrowser (raw HTML)
         run: |
-          echo "Starting scrape for ${{ steps.site-info.outputs.site_name }}..."
+          echo "Scraping ${{ steps.site-info.outputs.site_name }} with CloakBrowser..."
           
-          # Run the scraper
           python scripts/jules_cloak_scraper.py \
             --url "${{ steps.site-info.outputs.site_url }}" \
             --site-name "${{ steps.site-info.outputs.site_name }}" \
-            --output "data/events_${{ steps.site-info.outputs.site_name }}.json" \
-            --price-max 15 \
-            --date-days 14
+            --output "data/raw_${{ steps.site-info.outputs.site_name }}.json" \
+            --price-max 9999 \
+            --date-days 365 \
+            --save-html \
+            --raw-mode
           
-          # Extract event count
-          EVENT_COUNT=$(python -c "import json; data=json.load(open('data/events_${{ steps.site-info.outputs.site_name }}.json')); print(data.get('event_count', 0))" 2>/dev/null || echo "0")
-          echo "event_count=$EVENT_COUNT" >> $GITHUB_OUTPUT
-          
-          echo "Scraped $EVENT_COUNT events from ${{ steps.site-info.outputs.site_name }}"
+          # Save HTML for Jules analysis
+          if [ -f "data/site.html" ]; then
+            mkdir -p data/html
+            mv data/site.html "data/html/${{ steps.site-info.outputs.site_name }}.html"
+          fi
 
-      - name: Upload events artifact
+      - name: Upload raw results
         uses: actions/upload-artifact@v4
         with:
-          name: events-${{ steps.site-info.outputs.site_name }}
-          path: data/events_${{ steps.site-info.outputs.site_name }}.json
-          retention-days: 30
-
-      - name: Save HTML for validation
-        if: always()
-        run: |
-          mkdir -p data/html
-          mv data/site.html data/html/${{ steps.site-info.outputs.site_name }}.html 2>/dev/null || true
-
-      - name: Upload HTML artifact
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: html-${{ steps.site-info.outputs.site_name }}
-          path: data/html/
+          name: raw-${{ steps.site-info.outputs.site_name }}
+          path: |
+            data/raw_${{ steps.site-info.outputs.site_name }}.json
+            data/html/${{ steps.site-info.outputs.site_name }}.html
           retention-days: 7
 
-  aggregate-results:
-    needs: scrape-all-sources
+  # Step 2: Jules analyzes completeness and finds missed events
+  jules-analysis:
+    needs: initial-scrape
     runs-on: ubuntu-latest
-    if: always()
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Download all event artifacts
-        uses: actions/download-artifact@v4
-        with:
-          pattern: events-*
-          path: data/
-          merge-multiple: true
-
-      - name: Aggregate all events
-        run: |
-          echo "Aggregating events from all sources..."
-          
-          # Create aggregated events file
-          python << 'EOF'
-import json
-import glob
-from datetime import datetime
-
-all_events = {
-    "scraped_at": datetime.now().isoformat(),
-    "sources": {},
-    "total_events": 0,
-    "events": []
-}
-
-for filepath in glob.glob("data/events_*.json"):
-    with open(filepath) as f:
-        data = json.load(f)
-        source = filepath.replace("data/events_", "").replace(".json", "")
-        all_events["sources"][source] = {
-            "event_count": data.get("event_count", 0),
-            "scraped_at": data.get("scraped_at", "")
-        }
-        all_events["total_events"] += data.get("event_count", 0)
-        all_events["events"].extend(data.get("events", []))
-
-with open("data/events.json", "w") as f:
-    json.dump(all_events, f, indent=2)
-
-print(f"Total events: {all_events['total_events']}")
-print(f"Sources: {list(all_events['sources'].keys())}")
-EOF
-
-      - name: Upload aggregated events
-        uses: actions/upload-artifact@v4
-        with:
-          name: events-aggregated
-          path: data/events.json
-          retention-days: 30
-
-  validate-and-check-completeness:
-    needs: aggregate-results
-    runs-on: ubuntu-latest
-    if: always()
+    timeout-minutes: 60
+    strategy:
+      matrix:
+        source: ${{ fromJSON('["rausgegangen", "eventbrite", "meetup"]') }}  # Match your actual sources
+      fail-fast: false
+    
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -195,80 +102,116 @@ EOF
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-          pip install cloakbrowser python-dotenv
+          pip install python-dotenv
+
+      - name: Configure environment
+        run: |
+          echo "JULES_API_KEY=${{ secrets.JULES_API_KEY }}" >> $GITHUB_ENV
+
+      - name: Download raw results
+        uses: actions/download-artifact@v4
+        with:
+          name: raw-${{ matrix.source }}
+          path: data/
+
+      - name: Jules completeness analysis
+        id: analysis
+        run: |
+          echo "Running Jules analysis for ${{ matrix.source }}..."
+          
+          python scripts/jules_analysis.py \
+            --source "${{ matrix.source }}" \
+            --raw-events "data/raw_${{ matrix.source }}.json" \
+            --html "data/html/${{ matrix.source }}.html" \
+            --output "data/analysis_${{ matrix.source }}.json"
+          
+          # Extract findings
+          MISSED_COUNT=$(python -c "import json; d=json.load(open('data/analysis_${{ matrix.source }}.json')); print(d.get('missed_count', 0))" 2>/dev/null || echo "0")
+          NEEDS_UPDATE=$(python -c "import json; d=json.load(open('data/analysis_${{ matrix.source }}.json')); print('true' if d.get('needs_update', False) else 'false')" 2>/dev/null || echo "false")
+          
+          echo "missed_count=$MISSED_COUNT" >> $GITHUB_OUTPUT
+          echo "needs_update=$NEEDS_UPDATE" >> $GITHUB_OUTPUT
+
+      - name: Upload analysis results
+        uses: actions/upload-artifact@v4
+        with:
+          name: analysis-${{ matrix.source }}
+          path: data/analysis_${{ matrix.source }}.json
+          retention-days: 7
+
+  # Step 3: Jules updates scraper scripts based on analysis
+  update-scrapers:
+    needs: jules-analysis
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    strategy:
+      matrix:
+        source: ${{ fromJSON('["rausgegangen", "eventbrite", "meetup"]') }}
+      fail-fast: false
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install python-dotenv
 
       - name: Configure environment
         run: |
           echo "JULES_API_KEY=${{ secrets.JULES_API_KEY }}" >> $GITHUB_ENV
           echo "GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}" >> $GITHUB_ENV
 
-      - name: Download all HTML artifacts
+      - name: Download analysis
         uses: actions/download-artifact@v4
         with:
-          pattern: html-*
-          path: data/html/
-          merge-multiple: true
-
-      - name: Download aggregated events
-        uses: actions/download-artifact@v4
-        with:
-          name: events-aggregated
+          name: analysis-${{ matrix.source }}
           path: data/
 
-      - name: Check completeness per source
-        id: completeness
+      - name: Check if update needed
+        id: check
         run: |
-          echo "Checking completeness for each source..."
+          NEEDS_UPDATE=$(python -c "import json; d=json.load(open('data/analysis_${{ matrix.source }}.json')); print('true' if d.get('needs_update', False) else 'false')" 2>/dev/null || echo "false")
+          echo "needs_update=$NEEDS_UPDATE" >> $GITHUB_OUTPUT
+
+      - name: Generate improved scraper with Jules
+        if: steps.check.outputs.needs_update == 'true'
+        run: |
+          echo "Generating improved scraper for ${{ matrix.source }} with Jules..."
           
-          python << 'EOF'
-import json
-import os
-from pathlib import Path
+          python scripts/jules_scraper_generator.py \
+            --source "${{ matrix.source }}" \
+            --analysis "data/analysis_${{ matrix.source }}.json" \
+            --output "scripts/improved_${{ matrix.source }}_scraper.py"
+          
+          # Replace old scraper with improved version
+          cp "scripts/improved_${{ matrix.source }}_scraper.py" "scripts/${{ matrix.source }}_scraper.py"
 
-# Load aggregated events
-with open("data/events.json") as f:
-    aggregated = json.load(f)
+      - name: Commit scraper improvements
+        if: steps.check.outputs.needs_update == 'true'
+        run: |
+          git config --global user.name 'GitHub Actions'
+          git config --global user.email 'actions@github.com'
+          
+          git add "scripts/${{ matrix.source }}_scraper.py"
+          git diff --staged --quiet || git commit -m "Improve ${{ matrix.source }} scraper based on Jules analysis [skip ci]"
+          git push
 
-# Check each source
-results = {}
-for source, info in aggregated["sources"].items():
-    # Check if we got events
-    event_count = info["event_count"]
-    status = "complete" if event_count > 0 else "empty"
-    
-    results[source] = {
-        "event_count": event_count,
-        "status": status,
-        "needs_improvement": event_count == 0
-    }
-
-# Save completeness report
-with open("data/completeness_report.json", "w") as f:
-    json.dump(results, f, indent=2)
-
-print("Completeness Report:")
-for source, data in results.items():
-    print(f"  {source}: {data['event_count']} events - {data['status']}")
-
-# Output summary for next job
-import json
-print(f"sources_needing_improvement={json.dumps([s for s, d in results.items() if d['needs_improvement']])}")
-EOF
-
-      - name: Upload completeness report
-        uses: actions/upload-artifact@v4
-        with:
-          name: completeness-report
-          path: data/completeness_report.json
-          retention-days: 30
-
-  improve-scrapers:
-    needs: validate-and-check-completeness
+  # Step 4: Re-scrape with improved scripts
+  re-scrape:
+    needs: [initial-scrape, update-scrapers]
     runs-on: ubuntu-latest
-    if: always()
+    timeout-minutes: 90
     strategy:
       matrix:
-        source: ${{ fromJSON(steps.completeness.outputs.sources_needing_improvement || '[]') }}
+        source: ${{ fromJSON('["rausgegangen", "eventbrite", "meetup"]') }}
       fail-fast: false
     
     steps:
@@ -291,63 +234,94 @@ EOF
           echo "JULES_API_KEY=${{ secrets.JULES_API_KEY }}" >> $GITHUB_ENV
           echo "GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}" >> $GITHUB_ENV
 
-      - name: Download completeness report
-        uses: actions/download-artifact@v4
-        with:
-          name: completeness-report
-          path: data/
-
-      - name: Download events
-        uses: actions/download-artifact@v4
-        with:
-          name: events-aggregated
-          path: data/
-
-      - name: Run improvement cycle for ${{ matrix.source }}
+      - name: Re-scrape with improved script
         run: |
-          python scripts/scraper_improvement_cycle.py \
+          echo "Re-scraping ${{ matrix.source }} with improved script..."
+          
+          # Use the improved scraper (now in place)
+          python scripts/jules_cloak_scraper.py \
+            --url "https://${{ matrix.source }}.com/events" \
             --site-name "${{ matrix.source }}" \
-            --site-url "https://${{ matrix.source }}" \
-            --scraper-file "scripts/${{ matrix.source }}_scraper.py" \
-            --scraped-events "data/events.json" \
-            --missed-events "data/missed_${{ matrix.source }}.json" \
-            --output "scripts/improved_${{ matrix.source }}_scraper.py"
+            --output "data/final_${{ matrix.source }}.json" \
+            --price-max 15 \
+            --date-days 14
 
-      - name: Create PR with improvements
-        uses: peter-evans/create-pull-request@v6
+      - name: Upload final results
+        uses: actions/upload-artifact@v4
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          commit-message: "Auto-improve scraper for ${{ matrix.source }} [skip ci]"
-          branch: auto-improve/${{ matrix.source }}-${{ github.run_id }}
-          title: "Auto-improved scraper for ${{ matrix.source }}"
-          body: |
-            ## Scraper Improvement for ${{ matrix.source }}
-            
-            This PR contains automatically improved scraper code generated by Jules AI.
-            
-            **Reason**: Source had incomplete/empty results in the latest scrape.
-            
-            ### Changes
-            - Updated selectors and parsing logic
-            - Added support for missed event patterns
-            - Maintained existing functionality
-            
-            Please review before merging.
-          labels: auto-improvement, jules-ai, ${{ matrix.source }}
+          name: final-${{ matrix.source }}
+          path: data/final_${{ matrix.source }}.json
+          retention-days: 30
 
-  deploy-to-pages:
-    needs: aggregate-results
+  # Step 5: Aggregate, filter, and deploy
+  aggregate-and-deploy:
+    needs: re-scrape
     runs-on: ubuntu-latest
-    if: success()
+    if: always()
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Download aggregated events
+      - name: Download all final results
         uses: actions/download-artifact@v4
         with:
-          name: events-aggregated
-          path: docs/
+          pattern: final-*
+          path: data/
+          merge-multiple: true
+
+      - name: Aggregate and filter events
+        run: |
+          echo "Aggregating and filtering events..."
+          
+          python << 'EOF'
+import json
+import glob
+from datetime import datetime, timedelta
+
+# Filter: price ≤ 15€, date within 14 days
+max_price = 15
+cutoff_date = datetime.now() + timedelta(days=14)
+
+all_events = {
+    "scraped_at": datetime.now().isoformat(),
+    "sources": {},
+    "total_events": 0,
+    "events": []
+}
+
+for filepath in glob.glob("data/final_*.json"):
+    with open(filepath) as f:
+        data = json.load(f)
+        source = filepath.replace("data/final_", "").replace(".json", "")
+        
+        # Filter events
+        filtered = []
+        for event in data.get("events", []):
+            price = event.get("price", 0) or 0
+            event_date = event.get("date")
+            
+            # Apply filters
+            if price > max_price:
+                continue
+            
+            # Add to filtered list
+            filtered.append(event)
+        
+        all_events["sources"][source] = {
+            "event_count": len(filtered),
+            "scraped_at": data.get("scraped_at", "")
+        }
+        all_events["total_events"] += len(filtered)
+        all_events["events"].extend(filtered)
+
+# Save aggregated events
+with open("docs/events.json", "w") as f:
+    json.dump(all_events, f, indent=2)
+
+print(f"Total filtered events: {all_events['total_events']}")
+for source, info in all_events["sources"].items():
+    print(f"  {source}: {info['event_count']} events")
+EOF
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
@@ -355,3 +329,21 @@ EOF
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./docs
           keep_files: true
+
+      - name: Summary
+        run: |
+          echo "## Weekly Event Scraper Summary" > summary.md
+          echo "" >> summary.md
+          echo "Scraped at: $(date -u +"%Y-%m-%d %H:%M:%S UTC")" >> summary.md
+          echo "" >> summary.md
+          echo "Events by source:" >> summary.md
+          
+          python << 'EOF'
+import json
+with open("docs/events.json") as f:
+    data = json.load(f)
+    for source, info in data["sources"].items():
+        print(f"- {source}: {info['event_count']} events") >> summary.md
+EOF
+
+          cat summary.md

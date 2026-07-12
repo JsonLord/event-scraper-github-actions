@@ -118,118 +118,54 @@ Create a GitHub repository for the event scraper system, investigate Jules API e
 - ✅ Created `test_jules_integration.py` - Test script for integration
 - ✅ Created `QUICKSTART.md` - Quick start guide
 - ✅ Created `scripts/scraper_improvement_cycle.py` - Auto-improvement with Jules AI
-- ✅ Created `.github/workflows/event-scraper-improvement.yml` - GitHub Actions workflow
+- ✅ Created `.github/workflows/weekly-multi-source.yml` - Main workflow
+- ✅ Created `WORKFLOW_CONFIG.md` - Workflow documentation
+- ✅ Repository pushed to GitHub: https://github.com/JsonLord/event-scraper-github-actions
 
 ### Active
-- System ready for deployment with auto-improvement capabilities
+- Repository ready for deployment
 
 ### Key Features Implemented
 
-#### 1. Jules-Powered Scraper (`scripts/jules_cloak_scraper.py`)
-- Uses CloakBrowser for stealth scraping (anti-bot bypass)
-- Can generate custom scrapers with Jules AI
-- Filters events by price (≤15€) and date range (14 days)
-- Outputs structured JSON for GitHub Pages
+#### Weekly Multi-Source Scraper (Every Sunday 5 PM UTC)
+**Single run, all sources in parallel:**
+1. **Load Configuration** - URLs from config or manual override
+2. **Scrape All Sources** - Each URL gets its own Jules session + CloakBrowser (parallel execution)
+3. **Aggregate Results** - Combine all events into single `events.json`
+4. **Check Completeness** - Validate each source had successful scrape
+5. **Auto-Improve** - Create PRs for failed/empty sources with Jules AI improvements
+6. **Deploy** - Update GitHub Pages with aggregated events
 
-#### 2. Auto-Improvement Cycle (`scripts/scraper_improvement_cycle.py`)
-- **Analyzes missed events** from validation results
-- **Uses Jules AI** to understand why events were missed
-- **Generates general improvements** - not just fixing for specific events, but adapting the scraper logic to catch similar events in the future
-- **Creates GitHub PRs** with improved code automatically
+**Timing:** ~90 minutes for all sources (parallel execution, max 120 min per source)
 
-#### 3. GitHub Actions Workflow (`.github/workflows/event-scraper-improvement.yml`)
-- **Scheduled scraping** (Mon-Fri 5PM UTC)
-- **Manual trigger** via workflow_dispatch
-- **Auto-commit** of events to repository
-- **GitHub Pages deployment** for event display
-- **Validation step** to find missed events
-- **Auto-improvement PR** creation when improvements are needed
-
-### Workflow Overview
-
+#### Workflow Architecture
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                    GitHub Actions Workflow                   │
-└─────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
-┌─────────────────────────────────────────────────────────────┐
-│  1. Scrape Events (jules_cloak_scraper.py)                  │
-│     - CloakBrowser navigates target site                     │
-│     - Extracts events with price ≤15€                        │
-│     - Filters by date range (14 days)                        │
-│     - Outputs: data/events.json                              │
-└─────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
-┌─────────────────────────────────────────────────────────────┐
-│  2. Validate (find missed events)                           │
-│     - Compare scraped vs expected events                     │
-│     - Save missed events to data/missed_events.json         │
-└─────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
-┌─────────────────────────────────────────────────────────────┐
-│  3. Auto-Improve (scraper_improvement_cycle.py)             │
-│     IF missed events found:                                 │
-│     ┌──────────────────────────────────────────┐            │
-│     │ Jules AI Analysis                         │            │
-│     │ - Analyze missed event patterns           │            │
-│     │ - Understand HTML structure differences   │            │
-│     │ - Identify missing selectors/logic        │            │
-│     └──────────────────────────────────────────┘            │
-│                    │                                         │
-│                    ▼                                         │
-│     ┌──────────────────────────────────────────┐            │
-│     │ Generate General Improvement              │            │
-│     │ NOT just "add selector for event X"       │            │
-│     │ BUT "add support for [pattern type]"      │            │
-│     │ Example: "Handle events in grid layout"   │            │
-│     │       "Parse events with dynamic dates"   │            │
-│     └──────────────────────────────────────────┘            │
-│                    │                                         │
-│                    ▼                                         │
-│     ┌──────────────────────────────────────────┐            │
-│     │ Create GitHub PR with Improved Scraper    │            │
-│     │ - Branch: auto-improve/scraper-{run_id}   │            │
-│     │ - Title: "Auto-improved scraper..."       │            │
-│     │ - Body: Analysis report + changes         │            │
-│     └──────────────────────────────────────────┘            │
-└─────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
-┌─────────────────────────────────────────────────────────────┐
-│  4. Deploy to GitHub Pages                                  │
-│     - Update docs/events.json                               │
-│     - Site live at: https://username.github.io/repo/        │
-└─────────────────────────────────────────────────────────────┘
+Sunday 17:00 UTC
+    │
+    ├──► Source 1: Jules Session + CloakBrowser ──┐
+    ├──► Source 2: Jules Session + CloakBrowser ──┼──► Aggregate
+    ├──► Source 3: Jules Session + CloakBrowser ──┼───────┐
+    └──► Source N: Jules Session + CloakBrowser ──┘       │
+                                                          ▼
+                        Completeness Check per Source ────┼──► Improve Failed
+                                                          │      Create PRs
+                                                          ▼
+                                                Deploy to GitHub Pages
 ```
 
-### Jules AI Improvement Logic
+#### Auto-Improvement Logic
+For sources with 0 events:
+- Jules AI analyzes why the scrape failed
+- Generates **general improvements** (not specific fixes)
+- Creates GitHub PR with improved scraper
+- Next Sunday's run uses the improved scraper
 
-The improvement cycle uses Jules to create **general adaptations**, not specific fixes:
+### Repository Status
+**URL:** https://github.com/JsonLord/event-scraper-github-actions
 
-**Example: Instead of this (specific fix)**
-```python
-# BAD: Just adds the missing event
-if "Special Event at Cafe" in html:
-    events.append({"title": "Special Event at Cafe", ...})
-```
-
-**Jules generates this (general adaptation)**
-```python
-# GOOD: Adds support for a pattern
-def extract_grid_events(html):
-    """Extract events from grid-based layouts"""
-    grid_items = soup.select('.event-grid .grid-item')
-    for item in grid_items:
-        # Handle events in grid layout (catches similar events)
-        title = item.select_one('.grid-title').text
-        price = item.select_one('.grid-price').text
-        # ... general logic for all grid events
-```
-
-This way, the scraper catches **all similar events** in the future, not just the one that was missed.
+**Next Step:** Add repository secret:
+- Name: `JULES_API_KEY`
+- Value: `AQ.Ab8RN6LQcmHr0uAN-tTt74QT9xWhWsC2c0hFaJbqqTP2SjLI-g`
 
 ## Created Files
 
