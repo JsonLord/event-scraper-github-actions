@@ -36,7 +36,13 @@ class CompletenessAnalyzer:
     """
     
     def __init__(self, agent_id: str = "jules-1"):
-        self.jules = JulesClient(agent_id)
+        self.agent_id = agent_id
+        self.jules = None
+
+    def _get_jules(self) -> JulesClient:
+        if self.jules is None:
+            self.jules = JulesClient(self.agent_id)
+        return self.jules
     
     def analyze(
         self,
@@ -103,7 +109,8 @@ class CompletenessAnalyzer:
         """
         
         try:
-            session = self.jules.create_session(
+            jules = self._get_jules()
+            session = jules.create_session(
                 prompt=prompt,
                 title=f"Completeness Analysis: {source}",
                 source_id=os.environ.get("JULES_SOURCE_ID"),
@@ -114,7 +121,7 @@ class CompletenessAnalyzer:
             logger.info(f"Created analysis session: {session_id}")
             
             # Wait for completion
-            result = self.jules.wait_for_session(session_id, timeout=1800)
+            result = jules.wait_for_session(session_id, timeout=1800)
             
             # Extract analysis
             analysis = self._extract_analysis(result)
