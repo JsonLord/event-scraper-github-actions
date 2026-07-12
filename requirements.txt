@@ -16,3 +16,10 @@ cloakbrowser==0.4.8       # Drop-in Playwright replacement with 66 C++ stealth p
 # Optional: For enhanced web scraping
 beautifulsoup4==4.12.2    # HTML parsing for event extraction
 lxml==4.9.3               # Fast XML/HTML parsing (backend for BeautifulSoup)
+
+# Backend API
+fastapi==0.139.0
+uvicorn==0.51.0
+pydantic-settings==2.14.2
+pytest==9.1.1
+pytest-mock==3.15.1
