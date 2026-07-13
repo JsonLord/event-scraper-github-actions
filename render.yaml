@@ -1,0 +1,8 @@
+services:
+  - type: web
+    name: event-scraper-frontend
+    runtime: static
+    staticPublishPath: docs
+    envVars:
+      - key: VITE_API_URL
+        value: https://jsonlord-event-scraper.hf.space
