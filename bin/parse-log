@@ -1,0 +1,30 @@
+#!/usr/bin/env python3
+import sys
+import json
+import argparse
+from src.log_parser.parser import parse_log
+
+def main():
+    parser = argparse.ArgumentParser(description="Parse GitHub Actions log files into structured JSON.")
+    parser.add_argument("file", help="Path to the raw log file")
+    parser.add_argument("--pretty", action="store_true", help="Pretty-print JSON output")
+
+    args = parser.parse_args()
+
+    try:
+        with open(args.file, "r") as f:
+            log_text = f.read()
+
+        parsed = parse_log(log_text)
+
+        indent = 2 if args.pretty else None
+        print(json.dumps(parsed, indent=indent))
+    except FileNotFoundError:
+        print(f"Error: File '{args.file}' not found.", file=sys.stderr)
+        sys.exit(1)
+    except Exception as e:
+        print(f"Error: {e}", file=sys.stderr)
+        sys.exit(1)
+
+if __name__ == "__main__":
+    main()
