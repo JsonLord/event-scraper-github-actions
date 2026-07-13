@@ -50,6 +50,17 @@ class WorkflowMonitor:
             "conclusion": data.get("conclusion")
         }
 
+    def download_run_logs(self, run_id: int) -> Dict[str, str]:
+        """
+        Downloads logs for a specific workflow run.
+
+        :param run_id: The ID of the workflow run.
+        :return: A dictionary mapping filenames to their contents.
+        """
+        from src.workflow_log_downloader import WorkflowLogDownloader
+        downloader = WorkflowLogDownloader(self.auth_service, self.owner, self.repo)
+        return downloader.download_logs(run_id)
+
     def poll_until_complete(
         self,
         run_id: int,
