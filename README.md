@@ -76,13 +76,44 @@ The original Firecrawl API calls have been replaced with a Desk Agent 2.0 integr
 
 2. Modify the `call_desk_agent()` function in `scripts/firecrawl_validation.py` to match your Desk Agent 2.0's actual API specification.
 
+## GitHub Authentication Service
+
+The project includes a robust GitHub Authentication Service in `src/github_auth/` that manages authentication via Personal Access Tokens (PAT) or the GitHub CLI (`gh`).
+
+### Usage
+
+```python
+from src.github_auth.service import GitHubAuthService
+
+# Initialize the service
+auth_service = GitHubAuthService()
+
+# Get an authenticated requests session
+client = auth_service.authenticated_client()
+response = client.get("https://api.github.com/user")
+
+# Check for specific permissions
+if auth_service.has_permission("actions"):
+    print("Can manage GitHub Actions")
+
+# Get raw token
+token = auth_service.get_token()
+```
+
+The service supports:
+- Automatic token validation and caching
+- Permission checking for `actions`, `contents`, `pull-requests`, and `checks`
+- Automatic token refresh (when using `gh` CLI)
+- Falling back to `GITHUB_TOKEN` environment variable
+
 ## Setup
 
 ### For Development/Local Testing
 
 1. Clone the repository
 2. Install dependencies: `pip install -r requirements.txt`
-3. Configure `config.yaml` with your target URLs and scraper scripts
+3. (Optional) Install GitHub CLI for automatic authentication: [cli.github.com](https://cli.github.com/)
+4. Configure `config.yaml` with your target URLs and scraper scripts
 4. Set up `.env` file with any needed API keys
 5. Run scripts directly:
    ```bash
