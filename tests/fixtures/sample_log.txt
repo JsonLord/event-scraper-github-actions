@@ -1,0 +1,14 @@
+2024-01-01T00:00:00.1234567Z ##[group]Run scraper
+2024-01-01T00:00:00.1234567Z Starting event scraper...
+2024-01-01T00:00:01.1234567Z Scraping Rausgegangen...
+2024-01-01T00:00:02.1234567Z Traceback (most recent call last):
+2024-01-01T00:00:02.1234567Z   File "src/scrapers/rausgegangen.py", line 42, in scrape
+2024-01-01T00:00:02.1234567Z     result = self.get_data()
+2024-01-01T00:00:02.1234567Z   File "src/scrapers/rausgegangen.py", line 15, in get_data
+2024-01-01T00:00:02.1234567Z     raise ValueError("Invalid response format")
+2024-01-01T00:00:02.1234567Z ValueError: Invalid response format
+2024-01-01T00:00:02.1234567Z ##[error]The process '/usr/bin/python' failed with exit code 1
+2024-01-01T00:00:02.1234567Z ##[endgroup]
+2024-01-01T00:00:03.1234567Z ##[group]Post Run scraper
+2024-01-01T00:00:03.1234567Z Cleaning up...
+2024-01-01T00:00:03.1234567Z ##[endgroup]
