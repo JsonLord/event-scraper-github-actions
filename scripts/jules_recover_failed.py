@@ -135,6 +135,19 @@ def recover_with_jules(failed_sites, agent_id, source_id, timeout) -> List[Dict[
         logger.warning(f"Jules unavailable, skipping recovery: {e}")
         return []
 
+    # If no source id was supplied, resolve it at runtime from the repo Jules
+    # is connected to (GITHUB_REPOSITORY is set automatically in Actions).
+    if not source_id:
+        repo = os.environ.get("GITHUB_REPOSITORY", "")
+        try:
+            source_id = client.find_source_for_repo(repo)
+            if source_id:
+                logger.info(f"Resolved Jules source for {repo}: {source_id}")
+            else:
+                logger.info(f"No Jules source matched {repo!r}; proceeding without repo context")
+        except JulesClientError as e:
+            logger.warning(f"Could not resolve Jules source: {e}")
+
     prompt = build_prompt(failed_sites)
     try:
         session = client.create_session(

@@ -179,6 +179,22 @@ jobs:
           echo "JULES_API_KEY=${{ secrets.JULES_API_KEY }}" >> $GITHUB_ENV
           echo "JULES_SOURCE_ID=${{ secrets.JULES_SOURCE_ID }}" >> $GITHUB_ENV
 
+      # Resolve the Jules source id for this repo at runtime so it doesn't have
+      # to be maintained as a separate secret. Only runs if a JULES_SOURCE_ID
+      # secret wasn't already provided (that takes precedence). Needs the
+      # JULES_API_KEY set above; non-fatal if it can't resolve.
+      - name: Resolve Jules source ID
+        run: |
+          if [ -z "$JULES_SOURCE_ID" ] && [ -n "$JULES_API_KEY" ]; then
+            SOURCE_ID="$(python scripts/jules_client.py find-source "$GITHUB_REPOSITORY" 2>/dev/null || true)"
+            if [ -n "$SOURCE_ID" ]; then
+              echo "JULES_SOURCE_ID=$SOURCE_ID" >> $GITHUB_ENV
+              echo "Resolved Jules source: $SOURCE_ID"
+            else
+              echo "Could not resolve a Jules source for $GITHUB_REPOSITORY; recovery runs without repo context"
+            fi
+          fi
+
       # The one Jules session in the chain: recover events from sites whose
       # scrape returned nothing (the hard Cloudflare/JS-heavy pages), using
       # the saved HTML snapshots. Best-effort - merges whatever it recovers

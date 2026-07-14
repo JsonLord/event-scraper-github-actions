@@ -78,11 +78,42 @@ class JulesClient:
     def list_sources(self) -> Dict[str, Any]:
         """
         List all available sources (GitHub repos connected to Jules).
-        
+
         Returns:
             Dict containing list of sources
         """
         return self._make_request("GET", "sources")
+
+    def find_source_for_repo(self, repo_full_name: str) -> Optional[str]:
+        """
+        Resolve the Jules source name for a GitHub repo.
+
+        Args:
+            repo_full_name: "owner/repo" (e.g. the GITHUB_REPOSITORY value
+                GitHub Actions sets automatically).
+
+        Returns:
+            The source name (e.g. "sources/github/owner/repo") or None if no
+            connected source matches.
+        """
+        if not repo_full_name:
+            return None
+        data = self.list_sources()
+        sources = data.get("sources", []) if isinstance(data, dict) else []
+        target = repo_full_name.strip().lower()
+        for src in sources:
+            if not isinstance(src, dict):
+                continue
+            name = src.get("name", "")
+            gh = src.get("githubRepo") or src.get("gitHubRepo") or {}
+            owner = gh.get("owner") or ""
+            repo = gh.get("repo") or gh.get("repository") or ""
+            gh_full = f"{owner}/{repo}".lower()
+            # Match either the structured owner/repo or the source name, which
+            # is formatted like "sources/github/owner/repo".
+            if (owner and repo and target == gh_full) or (target and target in name.lower()):
+                return name
+        return None
     
     def create_session(
         self,
@@ -272,7 +303,23 @@ if __name__ == "__main__":
         except JulesClientError as e:
             print(f"Error: {e}", file=sys.stderr)
             sys.exit(1)
-    
+
+    elif len(sys.argv) > 1 and sys.argv[1] == "find-source":
+        # Print ONLY the resolved source name to stdout (so it can be captured
+        # in a shell $(...) ); diagnostics go to stderr. Defaults the repo to
+        # the GITHUB_REPOSITORY env var that GitHub Actions provides.
+        repo = sys.argv[2] if len(sys.argv) > 2 else os.environ.get("GITHUB_REPOSITORY", "")
+        try:
+            source = JulesClient().find_source_for_repo(repo)
+        except JulesClientError as e:
+            print(f"Error: {e}", file=sys.stderr)
+            sys.exit(1)
+        if source:
+            print(source)
+        else:
+            print(f"No Jules source found for '{repo}'", file=sys.stderr)
+            sys.exit(2)
+
     elif len(sys.argv) > 2 and sys.argv[1] == "create":
         prompt = " ".join(sys.argv[2:])
         try:
@@ -286,4 +333,5 @@ if __name__ == "__main__":
     else:
         print("Usage:")
         print("  python jules_client.py list-sources")
+        print("  python jules_client.py find-source [owner/repo]")
         print("  python jules_client.py create <prompt>")
