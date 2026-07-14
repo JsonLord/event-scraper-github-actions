@@ -1,5 +1,5 @@
 {
-  "count": 256,
+  "count": 272,
   "events": [
     {
       "title": "![Image 11: Hauptbild für Mangofest - MANGO FESTIVAL IN BERLIN 2026",
@@ -172,19 +172,87 @@
       "score": 70
     },
     {
-      "title": "Klubkneipe x Tuesday Ritual - Makramee Workshop",
+      "title": "10 Jahre Kindl Jubilaumsfeier",
       "date": "2026-07-14",
-      "time": "18:00",
+      "time": "16:00",
       "price": 0.0,
-      "category": "music, participating workshops",
-      "description": "",
-      "url": "https://rausgegangen.de/en/berlin/tipps-fuer-heute/",
-      "venue": "Various",
-      "source_url": "https://rausgegangen.de/en/berlin/tipps-fuer-heute/",
+      "category": "music, culture",
+      "description": "PICK OF THE DAY Sa, 18. Jul | 16:00 10 Jahre KINDL -  Jubiläumsfeier KINDL – Zentrum für zeitgenössische Kunst Free admission Feste & Festival",
+      "url": "https://rausgegangen.de/en/events/10-jahre-kindl-jubilaumsfeier-0/",
+      "venue": "",
+      "source_url": "https://rausgegangen.de/en/berlin/eventsbydate/?geospatial_query_type=CITY&lat=52.5&lng=13.405&city=berlin&active_city_name=Berlin&start_date=2026-07-14&end_date=2026-07-21",
       "price_label": "Free",
       "matched_categories": [
         "music",
-        "participating workshops"
+        "culture"
+      ],
+      "score": 70
+    },
+    {
+      "title": "BioTech and Pharma Startups, Investors & Professionals Networking Event",
+      "date": "2026-07-14",
+      "time": "7:00 PM",
+      "price": 0,
+      "category": "entrepreneurial events, social gatherings",
+      "description": "",
+      "url": "https://www.meetup.com/sanfrancisco-startup-pitch-and-networking/events/315167122/?recId=4ce0cb64-e797-4139-9282-2f6e16ec59d6&recSource=ml-popular-events-nearby-offline&searchId=6c5e454a-8728-40f3-bc4a-c642b48580e7&eventOrigin=find_page%24all",
+      "venue": "Online",
+      "source_url": "https://www.meetup.com/find/?allMeetups=false&radius=20&userFreeform=Berlin%2C+Germany",
+      "price_label": "Free",
+      "matched_categories": [
+        "entrepreneurial events",
+        "social gatherings"
+      ],
+      "score": 70
+    },
+    {
+      "title": "Durchluften 2026 Open Air Festival Im Humboldt Forum",
+      "date": "2026-07-14",
+      "time": "19:00",
+      "price": 0.0,
+      "category": "music, outside events",
+      "description": "PICK OF THE DAY Do, 16. Jul | 19:00 Durchlüften 2026. Open-Air-Festival im Humboldt Forum Humboldt Forum - Schlüterhof Free admission Konzerte & Musik",
+      "url": "https://rausgegangen.de/en/events/durchluften-2026-open-air-festival-im-humboldt-forum-3/",
+      "venue": "",
+      "source_url": "https://rausgegangen.de/en/berlin/eventsbydate/?geospatial_query_type=CITY&lat=52.5&lng=13.405&city=berlin&active_city_name=Berlin&start_date=2026-07-14&end_date=2026-07-21",
+      "price_label": "Free",
+      "matched_categories": [
+        "music",
+        "outside events"
+      ],
+      "score": 70
+    },
+    {
+      "title": "Kolonnaden Bar Auf Der Museumsinsel",
+      "date": "2026-07-14",
+      "time": "16:00",
+      "price": 0.0,
+      "category": "music, culture",
+      "description": "PICK OF THE DAY Tomorrow, 15. Jul | 16:00 Kolonnaden-Bar auf der Museumsinsel Museumsinsel Berlin Free admission Feste & Festival",
+      "url": "https://rausgegangen.de/en/events/kolonnaden-bar-auf-der-museumsinsel-22/",
+      "venue": "",
+      "source_url": "https://rausgegangen.de/en/berlin/eventsbydate/?geospatial_query_type=CITY&lat=52.5&lng=13.405&city=berlin&active_city_name=Berlin&start_date=2026-07-14&end_date=2026-07-21",
+      "price_label": "Free",
+      "matched_categories": [
+        "music",
+        "culture"
+      ],
+      "score": 70
+    },
+    {
+      "title": "🎎 Japantown Bon Odori Festival Social | 20s & 30s 🍡",
+      "date": "2026-07-14",
+      "time": "1:00 PM",
+      "price": 0,
+      "category": "music, social gatherings",
+      "description": "",
+      "url": "https://www.meetup.com/baysocials/events/315393714/?recId=4ce0cb64-e797-4139-9282-2f6e16ec59d6&recSource=ml-popular-events-nearby-offline&searchId=6c5e454a-8728-40f3-bc4a-c642b48580e7&eventOrigin=find_page%24all",
+      "venue": "Online",
+      "source_url": "https://www.meetup.com/find/?allMeetups=false&radius=20&userFreeform=Berlin%2C+Germany",
+      "price_label": "Free",
+      "matched_categories": [
+        "music",
+        "social gatherings"
       ],
       "score": 70
     },
@@ -1183,29 +1251,45 @@
       "score": 55
     },
     {
-      "title": "100 GRAMM Bar Nights",
+      "title": "Ab 0,00€",
       "date": "2026-07-14",
-      "time": "16:00",
+      "time": "",
       "price": 0.0,
-      "category": "music",
-      "description": "",
-      "url": "https://rausgegangen.de/en/berlin/tipps-fuer-heute/",
-      "venue": "Various",
-      "source_url": "https://rausgegangen.de/en/berlin/tipps-fuer-heute/",
+      "category": "social gatherings",
+      "description": "Ab 0,00€",
+      "url": "https://www.eventbrite.de/d/germany/berlin/events/",
+      "venue": "Berlin",
+      "source_url": "https://www.eventbrite.de/d/germany/berlin/events/",
       "price_label": "Free",
       "matched_categories": [
-        "music"
+        "social gatherings"
       ],
       "score": 55
     },
     {
-      "title": "AI in 2026: Layoffs and Preparing for the AI Job Market",
+      "title": "AI@Strategy Conference",
       "date": "2026-07-14",
-      "time": "7:00 PM",
+      "time": "",
+      "price": 0.0,
+      "category": "social gatherings",
+      "description": "### [AI@Strategy Conference](https://www.eventbrite.de/e/aistrategy-conference-tickets-1984493851531?aff=ebdssbcitybrowse)",
+      "url": "https://www.eventbrite.de/e/aistrategy-conference-tickets-1984493851531?aff=ebdssbcitybrowse",
+      "venue": "Berlin",
+      "source_url": "https://www.eventbrite.de/d/germany/berlin/events/",
+      "price_label": "Free",
+      "matched_categories": [
+        "social gatherings"
+      ],
+      "score": 55
+    },
+    {
+      "title": "August Oakland Bodyworkers Practice Group",
+      "date": "2026-07-14",
+      "time": "4:00 PM",
       "price": 0,
       "category": "social gatherings",
       "description": "",
-      "url": "https://www.meetup.com/humansoulai/events/314917560/?recId=7f1de04f-df5d-403a-acbd-d922237b56cc&recSource=ml-popular-events-nearby-online&searchId=f22b22ed-b35f-4efd-b41e-816ab7c3d8a9&eventOrigin=find_page%24all",
+      "url": "https://www.meetup.com/atlas-wise-learning-connection-service/events/315625288/?recId=4ce0cb64-e797-4139-9282-2f6e16ec59d6&recSource=ml-popular-events-nearby-new-chapter-injected&searchId=6c5e454a-8728-40f3-bc4a-c642b48580e7&eventOrigin=find_page%24all",
       "venue": "Online",
       "source_url": "https://www.meetup.com/find/?allMeetups=false&radius=20&userFreeform=Berlin%2C+Germany",
       "price_label": "Free",
@@ -1215,50 +1299,34 @@
       "score": 55
     },
     {
-      "title": "Big Berlin Comedy! Comedy and Improv with Tyrone Stallone!",
+      "title": "Bjrn Melhus Lost In Finity",
       "date": "2026-07-14",
-      "time": "21:00",
+      "time": "14:00",
       "price": 0.0,
-      "category": "music",
-      "description": "",
-      "url": "https://rausgegangen.de/en/berlin/tipps-fuer-heute/",
-      "venue": "Various",
-      "source_url": "https://rausgegangen.de/en/berlin/tipps-fuer-heute/",
+      "category": "culture",
+      "description": "PRESENTED Fr, 17. Jul | 14:00 Bjørn Melhus: LOST IN FINITY silent green Free admission Ausstellung",
+      "url": "https://rausgegangen.de/en/events/bjrn-melhus-lost-in-finity-2/",
+      "venue": "",
+      "source_url": "https://rausgegangen.de/en/berlin/eventsbydate/?geospatial_query_type=CITY&lat=52.5&lng=13.405&city=berlin&active_city_name=Berlin&start_date=2026-07-14&end_date=2026-07-21",
       "price_label": "Free",
       "matched_categories": [
-        "music"
+        "culture"
       ],
       "score": 55
     },
     {
-      "title": "Bubble Hour",
+      "title": "Brainstormer Trivia @ Emeryville Public Market",
       "date": "2026-07-14",
-      "time": "17:00",
-      "price": 0.0,
-      "category": "music",
+      "time": "5:45 PM",
+      "price": 0,
+      "category": "social gatherings",
       "description": "",
-      "url": "https://rausgegangen.de/en/berlin/tipps-fuer-heute/",
-      "venue": "Various",
-      "source_url": "https://rausgegangen.de/en/berlin/tipps-fuer-heute/",
+      "url": "https://www.meetup.com/oakland-trivia-meetup-group/events/315525859/?recId=4ce0cb64-e797-4139-9282-2f6e16ec59d6&recSource=ml-popular-events-nearby-offline&searchId=6c5e454a-8728-40f3-bc4a-c642b48580e7&eventOrigin=find_page%24all",
+      "venue": "Online",
+      "source_url": "https://www.meetup.com/find/?allMeetups=false&radius=20&userFreeform=Berlin%2C+Germany",
       "price_label": "Free",
       "matched_categories": [
-        "music"
-      ],
-      "score": 55
-    },
-    {
-      "title": "Cosy Comedy: English Standup Comedy in Neukölln",
-      "date": "2026-07-14",
-      "time": "18:30",
-      "price": 0.0,
-      "category": "music",
-      "description": "",
-      "url": "https://rausgegangen.de/en/berlin/tipps-fuer-heute/",
-      "venue": "Various",
-      "source_url": "https://rausgegangen.de/en/berlin/tipps-fuer-heute/",
-      "price_label": "Free",
-      "matched_categories": [
-        "music"
+        "social gatherings"
       ],
       "score": 55
     },
@@ -1275,22 +1343,6 @@
       "price_label": "Free",
       "matched_categories": [
         "social gatherings"
-      ],
-      "score": 55
-    },
-    {
-      "title": "Elefantin",
-      "date": "2026-07-14",
-      "time": "19:30",
-      "price": 0.0,
-      "category": "music",
-      "description": "",
-      "url": "https://rausgegangen.de/en/berlin/tipps-fuer-heute/",
-      "venue": "Various",
-      "source_url": "https://rausgegangen.de/en/berlin/tipps-fuer-heute/",
-      "price_label": "Free",
-      "matched_categories": [
-        "music"
       ],
       "score": 55
     },
@@ -1487,61 +1539,45 @@
       "score": 55
     },
     {
-      "title": "Fr., 31. Juli, 22:00",
+      "title": "Food Footage X Food Cultures A Triangular Liquid City Where",
       "date": "2026-07-14",
-      "time": "",
+      "time": "19:00",
       "price": 0.0,
-      "category": "social gatherings",
-      "description": "Fr., 31. Juli, 22:00",
-      "url": "https://www.eventbrite.de/d/germany/berlin/events/",
-      "venue": "Berlin",
-      "source_url": "https://www.eventbrite.de/d/germany/berlin/events/",
+      "category": "culture",
+      "description": "PICK OF THE DAY Tomorrow, 15. Jul | 19:00 FOOD & FOOTAGE X Food Cultures:  A Triangular Liquid City, Where Bodies and Spices Circulate ZK/U - Zentrum für Kunst und Urbanistik Free admission Film",
+      "url": "https://rausgegangen.de/en/events/food-footage-x-food-cultures-a-triangular-liquid-city-where--0/",
+      "venue": "",
+      "source_url": "https://rausgegangen.de/en/berlin/eventsbydate/?geospatial_query_type=CITY&lat=52.5&lng=13.405&city=berlin&active_city_name=Berlin&start_date=2026-07-14&end_date=2026-07-21",
       "price_label": "Free",
       "matched_categories": [
-        "social gatherings"
+        "culture"
       ],
       "score": 55
     },
     {
-      "title": "Gezapftes Bier 0,5l 3 € - täglich Kippzeit in der BESTE",
+      "title": "Free Thursday Eintritt Frei Lange Offnungszeiten",
       "date": "2026-07-14",
-      "time": "15:45",
+      "time": "16:00",
       "price": 0.0,
-      "category": "music",
-      "description": "",
-      "url": "https://rausgegangen.de/en/berlin/tipps-fuer-heute/",
-      "venue": "Various",
-      "source_url": "https://rausgegangen.de/en/berlin/tipps-fuer-heute/",
+      "category": "culture",
+      "description": "PICK OF THE DAY Do, 16. Jul | 16:00 Free Thursday Eintritt frei & lange Öffnungszeiten KW Institute for Contemporary Art Free admission Ausstellung",
+      "url": "https://rausgegangen.de/en/events/free-thursday-eintritt-frei-lange-offnungszeiten-0/",
+      "venue": "",
+      "source_url": "https://rausgegangen.de/en/berlin/eventsbydate/?geospatial_query_type=CITY&lat=52.5&lng=13.405&city=berlin&active_city_name=Berlin&start_date=2026-07-14&end_date=2026-07-21",
       "price_label": "Free",
       "matched_categories": [
-        "music"
+        "culture"
       ],
       "score": 55
     },
     {
-      "title": "go.playmit Gaamer",
+      "title": "GIRL TALK: On Treasure Island 🪎🏝️🎇",
       "date": "2026-07-14",
-      "time": "18:00",
-      "price": 0.0,
-      "category": "music",
-      "description": "",
-      "url": "https://rausgegangen.de/en/berlin/tipps-fuer-heute/",
-      "venue": "Various",
-      "source_url": "https://rausgegangen.de/en/berlin/tipps-fuer-heute/",
-      "price_label": "Free",
-      "matched_categories": [
-        "music"
-      ],
-      "score": 55
-    },
-    {
-      "title": "Heal from Past Relationships & Avoid the Pitfalls Again without Stress & Sadness",
-      "date": "2026-07-14",
-      "time": "7:00 PM",
+      "time": "2:00 PM",
       "price": 0,
       "category": "social gatherings",
       "description": "",
-      "url": "https://www.meetup.com/how-to-take-control/events/315601678/?recId=7f1de04f-df5d-403a-acbd-d922237b56cc&recSource=ml-popular-events-nearby-online&searchId=f22b22ed-b35f-4efd-b41e-816ab7c3d8a9&eventOrigin=find_page%24all",
+      "url": "https://www.meetup.com/bay-area-active-social-20s-30s/events/315075713/?recId=4ce0cb64-e797-4139-9282-2f6e16ec59d6&recSource=ml-popular-events-nearby-offline&searchId=6c5e454a-8728-40f3-bc4a-c642b48580e7&eventOrigin=find_page%24all",
       "venue": "Online",
       "source_url": "https://www.meetup.com/find/?allMeetups=false&radius=20&userFreeform=Berlin%2C+Germany",
       "price_label": "Free",
@@ -1557,7 +1593,7 @@
       "price": 0,
       "category": "social gatherings",
       "description": "",
-      "url": "https://www.meetup.com/empowered-latina-women/events/315461083/?recId=7f1de04f-df5d-403a-acbd-d922237b56cc&recSource=ml-popular-events-nearby-online&searchId=f22b22ed-b35f-4efd-b41e-816ab7c3d8a9&eventOrigin=find_page%24all",
+      "url": "https://www.meetup.com/empowered-latina-women/events/315461083/?recId=4ce0cb64-e797-4139-9282-2f6e16ec59d6&recSource=ml-popular-events-nearby-online&searchId=6c5e454a-8728-40f3-bc4a-c642b48580e7&eventOrigin=find_page%24all",
       "venue": "Online",
       "source_url": "https://www.meetup.com/find/?allMeetups=false&radius=20&userFreeform=Berlin%2C+Germany",
       "price_label": "Free",
@@ -1567,18 +1603,18 @@
       "score": 55
     },
     {
-      "title": "Laughing Spree Comedy: English Comedy on a BOAT (with FREE SHOTS)",
+      "title": "Mi., 7. Okt., 10:30",
       "date": "2026-07-14",
-      "time": "20:45",
+      "time": "",
       "price": 0.0,
-      "category": "music",
-      "description": "",
-      "url": "https://rausgegangen.de/en/berlin/tipps-fuer-heute/",
-      "venue": "Various",
-      "source_url": "https://rausgegangen.de/en/berlin/tipps-fuer-heute/",
+      "category": "social gatherings",
+      "description": "Mi., 7. Okt., 10:30",
+      "url": "https://www.eventbrite.de/d/germany/berlin/events/",
+      "venue": "Berlin",
+      "source_url": "https://www.eventbrite.de/d/germany/berlin/events/",
       "price_label": "Free",
       "matched_categories": [
-        "music"
+        "social gatherings"
       ],
       "score": 55
     },
@@ -1599,13 +1635,45 @@
       "score": 55
     },
     {
-      "title": "Real Talk, Real Friends",
+      "title": "Przyjazn Freunde",
       "date": "2026-07-14",
-      "time": "6:30 PM",
+      "time": "15:00",
+      "price": 0.0,
+      "category": "culture",
+      "description": "PICK OF THE DAY Sa, 18. Jul | 15:00 PRZYJAŹŃ / FREUNDE Galerie Verein Berliner Künstler Free admission Ausstellung",
+      "url": "https://rausgegangen.de/en/events/przyjazn-freunde-0/",
+      "venue": "",
+      "source_url": "https://rausgegangen.de/en/berlin/eventsbydate/?geospatial_query_type=CITY&lat=52.5&lng=13.405&city=berlin&active_city_name=Berlin&start_date=2026-07-14&end_date=2026-07-21",
+      "price_label": "Free",
+      "matched_categories": [
+        "culture"
+      ],
+      "score": 55
+    },
+    {
+      "title": "Rundgang Tage Der Offenen Tur Der Udk Berlin",
+      "date": "2026-07-14",
+      "time": "16:00",
+      "price": 0.0,
+      "category": "culture",
+      "description": "PICK OF THE DAY Fr, 17. Jul | 16:00 Rundgang – Tage der offenen Tür der UdK Berlin UdK Berlin Free admission Ausstellung",
+      "url": "https://rausgegangen.de/en/events/rundgang-tage-der-offenen-tur-der-udk-berlin-3/",
+      "venue": "",
+      "source_url": "https://rausgegangen.de/en/berlin/eventsbydate/?geospatial_query_type=CITY&lat=52.5&lng=13.405&city=berlin&active_city_name=Berlin&start_date=2026-07-14&end_date=2026-07-21",
+      "price_label": "Free",
+      "matched_categories": [
+        "culture"
+      ],
+      "score": 55
+    },
+    {
+      "title": "Singles Mingle 40&UP @ Oakland United Beerworks",
+      "date": "2026-07-14",
+      "time": "7:00 PM",
       "price": 0,
       "category": "social gatherings",
       "description": "",
-      "url": "https://www.meetup.com/real-talk-real-friends/events/315520205/?recId=7f1de04f-df5d-403a-acbd-d922237b56cc&recSource=ml-popular-events-nearby-online&searchId=f22b22ed-b35f-4efd-b41e-816ab7c3d8a9&eventOrigin=find_page%24all",
+      "url": "https://www.meetup.com/singles-mingle-getting-people-together/events/315334034/?recId=4ce0cb64-e797-4139-9282-2f6e16ec59d6&recSource=ml-popular-events-nearby-offline&searchId=6c5e454a-8728-40f3-bc4a-c642b48580e7&eventOrigin=find_page%24all",
       "venue": "Online",
       "source_url": "https://www.meetup.com/find/?allMeetups=false&radius=20&userFreeform=Berlin%2C+Germany",
       "price_label": "Free",
@@ -1615,13 +1683,13 @@
       "score": 55
     },
     {
-      "title": "Rewrite Your Story: The Story of Who You’re Becoming",
+      "title": "Singles Mingle @ Oakland Ballers B-Ball Game! FREE TIX!",
       "date": "2026-07-14",
-      "time": "11:30 AM",
+      "time": "5:30 PM",
       "price": 0,
       "category": "social gatherings",
       "description": "",
-      "url": "https://www.meetup.com/story-gold-circle/events/315304243/?recId=7f1de04f-df5d-403a-acbd-d922237b56cc&recSource=ml-popular-events-nearby-online&searchId=f22b22ed-b35f-4efd-b41e-816ab7c3d8a9&eventOrigin=find_page%24all",
+      "url": "https://www.meetup.com/singles-mingle-getting-people-together/events/315334282/?recId=4ce0cb64-e797-4139-9282-2f6e16ec59d6&recSource=ml-popular-events-nearby-offline&searchId=6c5e454a-8728-40f3-bc4a-c642b48580e7&eventOrigin=find_page%24all",
       "venue": "Online",
       "source_url": "https://www.meetup.com/find/?allMeetups=false&radius=20&userFreeform=Berlin%2C+Germany",
       "price_label": "Free",
@@ -1631,15 +1699,15 @@
       "score": 55
     },
     {
-      "title": "Semester Closing Party",
+      "title": "Social Reading Club",
       "date": "2026-07-14",
-      "time": "",
+      "time": "19:00",
       "price": 0.0,
       "category": "social gatherings",
-      "description": "### [Semester Closing Party](https://www.eventbrite.de/e/semester-closing-party-tickets-1991559011615?aff=ebdssbcitybrowsenightlife)",
-      "url": "https://www.eventbrite.de/e/semester-closing-party-tickets-1991559011615?aff=ebdssbcitybrowsenightlife",
-      "venue": "Berlin",
-      "source_url": "https://www.eventbrite.de/d/germany/berlin/events/",
+      "description": "PICK OF THE DAY Di, 21. Jul | 19:00 Social Reading Club #1 Körnerpark Free admission Aktiv & Kreativ",
+      "url": "https://rausgegangen.de/en/events/social-reading-club-4/",
+      "venue": "",
+      "source_url": "https://rausgegangen.de/en/berlin/eventsbydate/?geospatial_query_type=CITY&lat=52.5&lng=13.405&city=berlin&active_city_name=Berlin&start_date=2026-07-14&end_date=2026-07-21",
       "price_label": "Free",
       "matched_categories": [
         "social gatherings"
@@ -1647,15 +1715,31 @@
       "score": 55
     },
     {
-      "title": "Ticketpreis beim Event prüfen",
+      "title": "Sunday Kickball @ Bushrod Park!",
       "date": "2026-07-14",
-      "time": "",
-      "price": 0.0,
+      "time": "12:30 PM",
+      "price": 0,
       "category": "social gatherings",
-      "description": "Ticketpreis beim Event prüfen",
-      "url": "https://www.eventbrite.de/d/germany/berlin/events/",
-      "venue": "Berlin",
-      "source_url": "https://www.eventbrite.de/d/germany/berlin/events/",
+      "description": "",
+      "url": "https://www.meetup.com/bay-area-social-scene/events/315444680/?recId=4ce0cb64-e797-4139-9282-2f6e16ec59d6&recSource=ml-popular-events-nearby-offline&searchId=6c5e454a-8728-40f3-bc4a-c642b48580e7&eventOrigin=find_page%24all",
+      "venue": "Online",
+      "source_url": "https://www.meetup.com/find/?allMeetups=false&radius=20&userFreeform=Berlin%2C+Germany",
+      "price_label": "Free",
+      "matched_categories": [
+        "social gatherings"
+      ],
+      "score": 55
+    },
+    {
+      "title": "TBD - Let's Play Mini Golf @ Tipsy Putt (Emeryville)",
+      "date": "2026-07-14",
+      "time": "5:00 PM",
+      "price": 0,
+      "category": "social gatherings",
+      "description": "",
+      "url": "https://www.meetup.com/bay-area-millennials-and-gen-z-meetup-group/events/315164988/?recId=4ce0cb64-e797-4139-9282-2f6e16ec59d6&recSource=ml-popular-events-nearby-offline&searchId=6c5e454a-8728-40f3-bc4a-c642b48580e7&eventOrigin=find_page%24all",
+      "venue": "Online",
+      "source_url": "https://www.meetup.com/find/?allMeetups=false&radius=20&userFreeform=Berlin%2C+Germany",
       "price_label": "Free",
       "matched_categories": [
         "social gatherings"
@@ -1695,29 +1779,13 @@
       "score": 55
     },
     {
-      "title": "Trust & Find Love Again! Loss of Love & Loneliness Can be a Thing of the Past",
+      "title": "Trivia Social Night",
       "date": "2026-07-14",
       "time": "7:00 PM",
       "price": 0,
       "category": "social gatherings",
       "description": "",
-      "url": "https://www.meetup.com/how-to-take-control/events/315498051/?recId=7f1de04f-df5d-403a-acbd-d922237b56cc&recSource=ml-popular-events-nearby-online&searchId=f22b22ed-b35f-4efd-b41e-816ab7c3d8a9&eventOrigin=find_page%24all",
-      "venue": "Online",
-      "source_url": "https://www.meetup.com/find/?allMeetups=false&radius=20&userFreeform=Berlin%2C+Germany",
-      "price_label": "Free",
-      "matched_categories": [
-        "social gatherings"
-      ],
-      "score": 55
-    },
-    {
-      "title": "Updates for CAMPING. AND Newbie/First Timer/Seasoned Question and Answer",
-      "date": "2026-07-14",
-      "time": "7:30 PM",
-      "price": 0,
-      "category": "social gatherings",
-      "description": "",
-      "url": "https://www.meetup.com/moretoexplore/events/302675324/?recId=7f1de04f-df5d-403a-acbd-d922237b56cc&recSource=ml-popular-events-nearby-online&searchId=f22b22ed-b35f-4efd-b41e-816ab7c3d8a9&eventOrigin=find_page%24all",
+      "url": "https://www.meetup.com/gist-irl/events/315372625/?recId=4ce0cb64-e797-4139-9282-2f6e16ec59d6&recSource=ml-popular-events-nearby-offline&searchId=6c5e454a-8728-40f3-bc4a-c642b48580e7&eventOrigin=find_page%24all",
       "venue": "Online",
       "source_url": "https://www.meetup.com/find/?allMeetups=false&radius=20&userFreeform=Berlin%2C+Germany",
       "price_label": "Free",
@@ -1759,35 +1827,18 @@
       "score": 55
     },
     {
-      "title": "What If Your Pet's Behavior Is Actually a Message?",
+      "title": "Werkschau 2026 Der Htw Berlin",
       "date": "2026-07-14",
-      "time": "10:00 AM",
-      "price": 0,
-      "category": "social gatherings",
-      "description": "",
-      "url": "https://www.meetup.com/meetup-group-qgqeykti/events/315457736/?recId=7f1de04f-df5d-403a-acbd-d922237b56cc&recSource=ml-popular-events-nearby-online&searchId=f22b22ed-b35f-4efd-b41e-816ab7c3d8a9&eventOrigin=find_page%24all",
-      "venue": "Online",
-      "source_url": "https://www.meetup.com/find/?allMeetups=false&radius=20&userFreeform=Berlin%2C+Germany",
+      "time": "12:00",
+      "price": 0.0,
+      "category": "culture",
+      "description": "PICK OF THE DAY Fr, 17. Jul | 12:00 Werkschau 2026 der HTW Berlin HTW Berlin - Campus Wilhelminenhof Free admission Ausstellung",
+      "url": "https://rausgegangen.de/en/events/werkschau-2026-der-htw-berlin-0/",
+      "venue": "",
+      "source_url": "https://rausgegangen.de/en/berlin/eventsbydate/?geospatial_query_type=CITY&lat=52.5&lng=13.405&city=berlin&active_city_name=Berlin&start_date=2026-07-14&end_date=2026-07-21",
       "price_label": "Free",
       "matched_categories": [
-        "social gatherings"
-      ],
-      "score": 55
-    },
-    {
-      "title": "Quizcarraldo Kneipenquiz Open Air - Cassiopeia Sommergarten",
-      "date": "2026-07-14",
-      "time": "19:30",
-      "price": 9.0,
-      "category": "music, outside events",
-      "description": "",
-      "url": "https://rausgegangen.de/en/berlin/tipps-fuer-heute/",
-      "venue": "Various",
-      "source_url": "https://rausgegangen.de/en/berlin/tipps-fuer-heute/",
-      "price_label": "€9",
-      "matched_categories": [
-        "music",
-        "outside events"
+        "culture"
       ],
       "score": 55
     },
@@ -1847,7 +1898,7 @@
       "score": 50
     },
     {
-      "title": "Evanora:Unlimited: 'Portraits From Memory' Live + SigningWed 12 AugRough Trade BerlinFree",
+      "title": "Dko3xe Evanoraunlimited Portraits From Memory Live Signing 12th Aug Rough Trade Berlin Berlin Tickets",
       "date": "2026-08-12",
       "time": "",
       "price": 0.0,
@@ -1861,15 +1912,127 @@
       "score": 40
     },
     {
-      "title": "Super Tuesday - 80s, Disco Hits & Hip Hop Party",
+      "title": "Elfscape In Den Sommer Tour",
       "date": "2026-07-14",
-      "time": "23:00",
+      "time": "13:00",
+      "price": 0.0,
+      "category": "general",
+      "description": "PICK OF THE DAY Do, 16. Jul | 13:00 Sponsored e.l.f.scape in den Sommer Tour! 🍦💋 Alexanderplatz Free admission Essen & Trinken",
+      "url": "https://rausgegangen.de/en/events/elfscape-in-den-sommer-tour-1/",
+      "venue": "",
+      "source_url": "https://rausgegangen.de/en/berlin/eventsbydate/?geospatial_query_type=CITY&lat=52.5&lng=13.405&city=berlin&active_city_name=Berlin&start_date=2026-07-14&end_date=2026-07-21",
+      "price_label": "Free",
+      "matched_categories": [],
+      "score": 40
+    },
+    {
+      "title": "Michael Burgers World Bowl Tropy Gercur",
+      "date": "2026-07-14",
+      "time": "22:15",
+      "price": 0.0,
+      "category": "general",
+      "description": "PICK OF THE DAY So, 19. Jul | 22:15 Michael Burger's World Bowl Trophy Michelberger Hotel Free admission Sport",
+      "url": "https://rausgegangen.de/en/events/michael-burgers-world-bowl-tropy-gercur-0/",
+      "venue": "",
+      "source_url": "https://rausgegangen.de/en/berlin/eventsbydate/?geospatial_query_type=CITY&lat=52.5&lng=13.405&city=berlin&active_city_name=Berlin&start_date=2026-07-14&end_date=2026-07-21",
+      "price_label": "Free",
+      "matched_categories": [],
+      "score": 40
+    },
+    {
+      "title": "Open Decks For Flinta Ping Pong For All",
+      "date": "2026-07-14",
+      "time": "19:00",
+      "price": 0.0,
+      "category": "general",
+      "description": "PICK OF THE DAY Tomorrow, 15. Jul | 19:00 OPEN DECKS FOR FLINTA* PING PONG FOR ALL Crack Bellmer Free admission Party",
+      "url": "https://rausgegangen.de/en/events/open-decks-for-flinta-ping-pong-for-all-23/",
+      "venue": "",
+      "source_url": "https://rausgegangen.de/en/berlin/eventsbydate/?geospatial_query_type=CITY&lat=52.5&lng=13.405&city=berlin&active_city_name=Berlin&start_date=2026-07-14&end_date=2026-07-21",
+      "price_label": "Free",
+      "matched_categories": [],
+      "score": 40
+    },
+    {
+      "title": "Our Sake Market",
+      "date": "2026-07-14",
+      "time": "00:00",
+      "price": 0.0,
+      "category": "general",
+      "description": "PICK OF THE DAY Tomorrow, 16. Jul | 00:00 Our Sake Market Markthalle Neun Free admission Essen & Trinken",
+      "url": "https://rausgegangen.de/en/events/our-sake-market-0/",
+      "venue": "",
+      "source_url": "https://rausgegangen.de/en/berlin/eventsbydate/?geospatial_query_type=CITY&lat=52.5&lng=13.405&city=berlin&active_city_name=Berlin&start_date=2026-07-14&end_date=2026-07-21",
+      "price_label": "Free",
+      "matched_categories": [],
+      "score": 40
+    },
+    {
+      "title": "Sinema Hane Meze And Drinks",
+      "date": "2026-07-14",
+      "time": "18:00",
+      "price": 0.0,
+      "category": "general",
+      "description": "PICK OF THE DAY Fr, 17. Jul | 18:00 SİNEMA HANE / Meze and Drinks SİNEMA TRANSTOPIA Free admission Essen & Trinken",
+      "url": "https://rausgegangen.de/en/events/sinema-hane-meze-and-drinks-33/",
+      "venue": "",
+      "source_url": "https://rausgegangen.de/en/berlin/eventsbydate/?geospatial_query_type=CITY&lat=52.5&lng=13.405&city=berlin&active_city_name=Berlin&start_date=2026-07-14&end_date=2026-07-21",
+      "price_label": "Free",
+      "matched_categories": [],
+      "score": 40
+    },
+    {
+      "title": "Top Of The Stairs",
+      "date": "2026-07-14",
+      "time": "18:00",
+      "price": 0.0,
+      "category": "general",
+      "description": "PICK OF THE DAY Sa, 18. Jul | 18:00 Top of the Stairs Mokka*Milch Free admission Essen & Trinken",
+      "url": "https://rausgegangen.de/en/events/top-of-the-stairs-0/",
+      "venue": "",
+      "source_url": "https://rausgegangen.de/en/berlin/eventsbydate/?geospatial_query_type=CITY&lat=52.5&lng=13.405&city=berlin&active_city_name=Berlin&start_date=2026-07-14&end_date=2026-07-21",
+      "price_label": "Free",
+      "matched_categories": [],
+      "score": 40
+    },
+    {
+      "title": "U10247 Electric Sunshine Acid Feat Maniacme And Roy Mansur",
+      "date": "2026-07-14",
+      "time": "18:00",
+      "price": 0.0,
+      "category": "general",
+      "description": "PICK OF THE DAY Tomorrow, 15. Jul | 18:00 U10247: electric sunshine acid (feat maniac&me and Roy Mansur) Minimal Bar Free admission Party",
+      "url": "https://rausgegangen.de/en/events/u10247-electric-sunshine-acid-feat-maniacme-and-roy-mansur-0/",
+      "venue": "",
+      "source_url": "https://rausgegangen.de/en/berlin/eventsbydate/?geospatial_query_type=CITY&lat=52.5&lng=13.405&city=berlin&active_city_name=Berlin&start_date=2026-07-14&end_date=2026-07-21",
+      "price_label": "Free",
+      "matched_categories": [],
+      "score": 40
+    },
+    {
+      "title": "Wurfel Dein Drink Preis After Work",
+      "date": "2026-07-14",
+      "time": "18:00",
+      "price": 0.0,
+      "category": "general",
+      "description": "PICK OF THE DAY Do, 16. Jul | 18:00 \"Würfel dein Drink Preis\" After Work Just Matcha Free admission Essen & Trinken",
+      "url": "https://rausgegangen.de/en/events/wurfel-dein-drink-preis-after-work-1/",
+      "venue": "",
+      "source_url": "https://rausgegangen.de/en/berlin/eventsbydate/?geospatial_query_type=CITY&lat=52.5&lng=13.405&city=berlin&active_city_name=Berlin&start_date=2026-07-14&end_date=2026-07-21",
+      "price_label": "Free",
+      "matched_categories": [],
+      "score": 40
+    },
+    {
+      "title": "Honey Lou X Bossa Nova",
+      "date": "2026-07-14",
+      "time": "18:00",
       "price": 5.0,
       "category": "music",
-      "description": "",
-      "url": "https://rausgegangen.de/en/berlin/tipps-fuer-heute/",
-      "venue": "Various",
-      "source_url": "https://rausgegangen.de/en/berlin/tipps-fuer-heute/",
+      "description": "PICK OF THE DAY Do, 16. Jul | 18:00 Honey Lou x Bossa Nova Flughafen Tempelhof - THF TOWER 5,00 € Konzerte & Musik",
+      "url": "https://rausgegangen.de/en/events/honey-lou-x-bossa-nova-0/",
+      "venue": "",
+      "source_url": "https://rausgegangen.de/en/berlin/eventsbydate/?geospatial_query_type=CITY&lat=52.5&lng=13.405&city=berlin&active_city_name=Berlin&start_date=2026-07-14&end_date=2026-07-21",
       "price_label": "€5",
       "matched_categories": [
         "music"
@@ -1877,50 +2040,34 @@
       "score": 40
     },
     {
-      "title": "BACKROOMS (OmU)",
+      "title": "Quizcarraldo Kneipenquiz Open Air Cassiopeia Sommergarten",
       "date": "2026-07-14",
-      "time": "21:00",
-      "price": 8.0,
-      "category": "music",
-      "description": "",
-      "url": "https://rausgegangen.de/en/berlin/tipps-fuer-heute/",
-      "venue": "Various",
-      "source_url": "https://rausgegangen.de/en/berlin/tipps-fuer-heute/",
-      "price_label": "€8",
-      "matched_categories": [
-        "music"
-      ],
-      "score": 40
-    },
-    {
-      "title": "BLAUES STÜNDCHEN w. Dave Dinger",
-      "date": "2026-07-14",
-      "time": "17:00",
-      "price": 8.02,
-      "category": "music",
-      "description": "",
-      "url": "https://rausgegangen.de/en/berlin/tipps-fuer-heute/",
-      "venue": "Various",
-      "source_url": "https://rausgegangen.de/en/berlin/tipps-fuer-heute/",
-      "price_label": "€8.02",
-      "matched_categories": [
-        "music"
-      ],
-      "score": 40
-    },
-    {
-      "title": "Preview: Oh la la 2 - Neue Tests, neues Chaos",
-      "date": "2026-07-14",
-      "time": "21:15",
+      "time": "19:30",
       "price": 9.0,
-      "category": "music",
-      "description": "",
-      "url": "https://rausgegangen.de/en/berlin/tipps-fuer-heute/",
-      "venue": "Various",
-      "source_url": "https://rausgegangen.de/en/berlin/tipps-fuer-heute/",
+      "category": "outside events",
+      "description": "PICK OF THE DAY Today, 14. Jul | 19:30 Quizcarraldo Kneipenquiz Open Air - Cassiopeia Sommergarten cassiopeia Sommergarten 9,00 € Shows & Performances",
+      "url": "https://rausgegangen.de/en/events/quizcarraldo-kneipenquiz-open-air-cassiopeia-sommergarten-44/",
+      "venue": "",
+      "source_url": "https://rausgegangen.de/en/berlin/eventsbydate/?geospatial_query_type=CITY&lat=52.5&lng=13.405&city=berlin&active_city_name=Berlin&start_date=2026-07-14&end_date=2026-07-21",
       "price_label": "€9",
       "matched_categories": [
-        "music"
+        "outside events"
+      ],
+      "score": 40
+    },
+    {
+      "title": "Der Teufel Tragt Prada 2",
+      "date": "2026-07-14",
+      "time": "21:15",
+      "price": 9.5,
+      "category": "outside events",
+      "description": "PICK OF THE DAY Do, 16. Jul | 21:15 Der Teufel trägt Prada 2 Freiluftkino Friedrichshain 9,50 to 9,50 € Film",
+      "url": "https://rausgegangen.de/en/events/der-teufel-tragt-prada-2-891/",
+      "venue": "",
+      "source_url": "https://rausgegangen.de/en/berlin/eventsbydate/?geospatial_query_type=CITY&lat=52.5&lng=13.405&city=berlin&active_city_name=Berlin&start_date=2026-07-14&end_date=2026-07-21",
+      "price_label": "€9.5",
+      "matched_categories": [
+        "outside events"
       ],
       "score": 40
     },
@@ -1941,15 +2088,15 @@
       "score": 40
     },
     {
-      "title": "Good Bye, Lenin",
+      "title": "Mangofest Mango Festival In Berlin 2026",
       "date": "2026-07-14",
-      "time": "21:15",
+      "time": "12:00",
       "price": 9.5,
       "category": "music",
-      "description": "",
-      "url": "https://rausgegangen.de/en/berlin/tipps-fuer-heute/",
-      "venue": "Various",
-      "source_url": "https://rausgegangen.de/en/berlin/tipps-fuer-heute/",
+      "description": "PICK OF THE DAY Sa, 18. Jul | 12:00 Sponsored Mangofest - MANGO FESTIVAL IN BERLIN 2026 Jules B-Part 0,00 to 9,50 € WIN Lottery Feste & Festival",
+      "url": "https://rausgegangen.de/en/events/mangofest-mango-festival-in-berlin-2026-0/",
+      "venue": "",
+      "source_url": "https://rausgegangen.de/en/berlin/eventsbydate/?geospatial_query_type=CITY&lat=52.5&lng=13.405&city=berlin&active_city_name=Berlin&start_date=2026-07-14&end_date=2026-07-21",
       "price_label": "€9.5",
       "matched_categories": [
         "music"
@@ -1957,67 +2104,34 @@
       "score": 40
     },
     {
-      "title": "Silent Friend",
+      "title": "Tuesday In Spacelesbian Space Princess",
       "date": "2026-07-14",
       "time": "21:15",
       "price": 9.5,
-      "category": "music",
-      "description": "",
-      "url": "https://rausgegangen.de/en/berlin/tipps-fuer-heute/",
-      "venue": "Various",
-      "source_url": "https://rausgegangen.de/en/berlin/tipps-fuer-heute/",
+      "category": "outside events",
+      "description": "PICK OF THE DAY Di, 21. Jul | 21:15 Tuesday in Space:Lesbian Space Princess Freiluftkino Kreuzberg 9,50 to 9,50 € Film",
+      "url": "https://rausgegangen.de/en/events/tuesday-in-spacelesbian-space-princess-0/",
+      "venue": "",
+      "source_url": "https://rausgegangen.de/en/berlin/eventsbydate/?geospatial_query_type=CITY&lat=52.5&lng=13.405&city=berlin&active_city_name=Berlin&start_date=2026-07-14&end_date=2026-07-21",
       "price_label": "€9.5",
       "matched_categories": [
-        "music"
-      ],
-      "score": 40
-    },
-    {
-      "title": "(BESTE) Excellence Comedy – English Edition at BESTE Bar, Wedding (near Leopoldplatz) 7:00 PM",
-      "date": "2026-07-14",
-      "time": "7:00",
-      "price": 10.0,
-      "category": "music",
-      "description": "",
-      "url": "https://rausgegangen.de/en/berlin/tipps-fuer-heute/",
-      "venue": "Various",
-      "source_url": "https://rausgegangen.de/en/berlin/tipps-fuer-heute/",
-      "price_label": "€10",
-      "matched_categories": [
-        "music"
-      ],
-      "score": 40
-    },
-    {
-      "title": "Interstellar",
-      "date": "2026-07-14",
-      "time": "19:30",
-      "price": 10.0,
-      "category": "music",
-      "description": "",
-      "url": "https://rausgegangen.de/en/berlin/tipps-fuer-heute/",
-      "venue": "Various",
-      "source_url": "https://rausgegangen.de/en/berlin/tipps-fuer-heute/",
-      "price_label": "€10",
-      "matched_categories": [
-        "music"
-      ],
-      "score": 40
-    },
-    {
-      "title": "✦encore.une.fois✦ / INDOOR RAVE + OPEN AIR CHILL GARDEN",
-      "date": "2026-07-14",
-      "time": "23:00",
-      "price": 11.2,
-      "category": "music, outside events",
-      "description": "",
-      "url": "https://rausgegangen.de/en/berlin/tipps-fuer-heute/",
-      "venue": "Various",
-      "source_url": "https://rausgegangen.de/en/berlin/tipps-fuer-heute/",
-      "price_label": "€11.2",
-      "matched_categories": [
-        "music",
         "outside events"
+      ],
+      "score": 40
+    },
+    {
+      "title": "Kyiv Biennial A Bird That Cannot Land",
+      "date": "2026-07-14",
+      "time": "11:00",
+      "price": 10.0,
+      "category": "culture",
+      "description": "PRESENTED Tomorrow, 15. Jul | 11:00 Kyiv Biennial – A Bird That Cannot Land KW Institute for Contemporary Art 10,00 € Ausstellung",
+      "url": "https://rausgegangen.de/en/events/kyiv-biennial-a-bird-that-cannot-land-35/",
+      "venue": "",
+      "source_url": "https://rausgegangen.de/en/berlin/eventsbydate/?geospatial_query_type=CITY&lat=52.5&lng=13.405&city=berlin&active_city_name=Berlin&start_date=2026-07-14&end_date=2026-07-21",
+      "price_label": "€10",
+      "matched_categories": [
+        "culture"
       ],
       "score": 40
     },
@@ -2260,6 +2374,23 @@
       "score": 35
     },
     {
+      "title": "Forecast Festival 2026",
+      "date": "2026-07-14",
+      "time": "19:00",
+      "price": null,
+      "category": "music, culture",
+      "description": "PICK OF THE DAY Do, 16. Jul | 19:00 Forecast Festival 2026 Radialsystem keine Preisangabe Ausstellung",
+      "url": "https://rausgegangen.de/en/events/forecast-festival-2026-21/",
+      "venue": "",
+      "source_url": "https://rausgegangen.de/en/berlin/eventsbydate/?geospatial_query_type=CITY&lat=52.5&lng=13.405&city=berlin&active_city_name=Berlin&start_date=2026-07-14&end_date=2026-07-21",
+      "price_label": "Check site",
+      "matched_categories": [
+        "music",
+        "culture"
+      ],
+      "score": 35
+    },
+    {
       "title": "Führungen durch die Staatsoper",
       "date": "2027-04-18",
       "time": "",
@@ -2328,6 +2459,108 @@
       "score": 35
     },
     {
+      "title": "Super Tuesday 80s Disco Hits Hip Hop Party",
+      "date": "2026-07-14",
+      "time": "23:00",
+      "price": 5.0,
+      "category": "general",
+      "description": "PICK OF THE DAY Di, 21. Jul | 23:00 Super Tuesday - 80s, Disco Hits & Hip Hop Party Cassiopeia 5,00 € Party",
+      "url": "https://rausgegangen.de/en/events/super-tuesday-80s-disco-hits-hip-hop-party-15/",
+      "venue": "",
+      "source_url": "https://rausgegangen.de/en/berlin/eventsbydate/?geospatial_query_type=CITY&lat=52.5&lng=13.405&city=berlin&active_city_name=Berlin&start_date=2026-07-14&end_date=2026-07-21",
+      "price_label": "€5",
+      "matched_categories": [],
+      "score": 25
+    },
+    {
+      "title": "Into The Wild Omu",
+      "date": "2026-07-14",
+      "time": "20:15",
+      "price": 9.0,
+      "category": "general",
+      "description": "PICK OF THE DAY Tomorrow, 15. Jul | 20:15 INTO THE WILD (OmU) Filmrauschpalast Moabit 8,00 to 9,00 € Film",
+      "url": "https://rausgegangen.de/en/events/into-the-wild-omu-2/",
+      "venue": "",
+      "source_url": "https://rausgegangen.de/en/berlin/eventsbydate/?geospatial_query_type=CITY&lat=52.5&lng=13.405&city=berlin&active_city_name=Berlin&start_date=2026-07-14&end_date=2026-07-21",
+      "price_label": "€9",
+      "matched_categories": [],
+      "score": 25
+    },
+    {
+      "title": "Interstellar",
+      "date": "2026-07-14",
+      "time": "19:30",
+      "price": 10.0,
+      "category": "general",
+      "description": "PICK OF THE DAY Today, 14. Jul | 19:30 Interstellar Kino UNION 8,00 to 10,00 € Film",
+      "url": "https://rausgegangen.de/en/events/interstellar-42/",
+      "venue": "",
+      "source_url": "https://rausgegangen.de/en/berlin/eventsbydate/?geospatial_query_type=CITY&lat=52.5&lng=13.405&city=berlin&active_city_name=Berlin&start_date=2026-07-14&end_date=2026-07-21",
+      "price_label": "€10",
+      "matched_categories": [],
+      "score": 25
+    },
+    {
+      "title": "La Haine Hate Restored",
+      "date": "2026-07-14",
+      "time": "21:30",
+      "price": 10.0,
+      "category": "general",
+      "description": "PICK OF THE DAY Sa, 18. Jul | 21:30 LA HAINE (HATE) RESTORED SİNEMA TRANSTOPIA 10,00 € WIN Lottery Film",
+      "url": "https://rausgegangen.de/en/events/la-haine-hate-restored-0/",
+      "venue": "",
+      "source_url": "https://rausgegangen.de/en/berlin/eventsbydate/?geospatial_query_type=CITY&lat=52.5&lng=13.405&city=berlin&active_city_name=Berlin&start_date=2026-07-14&end_date=2026-07-21",
+      "price_label": "€10",
+      "matched_categories": [],
+      "score": 25
+    },
+    {
+      "title": "Queer Friends Party 4",
+      "date": "2026-07-14",
+      "time": "22:00",
+      "price": 10.0,
+      "category": "general",
+      "description": "PICK OF THE DAY Sa, 18. Jul | 22:00 Queer & Friends Party #4 Cassiopeia 10,00 € Party",
+      "url": "https://rausgegangen.de/en/events/queer-friends-party-4-0/",
+      "venue": "",
+      "source_url": "https://rausgegangen.de/en/berlin/eventsbydate/?geospatial_query_type=CITY&lat=52.5&lng=13.405&city=berlin&active_city_name=Berlin&start_date=2026-07-14&end_date=2026-07-21",
+      "price_label": "€10",
+      "matched_categories": [],
+      "score": 25
+    },
+    {
+      "title": "Encoreunefois Indoor Rave Open Air Chill Garden",
+      "date": "2026-07-14",
+      "time": "23:00",
+      "price": 11.2,
+      "category": "outside events",
+      "description": "PICK OF THE DAY Today, 14. Jul | 23:00 ✦encore.une.fois✦ / INDOOR RAVE + OPEN AIR CHILL GARDEN OXI 11,20 € Party",
+      "url": "https://rausgegangen.de/en/events/encoreunefois-indoor-rave-open-air-chill-garden-11/",
+      "venue": "",
+      "source_url": "https://rausgegangen.de/en/berlin/eventsbydate/?geospatial_query_type=CITY&lat=52.5&lng=13.405&city=berlin&active_city_name=Berlin&start_date=2026-07-14&end_date=2026-07-21",
+      "price_label": "€11.2",
+      "matched_categories": [
+        "outside events"
+      ],
+      "score": 25
+    },
+    {
+      "title": "Oxi Sundays Open Air Indoor",
+      "date": "2026-07-14",
+      "time": "14:00",
+      "price": 12.0,
+      "category": "outside events",
+      "description": "PICK OF THE DAY So, 19. Jul | 14:00 OXI SUNDAYS (OPEN AIR + INDOOR) OXI 8,00 to 12,00 € WIN Lottery Party",
+      "url": "https://rausgegangen.de/en/events/oxi-sundays-open-air-indoor-0/",
+      "venue": "",
+      "source_url": "https://rausgegangen.de/en/berlin/eventsbydate/?geospatial_query_type=CITY&lat=52.5&lng=13.405&city=berlin&active_city_name=Berlin&start_date=2026-07-14&end_date=2026-07-21",
+      "price_label": "€12",
+      "matched_categories": [
+        "outside events"
+      ],
+      "score": 25
+    },
+    {
       "title": "Berlin C lädt ein",
       "date": "2026-07-19",
       "time": "13:00",
@@ -2340,22 +2573,6 @@
       "price_label": "€15",
       "matched_categories": [
         "theater"
-      ],
-      "score": 25
-    },
-    {
-      "title": "Entdecke Berlins Geheimnisse: Deine Schatzsuche",
-      "date": "2026-07-14",
-      "time": "09:00",
-      "price": 15.0,
-      "category": "music",
-      "description": "",
-      "url": "https://rausgegangen.de/en/berlin/tipps-fuer-heute/",
-      "venue": "Various",
-      "source_url": "https://rausgegangen.de/en/berlin/tipps-fuer-heute/",
-      "price_label": "€15",
-      "matched_categories": [
-        "music"
       ],
       "score": 25
     },
@@ -2456,6 +2673,22 @@
       "score": 20
     },
     {
+      "title": "36 Jahre Schokoladen Hoffest",
+      "date": "2026-07-14",
+      "time": "18:00",
+      "price": null,
+      "category": "music",
+      "description": "PICK OF THE DAY Fr, 17. Jul | 18:00 36 Jahre Schokoladen Hoffest Schokoladen Auf Spendenbasis Konzerte & Musik",
+      "url": "https://rausgegangen.de/en/events/36-jahre-schokoladen-hoffest-0/",
+      "venue": "",
+      "source_url": "https://rausgegangen.de/en/berlin/eventsbydate/?geospatial_query_type=CITY&lat=52.5&lng=13.405&city=berlin&active_city_name=Berlin&start_date=2026-07-14&end_date=2026-07-21",
+      "price_label": "Check site",
+      "matched_categories": [
+        "music"
+      ],
+      "score": 20
+    },
+    {
       "title": "Art Bei Ton: Trip.n.Queers",
       "date": "2026-7-16",
       "time": "22:00",
@@ -2481,6 +2714,22 @@
       "url": "https://www.theclubmap.com/events/behind-the-barricades-12-soliparty-fuer-women-in-exile/",
       "venue": "Villa Kuriosum",
       "source_url": "https://www.theclubmap.com/berlin-techno-partys/",
+      "price_label": "Check site",
+      "matched_categories": [
+        "music"
+      ],
+      "score": 20
+    },
+    {
+      "title": "Charlotte De Witte",
+      "date": "2026-07-14",
+      "time": "16:00",
+      "price": null,
+      "category": "music",
+      "description": "PRESENTED Sa, 18. Jul | 16:00 CHARLOTTE DE WITTE VALLEY at RSO keine Preisangabe Konzerte & Musik",
+      "url": "https://rausgegangen.de/en/events/charlotte-de-witte-1/",
+      "venue": "",
+      "source_url": "https://rausgegangen.de/en/berlin/eventsbydate/?geospatial_query_type=CITY&lat=52.5&lng=13.405&city=berlin&active_city_name=Berlin&start_date=2026-07-14&end_date=2026-07-21",
       "price_label": "Check site",
       "matched_categories": [
         "music"
@@ -2561,6 +2810,22 @@
       "url": "https://www.stadtmuseum.de/veranstaltungen/leben-im-mittelalter",
       "venue": "",
       "source_url": "https://www.stadtmuseum.de/programm",
+      "price_label": "Check site",
+      "matched_categories": [
+        "culture"
+      ],
+      "score": 20
+    },
+    {
+      "title": "No Other Choice",
+      "date": "2026-07-14",
+      "time": "21:30",
+      "price": null,
+      "category": "culture",
+      "description": "PICK OF THE DAY Fr, 17. Jul | 21:30 No Other Choice ARTE Sommerkino Kulturforum keine Preisangabe Film",
+      "url": "https://rausgegangen.de/en/events/no-other-choice-610/",
+      "venue": "",
+      "source_url": "https://rausgegangen.de/en/berlin/eventsbydate/?geospatial_query_type=CITY&lat=52.5&lng=13.405&city=berlin&active_city_name=Berlin&start_date=2026-07-14&end_date=2026-07-21",
       "price_label": "Check site",
       "matched_categories": [
         "culture"
@@ -2760,6 +3025,20 @@
       "score": 20
     },
     {
+      "title": "#comment",
+      "date": "2023-07-06",
+      "time": "12:44",
+      "price": null,
+      "category": "general",
+      "description": "Nita Schultheiß on 6. Juli 2023 at 12:44",
+      "url": "https://improfabrik.de/#comment-18",
+      "venue": "",
+      "source_url": "https://improfabrik.de/",
+      "price_label": "Check site",
+      "matched_categories": [],
+      "score": 5
+    },
+    {
       "title": "(K)nie zu spät",
       "date": "2026-07-15",
       "time": "14:00",
@@ -2830,15 +3109,15 @@
       "score": 5
     },
     {
-      "title": "Barhocker on 17. Januar 2026 at 14:22",
-      "date": "2023-07-06",
-      "time": "14:22",
+      "title": "Botanische Fuhrung",
+      "date": "2026-07-14",
+      "time": "17:30",
       "price": null,
       "category": "general",
-      "description": "Barhocker on 17. Januar 2026 at 14:22",
-      "url": "https://improfabrik.de/#comment-131",
+      "description": "PICK OF THE DAY Today, 14. Jul | 17:30 Botanische Führung Spreepark Tickets buchen Gesprochenes",
+      "url": "https://rausgegangen.de/en/events/botanische-fuhrung-4/",
       "venue": "",
-      "source_url": "https://improfabrik.de/",
+      "source_url": "https://rausgegangen.de/en/berlin/eventsbydate/?geospatial_query_type=CITY&lat=52.5&lng=13.405&city=berlin&active_city_name=Berlin&start_date=2026-07-14&end_date=2026-07-21",
       "price_label": "Check site",
       "matched_categories": [],
       "score": 5
@@ -3040,20 +3319,6 @@
       "score": 5
     },
     {
-      "title": "Gabriella on 7. November 2025 at 16:18",
-      "date": "2023-07-06",
-      "time": "16:18",
-      "price": null,
-      "category": "general",
-      "description": "Gabriella on 7. November 2025 at 16:18",
-      "url": "https://improfabrik.de/#comment-123",
-      "venue": "",
-      "source_url": "https://improfabrik.de/",
-      "price_label": "Check site",
-      "matched_categories": [],
-      "score": 5
-    },
-    {
       "title": "Giselle",
       "date": "2026-07-15",
       "time": "19:30",
@@ -3089,20 +3354,6 @@
       "category": "general",
       "description": "Johanna on 11. Oktober 2023 at 13:37",
       "url": "https://t.me/improfabrik",
-      "venue": "",
-      "source_url": "https://improfabrik.de/",
-      "price_label": "Check site",
-      "matched_categories": [],
-      "score": 5
-    },
-    {
-      "title": "Johanna on 6. Juli 2023 at 13:45",
-      "date": "2023-07-06",
-      "time": "13:45",
-      "price": null,
-      "category": "general",
-      "description": "Johanna on 6. Juli 2023 at 13:45",
-      "url": "https://improfabrik.de/#comment-19",
       "venue": "",
       "source_url": "https://improfabrik.de/",
       "price_label": "Check site",
@@ -3245,20 +3496,6 @@
       "url": "https://www.theclubmap.com/events/natural-n-29-an-immersive-3d-a-v-experience-live/",
       "venue": "Astral Junction",
       "source_url": "https://www.theclubmap.com/berlin-techno-partys/",
-      "price_label": "Check site",
-      "matched_categories": [],
-      "score": 5
-    },
-    {
-      "title": "Nita Schultheiß on 6. Juli 2023 at 12:44",
-      "date": "2023-07-06",
-      "time": "12:44",
-      "price": null,
-      "category": "general",
-      "description": "Nita Schultheiß on 6. Juli 2023 at 12:44",
-      "url": "https://improfabrik.de/#comment-18",
-      "venue": "",
-      "source_url": "https://improfabrik.de/",
       "price_label": "Check site",
       "matched_categories": [],
       "score": 5
