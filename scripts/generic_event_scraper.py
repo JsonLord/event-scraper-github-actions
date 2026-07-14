@@ -119,6 +119,37 @@ def parse_price(text: str) -> Optional[float]:
     return None
 
 
+def title_looks_noisy(title: str) -> bool:
+    """True if a card title looks like concatenated listing text rather than a
+    clean event name (contains a time/date token, a listing badge, or is very
+    long) - a cue to prefer a slug-derived title instead."""
+    if len(title) > 80:
+        return True
+    if TIME_RE.search(title) or DATE_TEXT_RE.search(title) or DATE_ISO_RE.search(title):
+        return True
+    badges = ("pick of the day", "presented", "sponsored", "today,", "tomorrow,")
+    low = title.lower()
+    return any(b in low for b in badges)
+
+
+def title_from_slug(url: str) -> Optional[str]:
+    """Derive a readable title from an event-detail URL slug, e.g.
+    '/events/rising-spaces-the-first-exhibition-11/' -> 'Rising Spaces The
+    First Exhibition'. Returns None if the URL has no slug-like segment."""
+    if not url:
+        return None
+    path = url.split("?")[0].rstrip("/")
+    segment = path.rsplit("/", 1)[-1]
+    if "-" not in segment:
+        return None
+    # Drop a trailing numeric id ("...-11") that many slugs carry.
+    segment = re.sub(r'-\d+$', '', segment)
+    words = [w for w in segment.split("-") if w]
+    if not words:
+        return None
+    return " ".join(w.capitalize() for w in words)
+
+
 def parse_date(text: str) -> str:
     """Best-effort date extraction; falls back to today's date."""
     iso = DATE_ISO_RE.search(text)
@@ -264,6 +295,10 @@ def extract_heuristic_events(html: str, source_url: str) -> List[Dict[str, Any]]
         # than inside it (e.g. a Drupal "views-row" wrapping separate title,
         # image and price fields) - widen the search to nearby ancestors.
         search_scopes = [el, el.parent, getattr(el.parent, "parent", None)]
+
+        href_link = next((s.find("a", href=True) for s in search_scopes if s and s.find("a", href=True)), None)
+        event_url = urljoin(source_url, href_link["href"]) if href_link else source_url
+
         title = ""
         for scope in search_scopes:
             if not scope:
@@ -280,13 +315,18 @@ def extract_heuristic_events(html: str, source_url: str) -> List[Dict[str, Any]]
         if not title:
             title = text[:120]
         title = title.strip() or "Untitled event"
+
+        # When the card text is concatenated listing noise (badges, dates,
+        # times), a clean slug from the event-detail link reads far better.
+        if title_looks_noisy(title):
+            slug_title = title_from_slug(event_url)
+            if slug_title:
+                title = slug_title
+
         dedup_key = title.lower()
         if dedup_key in seen_titles:
             continue
         seen_titles.add(dedup_key)
-
-        href_link = next((s.find("a", href=True) for s in search_scopes if s and s.find("a", href=True)), None)
-        event_url = urljoin(source_url, href_link["href"]) if href_link else source_url
 
         # A date often only appears once, on an ancestor "day group" heading
         # (e.g. a calendar table cell), not repeated on each event fragment -

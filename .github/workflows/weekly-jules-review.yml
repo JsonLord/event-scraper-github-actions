@@ -22,7 +22,10 @@ jobs:
       matrix:
         include:
           # Sites with a hand-written scraper (run via autonomous_repair.py)
-          - { name: rausgegangen_de,        url: "https://rausgegangen.de/en/berlin/tipps-fuer-heute/" }
+          # __START_DATE__/__END_DATE__ are substituted at runtime with today
+          # and today+7 (see the "Resolve dynamic dates in URL" step), so
+          # rausgegangen returns the coming week's events by date.
+          - { name: rausgegangen_de,        url: "https://rausgegangen.de/en/berlin/eventsbydate/?geospatial_query_type=CITY&lat=52.5&lng=13.405&city=berlin&active_city_name=Berlin&start_date=__START_DATE__&end_date=__END_DATE__" }
           - { name: eventbrite_de,          url: "https://www.eventbrite.de/d/germany/berlin/events/" }
           - { name: eventbrite_com,         url: "https://www.eventbrite.com/d/germany--berlin/events/" }
           - { name: meetup_com,             url: "https://www.meetup.com/berlin/events/" }
@@ -83,6 +86,19 @@ jobs:
           echo "JULES_API_KEY=${{ secrets.JULES_API_KEY }}" >> $GITHUB_ENV
           echo "GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}" >> $GITHUB_ENV
 
+      # Substitute date placeholders in the target URL so date-parameterised
+      # sources (e.g. rausgegangen's "by date" view) fetch the coming 7 days.
+      # Sites without placeholders are unaffected.
+      - name: Resolve dynamic dates in URL
+        run: |
+          START_DATE="$(date -u +%Y-%m-%d)"
+          END_DATE="$(date -u -d '+7 days' +%Y-%m-%d)"
+          RESOLVED="${TARGET_URL}"
+          RESOLVED="${RESOLVED//__START_DATE__/${START_DATE}}"
+          RESOLVED="${RESOLVED//__END_DATE__/${END_DATE}}"
+          echo "TARGET_URL=${RESOLVED}" >> "$GITHUB_ENV"
+          echo "Scrape URL: ${RESOLVED}"
+
       - name: Extract site info
         id: site-info
         run: |
@@ -94,10 +110,10 @@ jobs:
           # (retries + Jules-driven fixes); everything else uses the shared
           # generic scraper directly (repairing a script shared by 20+ sites
           # based on one site's failure would corrupt it for the rest).
-          if [[ "$URL" == *"rausgegangen"* ]]; then
-            echo "script=scripts/rausgegangen_scraper.py" >> $GITHUB_OUTPUT
-            echo "use_repair_loop=true" >> $GITHUB_OUTPUT
-          elif [[ "$URL" == *"eventbrite"* ]]; then
+          # rausgegangen's date view is server-rendered with clean event-detail
+          # slugs, which the generic scraper handles well (cleaner than the old
+          # Jina-markdown scraper), so it routes to the generic path.
+          if [[ "$URL" == *"eventbrite"* ]]; then
             echo "script=scripts/eventbrite_scraper.py" >> $GITHUB_OUTPUT
             echo "use_repair_loop=true" >> $GITHUB_OUTPUT
           elif [[ "$URL" == *"meetup"* ]]; then
