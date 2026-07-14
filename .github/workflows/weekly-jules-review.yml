@@ -20,11 +20,40 @@ jobs:
     timeout-minutes: 180
     strategy:
       matrix:
-        url_data: ["https://rausgegangen.de/en/berlin/tipps-fuer-heute/", "https://www.eventbrite.de/d/germany/berlin/events/", "https://www.meetup.com/berlin/events/"]
+        include:
+          # Sites with a hand-written scraper (run via autonomous_repair.py)
+          - { name: rausgegangen_de,        url: "https://rausgegangen.de/en/berlin/tipps-fuer-heute/" }
+          - { name: eventbrite_de,          url: "https://www.eventbrite.de/d/germany/berlin/events/" }
+          - { name: eventbrite_com,         url: "https://www.eventbrite.com/d/germany--berlin/events/" }
+          - { name: meetup_com,             url: "https://www.meetup.com/berlin/events/" }
+          - { name: meetup_com_find,        url: "https://www.meetup.com/find/?allMeetups=false&radius=20&userFreeform=Berlin%2C+Germany" }
+          # Remaining sites use the generic multi-strategy scraper.
+          # (duplicates from the source list - rausgegangen, staatsoper-berlin.de,
+          # ritterbutzke.de - are scraped once, not once per duplicate URL)
+          - { name: berlin_buehnen,         url: "https://www.berlin-buehnen.de/de/spielplan" }
+          - { name: zku_berlin,             url: "https://www.zku-berlin.org/de/timeline/" }
+          - { name: ufafabrik,              url: "https://ufafabrik.de/spielplan.html" }
+          - { name: stadtmuseum,            url: "https://www.stadtmuseum.de/programm" }
+          - { name: werk9,                  url: "https://werk9.de/" }
+          - { name: dokk11,                 url: "https://dokk11.de/" }
+          - { name: schloss_glienicke,      url: "https://www.schloss-und-parkglienicke.de/orangerie/" }
+          - { name: lakestudios,            url: "https://lakestudiosberlin.com/unfinished-fridays/" }
+          - { name: theclubmap,             url: "https://www.theclubmap.com/berlin-techno-partys/" }
+          - { name: renaissancetheater,     url: "https://www.renaissancetheater.de/" }
+          - { name: deutsches_theater,      url: "https://www.deutsches-theater.de/" }
+          - { name: staatsoper_berlin,      url: "https://www.staatsoper-berlin.de/" }
+          - { name: staatsballett_berlin,   url: "https://www.staatsballett-berlin.de/" }
+          - { name: volksbuehne,            url: "https://www.volksbuehne.berlin/" }
+          - { name: reinickendorf_classics, url: "https://www.reinickendorf-classics.de/januar/" }
+          - { name: dice_fm_berlin,         url: "https://dice.fm/browse/berlin-5e426dbb749e68e3e923d1e4" }
+          - { name: improfabrik,            url: "https://improfabrik.de/" }
+          - { name: oper_in_berlin,         url: "https://www.oper-in-berlin.de/de/spielplan/" }
+          - { name: venturecafe_berlin,     url: "https://venturecafe.com/berlin/" }
+          - { name: ritterbutzke,           url: "https://www.ritterbutzke.de/" }
       fail-fast: false
     env:
-      TARGET_URL: ${{ matrix.url_data }}
-    
+      TARGET_URL: ${{ matrix.url }}
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -52,29 +81,46 @@ jobs:
         id: site-info
         run: |
           URL="${TARGET_URL}"
-          SITE_NAME=$(echo "$URL" | sed -E 's|https?://(www\.)?||' | sed -E 's|/.*||' | sed 's/\./_/g')
+          SITE_NAME="${{ matrix.name }}"
           echo "site_name=$SITE_NAME" >> $GITHUB_OUTPUT
-          
-          # Determine which script to use
+
+          # Sites with a hand-written scraper get the autonomous repair loop
+          # (retries + Jules-driven fixes); everything else uses the shared
+          # generic scraper directly (repairing a script shared by 20+ sites
+          # based on one site's failure would corrupt it for the rest).
           if [[ "$URL" == *"rausgegangen"* ]]; then
             echo "script=scripts/rausgegangen_scraper.py" >> $GITHUB_OUTPUT
+            echo "use_repair_loop=true" >> $GITHUB_OUTPUT
           elif [[ "$URL" == *"eventbrite"* ]]; then
             echo "script=scripts/eventbrite_scraper.py" >> $GITHUB_OUTPUT
+            echo "use_repair_loop=true" >> $GITHUB_OUTPUT
           elif [[ "$URL" == *"meetup"* ]]; then
             echo "script=scripts/meetup_scraper.py" >> $GITHUB_OUTPUT
+            echo "use_repair_loop=true" >> $GITHUB_OUTPUT
           else
-            echo "script=scripts/jules_cloak_scraper.py" >> $GITHUB_OUTPUT
+            echo "script=scripts/generic_event_scraper.py" >> $GITHUB_OUTPUT
+            echo "use_repair_loop=false" >> $GITHUB_OUTPUT
           fi
 
-      - name: Run Autonomous Repair Scrape
+      - name: Run scraper
         run: |
-          python scripts/autonomous_repair.py \
-            --script "${{ steps.site-info.outputs.script }}" \
-            --url "${TARGET_URL}" \
-            --site-name "${{ steps.site-info.outputs.site_name }}" \
-            --retries 3
+          if [ "${{ steps.site-info.outputs.use_repair_loop }}" = "true" ]; then
+            python scripts/autonomous_repair.py \
+              --script "${{ steps.site-info.outputs.script }}" \
+              --url "${TARGET_URL}" \
+              --site-name "${{ steps.site-info.outputs.site_name }}" \
+              --retries 3
+          else
+            mkdir -p data/html
+            python "${{ steps.site-info.outputs.script }}" \
+              --url "${TARGET_URL}" \
+              --output "data/raw_${{ steps.site-info.outputs.site_name }}.json" \
+              --save-html \
+              --html-output "data/html/${{ steps.site-info.outputs.site_name }}.html"
+          fi
 
       - name: Upload results
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: scrape-${{ steps.site-info.outputs.site_name }}
@@ -82,6 +128,7 @@ jobs:
             data/raw_${{ steps.site-info.outputs.site_name }}.json
             data/html/${{ steps.site-info.outputs.site_name }}.html
           retention-days: 7
+          if-no-files-found: warn
 
   aggregate-and-deploy:
     needs: autonomous-scrape
@@ -110,6 +157,29 @@ jobs:
               json.dump({'events': all_events, 'count': len(all_events)}, out)
           "
 
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install scoring dependencies
+        run: pip install requests
+
+      - name: Configure environment
+        run: |
+          echo "JULES_API_KEY=${{ secrets.JULES_API_KEY }}" >> $GITHUB_ENV
+          echo "JULES_SOURCE_ID=${{ secrets.JULES_SOURCE_ID }}" >> $GITHUB_ENV
+
+      - name: Score and categorize events via Jules
+        run: |
+          python scripts/jules_event_scorer.py \
+            --input docs/events.json \
+            --output docs/events_scored.json \
+            --max-price 15
+
+      - name: Publish frontend
+        run: cp web/index.html docs/index.html
+
       - name: Commit improvements (if any)
         run: |
           git config --global user.name 'GitHub Actions'
@@ -123,3 +193,4 @@ jobs:
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./docs
+          keep_files: true
