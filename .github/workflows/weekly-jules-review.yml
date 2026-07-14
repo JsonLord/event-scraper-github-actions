@@ -146,6 +146,14 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install requests
+
       - name: Download all results
         uses: actions/download-artifact@v4
         with:
@@ -166,22 +174,30 @@ jobs:
               json.dump({'events': all_events, 'count': len(all_events)}, out)
           "
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-
-      - name: Install scoring dependencies
-        run: pip install requests
-
       - name: Configure environment
         run: |
           echo "JULES_API_KEY=${{ secrets.JULES_API_KEY }}" >> $GITHUB_ENV
           echo "JULES_SOURCE_ID=${{ secrets.JULES_SOURCE_ID }}" >> $GITHUB_ENV
 
-      - name: Score and categorize events via Jules
+      # The one Jules session in the chain: recover events from sites whose
+      # scrape returned nothing (the hard Cloudflare/JS-heavy pages), using
+      # the saved HTML snapshots. Best-effort - merges whatever it recovers
+      # back into docs/events.json, or leaves it unchanged if Jules is
+      # unavailable.
+      - name: Recover failed scrapes via Jules
         run: |
-          python scripts/jules_event_scorer.py \
+          python scripts/jules_recover_failed.py \
+            --aggregated docs/events.json \
+            --raw-dir data \
+            --html-dir data/html \
+            --output docs/events.json
+
+      # Deterministic scoring/categorization/filtering against the preference
+      # profile (max 15 EUR, free preferred, category + Charlottenburg
+      # proximity weighting, sorted best-to-worst).
+      - name: Score and categorize events
+        run: |
+          python scripts/score_events.py \
             --input docs/events.json \
             --output docs/events_scored.json \
             --max-price 15
