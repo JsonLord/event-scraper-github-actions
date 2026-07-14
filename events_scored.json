@@ -1,5 +1,5 @@
 {
-  "count": 192,
+  "count": 221,
   "events": [
     {
       "title": "FOOD & FOOTAGE X Food Cultures – Workshop: (Un)Folding Memories",
@@ -285,7 +285,7 @@
       "price": 0,
       "category": "social gatherings",
       "description": "",
-      "url": "https://www.meetup.com/knowledge-cafe/events/315407560/?recId=0801502c-871d-4061-9596-50f607d1809b&recSource=ml-popular-events-nearby-online&searchId=ad77afbb-d438-4f28-9afa-d7ddc8e44492&eventOrigin=find_page%24all",
+      "url": "https://www.meetup.com/knowledge-cafe/events/315407560/?recId=9e7dcdb2-947b-438e-9c5a-8d41e931a50b&recSource=ml-popular-events-nearby-online&searchId=e21823af-65d0-4b06-bbe8-25d388a69bca&eventOrigin=find_page%24all",
       "venue": "Online",
       "source_url": "https://www.meetup.com/find/?allMeetups=false&radius=20&userFreeform=Berlin%2C+Germany",
       "price_label": "Free",
@@ -301,7 +301,7 @@
       "price": 0,
       "category": "social gatherings",
       "description": "",
-      "url": "https://www.meetup.com/spark-and-grow-meetup-group/events/315075585/?recId=0801502c-871d-4061-9596-50f607d1809b&recSource=ml-popular-events-nearby-online&searchId=ad77afbb-d438-4f28-9afa-d7ddc8e44492&eventOrigin=find_page%24all",
+      "url": "https://www.meetup.com/spark-and-grow-meetup-group/events/315075585/?recId=9e7dcdb2-947b-438e-9c5a-8d41e931a50b&recSource=ml-popular-events-nearby-online&searchId=e21823af-65d0-4b06-bbe8-25d388a69bca&eventOrigin=find_page%24all",
       "venue": "Online",
       "source_url": "https://www.meetup.com/find/?allMeetups=false&radius=20&userFreeform=Berlin%2C+Germany",
       "price_label": "Free",
@@ -323,22 +323,6 @@
       "price_label": "Free",
       "matched_categories": [
         "music"
-      ],
-      "score": 55
-    },
-    {
-      "title": "Break Up With Your Attachment Pattern- Monthly",
-      "date": "2026-07-14",
-      "time": "7:00 PM",
-      "price": 0,
-      "category": "social gatherings",
-      "description": "",
-      "url": "https://www.meetup.com/relational-wellness/events/315524048/?recId=0801502c-871d-4061-9596-50f607d1809b&recSource=ml-popular-events-nearby-online&searchId=ad77afbb-d438-4f28-9afa-d7ddc8e44492&eventOrigin=find_page%24all",
-      "venue": "Online",
-      "source_url": "https://www.meetup.com/find/?allMeetups=false&radius=20&userFreeform=Berlin%2C+Germany",
-      "price_label": "Free",
-      "matched_categories": [
-        "social gatherings"
       ],
       "score": 55
     },
@@ -381,7 +365,7 @@
       "price": 0,
       "category": "social gatherings",
       "description": "",
-      "url": "https://www.meetup.com/chillnskill/events/315243890/?recId=0801502c-871d-4061-9596-50f607d1809b&recSource=ml-popular-events-nearby-online&searchId=ad77afbb-d438-4f28-9afa-d7ddc8e44492&eventOrigin=find_page%24all",
+      "url": "https://www.meetup.com/chillnskill/events/315243890/?recId=9e7dcdb2-947b-438e-9c5a-8d41e931a50b&recSource=ml-popular-events-nearby-online&searchId=e21823af-65d0-4b06-bbe8-25d388a69bca&eventOrigin=find_page%24all",
       "venue": "Online",
       "source_url": "https://www.meetup.com/find/?allMeetups=false&radius=20&userFreeform=Berlin%2C+Germany",
       "price_label": "Free",
@@ -435,22 +419,6 @@
       "price_label": "Free",
       "matched_categories": [
         "music"
-      ],
-      "score": 55
-    },
-    {
-      "title": "Elkwallow/Mathews Arm Loop: Shady, cool and softly rolling",
-      "date": "2026-07-14",
-      "time": "9:00 AM",
-      "price": 0,
-      "category": "social gatherings",
-      "description": "",
-      "url": "https://www.meetup.com/blue-mountain-hiking-club/events/314658940/?recId=0801502c-871d-4061-9596-50f607d1809b&recSource=ml-popular-events-nearby-offline&searchId=ad77afbb-d438-4f28-9afa-d7ddc8e44492&eventOrigin=find_page%24all",
-      "venue": "Online",
-      "source_url": "https://www.meetup.com/find/?allMeetups=false&radius=20&userFreeform=Berlin%2C+Germany",
-      "price_label": "Free",
-      "matched_categories": [
-        "social gatherings"
       ],
       "score": 55
     },
@@ -656,6 +624,22 @@
       "url": "https://www.eventbrite.com/d/germany--berlin/all-events/",
       "venue": "Berlin",
       "source_url": "https://www.eventbrite.com/d/germany--berlin/events/",
+      "price_label": "Free",
+      "matched_categories": [
+        "social gatherings"
+      ],
+      "score": 55
+    },
+    {
+      "title": "Free Webinar: Lived Experience Panel on Metabolic Psychiatry",
+      "date": "2026-07-14",
+      "time": "4:00 PM",
+      "price": 0,
+      "category": "social gatherings",
+      "description": "",
+      "url": "https://www.meetup.com/keto-lifestyle-for-mental-health/events/315620258/?recId=9e7dcdb2-947b-438e-9c5a-8d41e931a50b&recSource=ml-popular-events-nearby-online&searchId=e21823af-65d0-4b06-bbe8-25d388a69bca&eventOrigin=find_page%24all",
+      "venue": "Online",
+      "source_url": "https://www.meetup.com/find/?allMeetups=false&radius=20&userFreeform=Berlin%2C+Germany",
       "price_label": "Free",
       "matched_categories": [
         "social gatherings"
@@ -871,6 +855,22 @@
       "score": 55
     },
     {
+      "title": "Las Mujeres",
+      "date": "2026-07-14",
+      "time": "12:00 PM",
+      "price": 0,
+      "category": "social gatherings",
+      "description": "",
+      "url": "https://www.meetup.com/find-your-voice-peer-support/events/315485079/?recId=9e7dcdb2-947b-438e-9c5a-8d41e931a50b&recSource=ml-popular-events-nearby-online&searchId=e21823af-65d0-4b06-bbe8-25d388a69bca&eventOrigin=find_page%24all",
+      "venue": "Online",
+      "source_url": "https://www.meetup.com/find/?allMeetups=false&radius=20&userFreeform=Berlin%2C+Germany",
+      "price_label": "Free",
+      "matched_categories": [
+        "social gatherings"
+      ],
+      "score": 55
+    },
+    {
       "title": "Laughing Spree Comedy: English Comedy on a BOAT (with FREE SHOTS)",
       "date": "2026-07-14",
       "time": "20:45",
@@ -893,7 +893,7 @@
       "price": 0,
       "category": "social gatherings",
       "description": "",
-      "url": "https://www.meetup.com/higher-education-power-bi-user-group/events/315216685/?recId=0801502c-871d-4061-9596-50f607d1809b&recSource=ml-popular-events-nearby-online&searchId=ad77afbb-d438-4f28-9afa-d7ddc8e44492&eventOrigin=find_page%24all",
+      "url": "https://www.meetup.com/higher-education-power-bi-user-group/events/315216685/?recId=9e7dcdb2-947b-438e-9c5a-8d41e931a50b&recSource=ml-popular-events-nearby-online&searchId=e21823af-65d0-4b06-bbe8-25d388a69bca&eventOrigin=find_page%24all",
       "venue": "Online",
       "source_url": "https://www.meetup.com/find/?allMeetups=false&radius=20&userFreeform=Berlin%2C+Germany",
       "price_label": "Free",
@@ -919,29 +919,13 @@
       "score": 55
     },
     {
-      "title": "Mary's Rock via Pinnacles Picnic Area - 7.5 mi - 1,200 ft Elev Gain",
-      "date": "2026-07-14",
-      "time": "9:30 AM",
-      "price": 0,
-      "category": "social gatherings",
-      "description": "",
-      "url": "https://www.meetup.com/gethiking-charlottesville-charlottesville-va/events/315415748/?recId=0801502c-871d-4061-9596-50f607d1809b&recSource=ml-popular-events-nearby-offline&searchId=ad77afbb-d438-4f28-9afa-d7ddc8e44492&eventOrigin=find_page%24all",
-      "venue": "Online",
-      "source_url": "https://www.meetup.com/find/?allMeetups=false&radius=20&userFreeform=Berlin%2C+Germany",
-      "price_label": "Free",
-      "matched_categories": [
-        "social gatherings"
-      ],
-      "score": 55
-    },
-    {
       "title": "Meet New Friends Where Connection Begins and Loneliness Ends",
       "date": "2026-07-14",
       "time": "6:30 PM",
       "price": 0,
       "category": "social gatherings",
       "description": "",
-      "url": "https://www.meetup.com/opendiner/events/314996606/?recId=0801502c-871d-4061-9596-50f607d1809b&recSource=ml-popular-events-nearby-online&searchId=ad77afbb-d438-4f28-9afa-d7ddc8e44492&eventOrigin=find_page%24all",
+      "url": "https://www.meetup.com/opendiner/events/314996606/?recId=9e7dcdb2-947b-438e-9c5a-8d41e931a50b&recSource=ml-popular-events-nearby-online&searchId=e21823af-65d0-4b06-bbe8-25d388a69bca&eventOrigin=find_page%24all",
       "venue": "Online",
       "source_url": "https://www.meetup.com/find/?allMeetups=false&radius=20&userFreeform=Berlin%2C+Germany",
       "price_label": "Free",
@@ -960,6 +944,38 @@
       "url": "https://www.eventbrite.com/d/germany--berlin/events/",
       "venue": "Berlin",
       "source_url": "https://www.eventbrite.com/d/germany--berlin/events/",
+      "price_label": "Free",
+      "matched_categories": [
+        "social gatherings"
+      ],
+      "score": 55
+    },
+    {
+      "title": "Nervous System Upgrade",
+      "date": "2026-07-14",
+      "time": "7:00 PM",
+      "price": 0,
+      "category": "social gatherings",
+      "description": "",
+      "url": "https://www.meetup.com/mystical-musings-celestial-galactic-healing-meditation/events/315528754/?recId=9e7dcdb2-947b-438e-9c5a-8d41e931a50b&recSource=ml-popular-events-nearby-online&searchId=e21823af-65d0-4b06-bbe8-25d388a69bca&eventOrigin=find_page%24all",
+      "venue": "Online",
+      "source_url": "https://www.meetup.com/find/?allMeetups=false&radius=20&userFreeform=Berlin%2C+Germany",
+      "price_label": "Free",
+      "matched_categories": [
+        "social gatherings"
+      ],
+      "score": 55
+    },
+    {
+      "title": "New Moon Ceremony",
+      "date": "2026-07-14",
+      "time": "7:30 PM",
+      "price": 0,
+      "category": "social gatherings",
+      "description": "",
+      "url": "https://www.meetup.com/nova-spiritual-lightworkers/events/315397645/?recId=9e7dcdb2-947b-438e-9c5a-8d41e931a50b&recSource=ml-popular-events-nearby-online&searchId=e21823af-65d0-4b06-bbe8-25d388a69bca&eventOrigin=find_page%24all",
+      "venue": "Online",
+      "source_url": "https://www.meetup.com/find/?allMeetups=false&radius=20&userFreeform=Berlin%2C+Germany",
       "price_label": "Free",
       "matched_categories": [
         "social gatherings"
@@ -1037,7 +1053,7 @@
       "price": 0,
       "category": "social gatherings",
       "description": "",
-      "url": "https://www.meetup.com/recruiters-pov-group/events/314502212/?recId=0801502c-871d-4061-9596-50f607d1809b&recSource=ml-popular-events-nearby-online&searchId=ad77afbb-d438-4f28-9afa-d7ddc8e44492&eventOrigin=find_page%24all",
+      "url": "https://www.meetup.com/recruiters-pov-group/events/314502212/?recId=9e7dcdb2-947b-438e-9c5a-8d41e931a50b&recSource=ml-popular-events-nearby-online&searchId=e21823af-65d0-4b06-bbe8-25d388a69bca&eventOrigin=find_page%24all",
       "venue": "Online",
       "source_url": "https://www.meetup.com/find/?allMeetups=false&radius=20&userFreeform=Berlin%2C+Germany",
       "price_label": "Free",
@@ -1159,22 +1175,6 @@
       "score": 55
     },
     {
-      "title": "Using Attachment Theory to Transform Your Relationships",
-      "date": "2026-07-14",
-      "time": "3:00 PM",
-      "price": 0,
-      "category": "social gatherings",
-      "description": "",
-      "url": "https://www.meetup.com/from-surviving-to-thriving-workshops-in-emotional-education/events/315658600/?recId=0801502c-871d-4061-9596-50f607d1809b&recSource=ml-popular-events-nearby-online&searchId=ad77afbb-d438-4f28-9afa-d7ddc8e44492&eventOrigin=find_page%24all",
-      "venue": "Online",
-      "source_url": "https://www.meetup.com/find/?allMeetups=false&radius=20&userFreeform=Berlin%2C+Germany",
-      "price_label": "Free",
-      "matched_categories": [
-        "social gatherings"
-      ],
-      "score": 55
-    },
-    {
       "title": "XPERION Berlin",
       "date": "2026-07-14",
       "time": "",
@@ -1197,7 +1197,7 @@
       "price": 0,
       "category": "social gatherings",
       "description": "",
-      "url": "https://www.meetup.com/buildonyourstrengths/events/315076161/?recId=0801502c-871d-4061-9596-50f607d1809b&recSource=ml-popular-events-nearby-online&searchId=ad77afbb-d438-4f28-9afa-d7ddc8e44492&eventOrigin=find_page%24all",
+      "url": "https://www.meetup.com/buildonyourstrengths/events/315076161/?recId=9e7dcdb2-947b-438e-9c5a-8d41e931a50b&recSource=ml-popular-events-nearby-online&searchId=e21823af-65d0-4b06-bbe8-25d388a69bca&eventOrigin=find_page%24all",
       "venue": "Online",
       "source_url": "https://www.meetup.com/find/?allMeetups=false&radius=20&userFreeform=Berlin%2C+Germany",
       "price_label": "Free",
@@ -1256,6 +1256,24 @@
         "dancing",
         "music",
         "musical"
+      ],
+      "score": 50
+    },
+    {
+      "title": "DAYSHIFT #3: ŒL Garten - Bress Underground, Robbie K, Kat_Es, Monsai, LOBO",
+      "date": "2026-7-18",
+      "time": "10:00",
+      "price": null,
+      "category": "music, outside events, social gatherings",
+      "description": "<p>DAYSHIFT #3 &#8211; A House Music Day Party at OEL Garten<br /> Saturday, July 18th | 2PM &#8211; 10PM | OEL Garten</p> <p>The sun&#8217;s out and so are we. 925-Collective brings back DAYSHIFT for its third edition &#8211; eight hours of house music, open air, and good energy from early afternoon into the evening.</p> <p>This is a day party in the truest sense.</p> <p>A bit about us: 925-Collective is a crew built around house music and the community that moves to it. We curate parties that ",
+      "url": "https://www.theclubmap.com/events/dayshift-3-oel-garten-bress-underground-robbie-k-kat_es-monsai-lobo/",
+      "venue": "",
+      "source_url": "https://www.theclubmap.com/berlin-techno-partys/",
+      "price_label": "Check site",
+      "matched_categories": [
+        "music",
+        "outside events",
+        "social gatherings"
       ],
       "score": 50
     },
@@ -1707,6 +1725,40 @@
       "score": 35
     },
     {
+      "title": "Coffee Rave Rooftop Party",
+      "date": "2026-7-19",
+      "time": "16:00",
+      "price": null,
+      "category": "music, social gatherings",
+      "description": "<p>coffee rave rooftop edition, daytime energy, good coffee, Afro-house on the speakers, and Berlin skyline views where we can connect and socialise over coffee and music. Free entry.  Lineup: @deejay_Five, @Remen, more TBA</p> ",
+      "url": "https://www.theclubmap.com/events/coffee-rave-rooftop-party/",
+      "venue": "",
+      "source_url": "https://www.theclubmap.com/berlin-techno-partys/",
+      "price_label": "Check site",
+      "matched_categories": [
+        "music",
+        "social gatherings"
+      ],
+      "score": 35
+    },
+    {
+      "title": "DJ Bone presents FURTHER",
+      "date": "2026-7-16",
+      "time": "23:00",
+      "price": null,
+      "category": "dancing, culture",
+      "description": "<p>GLOBUS x FURTHER<br /> DJ Bone<br /> Zack Fox<br /> All Night Long</p> <p>Detroit techno legacy meets a new generation.</p> <p>Detroit pioneer DJ Bone joins multidisciplinary artist Zack Fox for a special intergenerational back-to-back tour connecting techno’s foundations with a new wave of global ravers. Launching during Movement weekend in Detroit hosted by DJ Bone, the tour continues across the UK and Europe. Built on discipline, risk, cultural integrity, and raw dancefloor energy, this is",
+      "url": "https://www.theclubmap.com/events/dj-bone-presents-further/",
+      "venue": "Tresor / Globus",
+      "source_url": "https://www.theclubmap.com/berlin-techno-partys/",
+      "price_label": "Check site",
+      "matched_categories": [
+        "dancing",
+        "culture"
+      ],
+      "score": 35
+    },
+    {
       "title": "Führungen durch die Staatsoper",
       "date": "2027-04-18",
       "time": "",
@@ -1720,6 +1772,57 @@
       "matched_categories": [
         "music",
         "theater"
+      ],
+      "score": 35
+    },
+    {
+      "title": "KOLLEGIAL pres. by BSTHP - free entry until 9PM",
+      "date": "2026-7-17",
+      "time": "19:00",
+      "price": null,
+      "category": "dancing, culture",
+      "description": "<p>KOLLEGIAL &#8211; ist die Verbindung von verschiedenen Künstler:innen, CREWs und Kollektiven. Für uns steht ein homogenes und kollegiales Miteinander im Vordergrund, welches die Veranstaltungen zu einem besonderen und empathischen Erlebnis der Tanzkultur macht. Präsentiert durch BSTHP &#8211; Beschäftigungstherapie / BERLIN SOUND THERAPY.</p> <p>KOLLEGIAL &#8211; is a collaboration between various artists, CREWs, and collectives. For us, the focus is on a homogeneous and collegial atmosphere,",
+      "url": "https://www.theclubmap.com/events/kollegial-pres-by-bsthp-free-entry-until-9pm/",
+      "venue": "Ritter Butzke",
+      "source_url": "https://www.theclubmap.com/berlin-techno-partys/",
+      "price_label": "Check site",
+      "matched_categories": [
+        "dancing",
+        "culture"
+      ],
+      "score": 35
+    },
+    {
+      "title": "OXI SUNDAYS w/ Ana Molina , Bacon Chang , Monokultur , Soela",
+      "date": "2026-7-19",
+      "time": "14:00",
+      "price": null,
+      "category": "dancing, music",
+      "description": "<p>OXI Sundays: a new summer ritual for warm grooves, house rhythms, and disco-kissed moments.  </p> <p>On selected Sundays throughout the summer, OXI opens its doors for a new series dedicated to the softer, deeper, and more soulful sides of the dancefloor. Expect warm house selections, deep grooves, and shimmering disco touches, music made for long afternoons, golden hours, and easy connections.  </p> <p>As the sun sets and the day turns into night, the journey continues: after 22:00 we move i",
+      "url": "https://www.theclubmap.com/events/oxi-sundays-w-ana-molina-bacon-chang-monokultur-soela/",
+      "venue": "OXI",
+      "source_url": "https://www.theclubmap.com/berlin-techno-partys/",
+      "price_label": "Check site",
+      "matched_categories": [
+        "dancing",
+        "music"
+      ],
+      "score": 35
+    },
+    {
+      "title": "Tausend House: Mr. Turner &amp;amp; T-Bone",
+      "date": "2026-7-18",
+      "time": "22:00",
+      "price": null,
+      "category": "dancing, culture",
+      "description": "<p>Upcoming Saturday at Bar Tausend, Mr. Turner and T-Bone come together for a Tausend Disco night built on records, edits, groove and long-standing dancefloor experience.</p> <p>T-Bone, also known as Mondi, is a Cologne-based vinyl selector and DJ active since 1993. A resident at Suderman &#038; Spirits and a regular at KitKat’s Disco Bizarre parties, he comes from one of Germany’s foundational reggae and dancehall soundsystem cultures with Wadada The Original Outlaw Sound — but his range moves",
+      "url": "https://www.theclubmap.com/events/tausend-house-mr-turner-t-bone/",
+      "venue": "Tausend",
+      "source_url": "https://www.theclubmap.com/berlin-techno-partys/",
+      "price_label": "Check site",
+      "matched_categories": [
+        "dancing",
+        "culture"
       ],
       "score": 35
     },
@@ -1804,6 +1907,70 @@
       "score": 20
     },
     {
+      "title": "Art Bei Ton: Trip.n.Queers",
+      "date": "2026-7-16",
+      "time": "22:00",
+      "price": null,
+      "category": "culture",
+      "description": "<p>Axis Alpha<br /> Egregore B2B Hypnotic Black Magic<br /> Gabrielle (DE)<br /> Mia Lund B2B Vini<br /> ValaV</p> ",
+      "url": "https://www.theclubmap.com/events/art-bei-ton-trip-n-queers/",
+      "venue": "OXI",
+      "source_url": "https://www.theclubmap.com/berlin-techno-partys/",
+      "price_label": "Check site",
+      "matched_categories": [
+        "culture"
+      ],
+      "score": 20
+    },
+    {
+      "title": "Behind the Barricades #12 - Soliparty für Women in Exile",
+      "date": "2026-7-18",
+      "time": "15:00",
+      "price": null,
+      "category": "music",
+      "description": "<p>Wir freuen uns schon richtig auf die mittlerweile 12. Ausgabe unserer Soli- Partyreihe! Diesmal für Women in Exile. Euch erwarten Konzerte, DJs, Infostände, Infotalk mit Women in Exile, eine Performance, Dosenwerfen mit abgefahrenen Preisen und vieles mehr. Also kommt vorbei, zeigt euch solidarisch und feiert mit uns.</p> <p>Lineup:</p> <p>Infostände von Phia e.V., Sonar, tba</p> <p>Live: Shaettered (Hardcore/Punk), MaccaTacca feat Carlo C. Randalena   Tucci Culucci</p> <p>DJs: ADHSMR, Baba R",
+      "url": "https://www.theclubmap.com/events/behind-the-barricades-12-soliparty-fuer-women-in-exile/",
+      "venue": "Villa Kuriosum",
+      "source_url": "https://www.theclubmap.com/berlin-techno-partys/",
+      "price_label": "Check site",
+      "matched_categories": [
+        "music"
+      ],
+      "score": 20
+    },
+    {
+      "title": "CLUB DATES am Mittwoch | 2026",
+      "date": "2026-7-14",
+      "time": "18:00",
+      "price": null,
+      "category": "dancing",
+      "description": "<p><!-- wp:heading --></p> <h2 class='wp-block-heading'>Berlin feiert auch unter der Woche: Die besten Club-Termine am Mittwoch</h2> <p><!-- /wp:heading --></p> <p><!-- wp:paragraph --></p> <p>Wer sagt, dass man bis zum Wochenende warten muss? In Berlin ist der Mittwoch längst zum „kleinen Freitag“ avanciert. Wenn die Stadt kurz durchatmet, öffnen bereits einige Locations ihre Türen für treue Locals und neugierige Touris sowei die leute, die sonst im Club arbeiten, und den Dancefloor ohne den gr",
+      "url": "https://www.theclubmap.com/events/club-dates-am-mittwoch-2026/var/ri-2.l-L1",
+      "venue": "",
+      "source_url": "https://www.theclubmap.com/berlin-techno-partys/",
+      "price_label": "Check site",
+      "matched_categories": [
+        "dancing"
+      ],
+      "score": 20
+    },
+    {
+      "title": "CLUB DATES am Mittwoch | 2026",
+      "date": "2026-7-15",
+      "time": "18:00",
+      "price": null,
+      "category": "dancing",
+      "description": "<p><!-- wp:heading --></p> <h2 class='wp-block-heading'>Berlin feiert auch unter der Woche: Die besten Club-Termine am Mittwoch</h2> <p><!-- /wp:heading --></p> <p><!-- wp:paragraph --></p> <p>Wer sagt, dass man bis zum Wochenende warten muss? In Berlin ist der Mittwoch längst zum „kleinen Freitag“ avanciert. Wenn die Stadt kurz durchatmet, öffnen bereits einige Locations ihre Türen für treue Locals und neugierige Touris sowei die leute, die sonst im Club arbeiten, und den Dancefloor ohne den gr",
+      "url": "https://www.theclubmap.com/events/club-dates-am-mittwoch-2026/var/ri-1.l-L1",
+      "venue": "",
+      "source_url": "https://www.theclubmap.com/berlin-techno-partys/",
+      "price_label": "Check site",
+      "matched_categories": [
+        "dancing"
+      ],
+      "score": 20
+    },
+    {
       "title": "Highlights",
       "date": "2026-07-14",
       "time": "10:00",
@@ -1820,6 +1987,38 @@
       "score": 20
     },
     {
+      "title": "In Balance After Work I Open Air &amp; Indoor",
+      "date": "2026-7-16",
+      "time": "17:00",
+      "price": null,
+      "category": "outside events",
+      "description": "<p>Connor Wall<br /> Fabian Kienzler  b2b Philena<br /> Marsch<br /> Schicktanz<br /> Vysion</p> ",
+      "url": "https://www.theclubmap.com/events/in-balance-after-work-i-open-air-indoor/",
+      "venue": "Else",
+      "source_url": "https://www.theclubmap.com/berlin-techno-partys/",
+      "price_label": "Check site",
+      "matched_categories": [
+        "outside events"
+      ],
+      "score": 20
+    },
+    {
+      "title": "Kiez &amp;amp; Späti",
+      "date": "2026-7-18",
+      "time": "17:00",
+      "price": null,
+      "category": "music",
+      "description": "<p>&#x1f1e9;&#x1f1ea; Deutsch</p> <p>KIEZ x SPÄTI Vol. 9 &#x1f4a5;</p> <p>Dieses Mal stehen drei wunderbare, erfahrene DJs mit italienischen Wurzeln hinter den Decks. &#x1f1ee;&#x1f1f9;&#x1f5a4;</p> <p>Line-up:<br /> 17:30–19:00 Morisia<br /> 19:00–20:30 Antya   B2B Tornadotoni<br /> 20:30–22:00 Tornadotoni</p> <p>&#x1f4cd; Spätkauf Snacks<br /> Gabriel-Max-Straße 4<br /> 10245 Berlin-Friedrichshain</p> <p>Kommt vorbei – Eintritt frei, gute Musik und kalte Drinks.</p> <p>Sponsored by Kiez Vodka ",
+      "url": "https://www.theclubmap.com/events/kiez-spaeti/",
+      "venue": "",
+      "source_url": "https://www.theclubmap.com/berlin-techno-partys/",
+      "price_label": "Check site",
+      "matched_categories": [
+        "music"
+      ],
+      "score": 20
+    },
+    {
       "title": "Leben im Mittelalter",
       "date": "2026-07-14",
       "time": "12:30",
@@ -1832,6 +2031,22 @@
       "price_label": "Check site",
       "matched_categories": [
         "culture"
+      ],
+      "score": 20
+    },
+    {
+      "title": "Pollinations AI Night",
+      "date": "2026-7-16",
+      "time": "17:30",
+      "price": null,
+      "category": "music",
+      "description": "<p>An informal evening dedicated to AI, for anyone who&#8217;d like to get closer to the topic. No previous experience needed. Ordinary people, not engineers, share how they use AI in everyday life: pictures, music, recipes, small tools, and the stories behind them. Program: 01 Introduction. 02 Show &#038; tell: people show how they use AI. 03 Real or fake? Songs, images and news. You vote. 04 Robot DJ: an AI watches the room and picks the music. Plus: cocktails invented by a computer, AI slop, ",
+      "url": "https://www.theclubmap.com/events/pollinations-ai-night/",
+      "venue": "Block1",
+      "source_url": "https://www.theclubmap.com/berlin-techno-partys/",
+      "price_label": "Check site",
+      "matched_categories": [
+        "music"
       ],
       "score": 20
     },
@@ -1864,6 +2079,22 @@
       "price_label": "Check site",
       "matched_categories": [
         "music"
+      ],
+      "score": 20
+    },
+    {
+      "title": "Tausend House: Annina",
+      "date": "2026-7-17",
+      "time": "22:00",
+      "price": null,
+      "category": "entrepreneurial events",
+      "description": "<p>This Friday, Annina joins Tausend House with a sound that is upfront, groovy and sharply built for the floor. Finnish-born and Berlin-based, the DJ and producer moves between stripped-back house and techno, sizzling electro and breakbeats — creating sets that feel tight, percussive and full of momentum.<br /> After first entering the underground scene in Sydney, Annina has become an active force in Berlin’s club landscape. She is co-founder of the forward-thinking Zapped Records imprint, whic",
+      "url": "https://www.theclubmap.com/events/tausend-house-annina/",
+      "venue": "Tausend",
+      "source_url": "https://www.theclubmap.com/berlin-techno-partys/",
+      "price_label": "Check site",
+      "matched_categories": [
+        "entrepreneurial events"
       ],
       "score": 20
     },
@@ -2080,6 +2311,48 @@
       "score": 5
     },
     {
+      "title": "BUTOH BATORŪ",
+      "date": "2026-7-16",
+      "time": "22:00",
+      "price": null,
+      "category": "general",
+      "description": "<p>Hurricane (live)<br /> Amanda Mussi<br /> Magna Pia<br /> X Tin</p> ",
+      "url": "https://www.theclubmap.com/events/butoh-batoru-3/",
+      "venue": "Berghain | Panorama Bar | Säule",
+      "source_url": "https://www.theclubmap.com/berlin-techno-partys/",
+      "price_label": "Check site",
+      "matched_categories": [],
+      "score": 5
+    },
+    {
+      "title": "CLUB DATES am DIENSTAG | 2026",
+      "date": "2026-7-14",
+      "time": "18:00",
+      "price": null,
+      "category": "general",
+      "description": "<p><!-- wp:image {'id':46290,'sizeSlug':'large','linkDestination':'none'} --></p> <figure class='wp-block-image size-large'><img src='https://www.theclubmap.com/wp-content/uploads/2017/09/pexel-6-1200x801.jpg' alt='Smash Rave im Der Weiße Hase' class='wp-image-46290'/></figure> <p><!-- /wp:image --></p> <p><!-- wp:heading {'level':3} --></p> <h3 class='wp-block-heading'>Smash Rave @ <a href='https://www.theclubmap.com/house-electro-techno-clubs/der-weisse-hase/' target='_blank' rel='noopener'><m",
+      "url": "https://www.theclubmap.com/events/club-dates-am-dienstag-2026/var/ri-1.l-L1",
+      "venue": "",
+      "source_url": "https://www.theclubmap.com/berlin-techno-partys/",
+      "price_label": "Check site",
+      "matched_categories": [],
+      "score": 5
+    },
+    {
+      "title": "CLUB DATES am MONTAG | 2026",
+      "date": "2026-7-19",
+      "time": "18:00",
+      "price": null,
+      "category": "general",
+      "description": "<p><!-- wp:image {'id':158357,'sizeSlug':'full','linkDestination':'none'} --></p> <figure class='wp-block-image size-full'><img src='https://www.theclubmap.com/wp-content/uploads/2025/07/alex-dion-vWjY-C-U4xA-unsplash.jpg' alt='' class='wp-image-158357'/></figure> <p><!-- /wp:image --></p> <p><!-- wp:heading {'level':3} --></p> <h3 class='wp-block-heading'>SINGULARITY @ <a href='https://www.theclubmap.com/electro-clubs-n-z/tresor/' target='_blank' rel='noreferrer noopener'><mark style='backgroun",
+      "url": "https://www.theclubmap.com/events/club-dates-am-montag-2026/var/ri-45.l-L1",
+      "venue": "",
+      "source_url": "https://www.theclubmap.com/berlin-techno-partys/",
+      "price_label": "Check site",
+      "matched_categories": [],
+      "score": 5
+    },
+    {
       "title": "Der Schneesturm",
       "date": "2026-07-14",
       "time": "19:00",
@@ -2108,6 +2381,20 @@
       "score": 5
     },
     {
+      "title": "DIFFUSE REALITY",
+      "date": "2026-7-16",
+      "time": "22:00",
+      "price": null,
+      "category": "general",
+      "description": "<p>Fiedel [Ostgut Ton, Berghain]<br /> FIASKA<br /> Kelvin Belton (Live)<br /> Luca Scarpa<br /> Marina Semren<br /> Squaric</p> ",
+      "url": "https://www.theclubmap.com/events/diffuse-reality-3/",
+      "venue": "://about blank",
+      "source_url": "https://www.theclubmap.com/berlin-techno-partys/",
+      "price_label": "Check site",
+      "matched_categories": [],
+      "score": 5
+    },
+    {
       "title": "Einführungsmatinee: Lear",
       "date": "2026-07-14",
       "time": "12:00",
@@ -2117,6 +2404,20 @@
       "url": "https://www.oper-in-berlin.de/de/spielplan/event/06-09-2026-einfuehrungsmatinee-lear/",
       "venue": "",
       "source_url": "https://www.oper-in-berlin.de/de/spielplan/",
+      "price_label": "Check site",
+      "matched_categories": [],
+      "score": 5
+    },
+    {
+      "title": "Endzeit",
+      "date": "2026-7-16",
+      "time": "22:00",
+      "price": null,
+      "category": "general",
+      "description": "<p>Mike Parker<br /> Convextion (Live)<br /> Lily Ackerman b2b Kudeki<br /> Torsion b2b RMNA</p> ",
+      "url": "https://www.theclubmap.com/events/endzeit/",
+      "venue": "OHM",
+      "source_url": "https://www.theclubmap.com/berlin-techno-partys/",
       "price_label": "Check site",
       "matched_categories": [],
       "score": 5
@@ -2145,6 +2446,20 @@
       "url": "https://www.oper-in-berlin.de/de/spielplan/event/12-09-2026-eroeffnungsfest/",
       "venue": "",
       "source_url": "https://www.oper-in-berlin.de/de/spielplan/",
+      "price_label": "Check site",
+      "matched_categories": [],
+      "score": 5
+    },
+    {
+      "title": "Expeditions",
+      "date": "2026-7-17",
+      "time": "23:00",
+      "price": null,
+      "category": "general",
+      "description": "<p>Luis J<br /> Luka Jukic<br /> Pepa B2B Duro<br /> SACID<br /> substitüt<br /> Uma Scheffer</p> ",
+      "url": "https://www.theclubmap.com/events/expeditions-4/",
+      "venue": "://about blank",
+      "source_url": "https://www.theclubmap.com/berlin-techno-partys/",
       "price_label": "Check site",
       "matched_categories": [],
       "score": 5
@@ -2304,6 +2619,20 @@
       "score": 5
     },
     {
+      "title": "LES MOCHES",
+      "date": "2026-7-16",
+      "time": "16:00",
+      "price": null,
+      "category": "general",
+      "description": "<p>Rafael Nao Existe<br /> Cøral Negrø<br /> Macé<br /> KamillNT<br /> haanahconda b2b Manni Bleifuß<br /> MLC</p> ",
+      "url": "https://www.theclubmap.com/events/les-moches/",
+      "venue": "Klunkerkranich",
+      "source_url": "https://www.theclubmap.com/berlin-techno-partys/",
+      "price_label": "Check site",
+      "matched_categories": [],
+      "score": 5
+    },
+    {
       "title": "Lucia di Lammermoor",
       "date": "2026-07-14",
       "time": "19:00",
@@ -2313,6 +2642,62 @@
       "url": "https://www.oper-in-berlin.de/de/spielplan/event/05-09-2026-lucia-di-lammermoor/",
       "venue": "",
       "source_url": "https://www.oper-in-berlin.de/de/spielplan/",
+      "price_label": "Check site",
+      "matched_categories": [],
+      "score": 5
+    },
+    {
+      "title": "Midsommer Verglühen",
+      "date": "2026-7-17",
+      "time": "22:00",
+      "price": null,
+      "category": "general",
+      "description": "<p>Annica<br /> Ali Rajat<br /> Bouncing Mirrors<br /> Dino S<br /> DJ Banba<br /> IRAD<br /> People of the Pacific<br /> romp_about<br /> Tschatsching<br /> tutto bene</p> ",
+      "url": "https://www.theclubmap.com/events/midsommer-vergluehen/",
+      "venue": "Jonny Knüppel",
+      "source_url": "https://www.theclubmap.com/berlin-techno-partys/",
+      "price_label": "Check site",
+      "matched_categories": [],
+      "score": 5
+    },
+    {
+      "title": "MILLIAMPERE",
+      "date": "2026-7-17",
+      "time": "23:00",
+      "price": null,
+      "category": "general",
+      "description": "<p>Xavi Metralla<br /> DJ Skudero<br /> YËDM<br /> 1luu<br /> LØUS<br /> QUINCE (2)<br /> Pixie Dust<br /> Florelle<br /> FEROTONINO<br />  Athina<br /> Dvrk Octopus</p> ",
+      "url": "https://www.theclubmap.com/events/milliampere/",
+      "venue": "Lokschuppen Berlin",
+      "source_url": "https://www.theclubmap.com/berlin-techno-partys/",
+      "price_label": "Check site",
+      "matched_categories": [],
+      "score": 5
+    },
+    {
+      "title": "Motus x Abgedreht",
+      "date": "2026-7-17",
+      "time": "23:00",
+      "price": null,
+      "category": "general",
+      "description": "<p>myzelia<br /> Nadia Bel Air<br /> DJ KINNER b2b ØSLO<br /> e.leptic b2b E.T.<br /> RichBeat<br /> Lisatrix<br /> B.R.K.Ø.b2b DJ LP (NL)<br /> VIVI909<br /> Najka</p> ",
+      "url": "https://www.theclubmap.com/events/motus-x-abgedreht/",
+      "venue": "Humboldthain Club",
+      "source_url": "https://www.theclubmap.com/berlin-techno-partys/",
+      "price_label": "Check site",
+      "matched_categories": [],
+      "score": 5
+    },
+    {
+      "title": "NATURAL N.29 An Immersive 3D A/V Experience LIVE",
+      "date": "2026-7-15",
+      "time": "21:30",
+      "price": null,
+      "category": "general",
+      "description": "<p>With the longer summer evenings, NATURAL returns in its summer format.<br /> NATURAL N.29</p> <p>An Immersive 3D A/V Experience</p> <p>Wednesday, July 15 · 9:30 PM<br /> Astral Junction, Berlin</p> <p>With the longer summer evenings, NATURAL returns in its summer format.</p> <p>Look forward to a unique, one-hour LIVE set by AMBIENTES KOLLEKTIV, as well as a special surprise guest who will enrich the evening in their own unique way.</p> <p>NATURAL is an ongoing immersive research format invest",
+      "url": "https://www.theclubmap.com/events/natural-n-29-an-immersive-3d-a-v-experience-live/",
+      "venue": "Astral Junction",
+      "source_url": "https://www.theclubmap.com/berlin-techno-partys/",
       "price_label": "Check site",
       "matched_categories": [],
       "score": 5
@@ -2458,6 +2843,34 @@
       "score": 5
     },
     {
+      "title": "The Bug presents: PRESSURE",
+      "date": "2026-7-17",
+      "time": "23:00",
+      "price": null,
+      "category": "general",
+      "description": "<p>Tikiman w/Scion<br /> JK Flesh (Avalanche Rec./UK)<br /> The Bug ft. Dis Fig (Pressure/Ninja Tune/UK)<br /> Ghost Dubs (Pressure/D)<br /> Gorgonn (SVBKVLT/JP/D)</p> ",
+      "url": "https://www.theclubmap.com/events/the-bug-presents-pressure/",
+      "venue": "Gretchen",
+      "source_url": "https://www.theclubmap.com/berlin-techno-partys/",
+      "price_label": "Check site",
+      "matched_categories": [],
+      "score": 5
+    },
+    {
+      "title": "TOILET SESSION",
+      "date": "2026-7-16",
+      "time": "19:00",
+      "price": null,
+      "category": "general",
+      "description": "<p>TOILET SESSION ??? </p> ",
+      "url": "https://www.theclubmap.com/events/toilet-session-2/",
+      "venue": "Crack Bellmer",
+      "source_url": "https://www.theclubmap.com/berlin-techno-partys/",
+      "price_label": "Check site",
+      "matched_categories": [],
+      "score": 5
+    },
+    {
       "title": "Tosca",
       "date": "2026-07-14",
       "time": "16:00",
@@ -2467,6 +2880,20 @@
       "url": "https://www.oper-in-berlin.de/de/spielplan/event/06-09-2026-tosca/",
       "venue": "",
       "source_url": "https://www.oper-in-berlin.de/de/spielplan/",
+      "price_label": "Check site",
+      "matched_categories": [],
+      "score": 5
+    },
+    {
+      "title": "ULTRANOVA x 10Y MOLEKÜL",
+      "date": "2026-7-17",
+      "time": "23:00",
+      "price": null,
+      "category": "general",
+      "description": "<p>FANK b2b West Code<br /> Mark Broom<br /> MAURER b2b FILTRACK<br /> Viktoria Spielmann (vinyl set)<br /> Xiorro (vinyl set)</p> ",
+      "url": "https://www.theclubmap.com/events/ultranova-x-10y-molekuel/",
+      "venue": "RSO.BERLIN",
+      "source_url": "https://www.theclubmap.com/berlin-techno-partys/",
       "price_label": "Check site",
       "matched_categories": [],
       "score": 5
@@ -2957,6 +3384,20 @@
       "url": "https://www.oper-in-berlin.de/de/spielplan/event/14-09-2026-werkstatt-mittwoch-aus-licht/",
       "venue": "",
       "source_url": "https://www.oper-in-berlin.de/de/spielplan/",
+      "price_label": "Check site",
+      "matched_categories": [],
+      "score": 5
+    },
+    {
+      "title": "WKND X DON&#039;T TELL ANYONE",
+      "date": "2026-7-17",
+      "time": "18:00",
+      "price": null,
+      "category": "general",
+      "description": "<p><strong>WKND X DON&#8217;T TELL ANYONE </strong></p> <p><strong>Friday, July 17th, 2026</strong><br /> <strong>Start: 6 PM </strong>(weather permitting)<strong> | 10 PM </strong>(indoors if rainy)<br /> <strong>Weekend Club | 15th Floor · Rooftop – 17th Floor</strong><br /> (please check our Instagram for updates)</p> <p>On July 17th, <strong>WKND</strong> introduces a new chapter as <strong>DON&#8217;T TELL ANYONE</strong> makes its debut high above Berlin.<br /> Hosted by <strong>Boho</stro",
+      "url": "https://www.theclubmap.com/events/wknd-x-dont-tell-anyone/",
+      "venue": "Weekend",
+      "source_url": "https://www.theclubmap.com/berlin-techno-partys/",
       "price_label": "Check site",
       "matched_categories": [],
       "score": 5
