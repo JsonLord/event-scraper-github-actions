@@ -70,6 +70,12 @@ jobs:
           pip install cloakbrowser python-dotenv pyyaml requests beautifulsoup4 lxml
 
       - name: Install CloakBrowser Binary
+        # This step intermittently segfaults on the GitHub runner (exit 139).
+        # It's non-fatal: the generic scraper works without CloakBrowser
+        # (it's only the 3rd-tier fallback) and CloakBrowser re-downloads the
+        # binary on first launch() anyway, so a failed pre-install must not
+        # take down the whole matrix leg.
+        continue-on-error: true
         run: python -m cloakbrowser install
 
       - name: Configure environment
@@ -132,6 +138,9 @@ jobs:
 
   aggregate-and-deploy:
     needs: autonomous-scrape
+    # Run even if some scrape legs failed (fail-fast is off) so the pipeline
+    # still aggregates, scores and deploys whatever events were collected.
+    if: ${{ always() }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
