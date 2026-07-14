@@ -93,8 +93,10 @@ class EventScraper:
         """Close browser and context"""
         if self.context:
             self.context.close()
+            self.context = None
         if self.browser:
             self.browser.close()
+            self.browser = None
         logger.info("Browser closed")
     
     def scrape_page(self, url: str) -> str:

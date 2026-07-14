@@ -1,5 +1,8 @@
 name: Weekly Event Scraper with Autonomous Repair
 
+permissions:
+  contents: write
+
 on:
   schedule:
     # Run every Sunday at 5 PM UTC
