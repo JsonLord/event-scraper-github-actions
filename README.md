@@ -100,6 +100,37 @@ if auth_service.has_permission("actions"):
 token = auth_service.get_token()
 ```
 
+### Workflow Monitoring Service
+
+The `WorkflowMonitor` provides a robust way to track the status of GitHub Actions workflow runs.
+
+```python
+from src.github_auth.service import GitHubAuthService
+from src.workflow_monitor import WorkflowMonitor
+
+auth_service = GitHubAuthService()
+monitor = WorkflowMonitor(auth_service, "owner", "repo")
+
+def on_change(status, conclusion):
+    print(f"Workflow status changed to: {status} (conclusion: {conclusion})")
+
+# Poll until the workflow run completes
+result = monitor.poll_until_complete(
+    run_id=12345678,
+    interval=30,      # Poll every 30 seconds
+    timeout=600,     # Timeout after 10 minutes
+    on_state_change=on_change
+)
+
+print(f"Final Result: {result['status']}, Conclusion: {result['conclusion']}")
+```
+
+The monitor handles:
+- State transitions (queued → in_progress → completed)
+- Automatic retries on rate limiting (403/429)
+- Configurable polling intervals and timeouts
+- Success/failure/cancelled conclusions
+
 The service supports:
 - Automatic token validation and caching
 - Permission checking for `actions`, `contents`, `pull-requests`, and `checks`

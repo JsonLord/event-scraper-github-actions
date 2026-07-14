@@ -7,7 +7,7 @@
 
 # Third-party packages
 requests==2.31.0          # HTTP requests (used in firecrawl_validation.py, validate_events.py)
-PyYAML==6.0               # YAML parsing (used in weekly-event-scraper.py, validate_events.py, config handling)
+PyYAML==6.0.3             # YAML parsing (used in weekly-event-scraper.py, validate_events.py, config handling)
 python-dotenv==1.0.0      # Environment variable loading from .env file
 
 # Stealth browser for anti-bot bypass (auto-downloads Chromium binary)
