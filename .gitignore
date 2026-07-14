@@ -38,4 +38,5 @@ Thumbs.db
 
 # Specific to this project
 .hermes/
-event-scraper/
+event-scraper/node_modules/
+node_modules/
