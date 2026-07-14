@@ -1,5 +1,9 @@
 name: Event Scraper with Auto-Improvement
 
+permissions:
+  contents: write
+  pull-requests: write
+
 on:
   schedule:
     # Run Monday-Friday at 5 PM UTC (matches original cron)

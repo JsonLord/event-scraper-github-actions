@@ -1,5 +1,8 @@
 name: Weekly Event Scraper with Autonomous Repair
 
+permissions:
+  contents: write
+
 on:
   schedule:
     # Run every Sunday at 5 PM UTC
@@ -17,11 +20,43 @@ jobs:
     timeout-minutes: 180
     strategy:
       matrix:
-        url_data: ["https://rausgegangen.de/en/berlin/tipps-fuer-heute/", "https://www.eventbrite.de/d/germany/berlin/events/", "https://www.meetup.com/berlin/events/"]
+        include:
+          # Sites with a hand-written scraper (run via autonomous_repair.py)
+          # __START_DATE__/__END_DATE__ are substituted at runtime with today
+          # and today+7 (see the "Resolve dynamic dates in URL" step), so
+          # rausgegangen returns the coming week's events by date.
+          - { name: rausgegangen_de,        url: "https://rausgegangen.de/en/berlin/eventsbydate/?geospatial_query_type=CITY&lat=52.5&lng=13.405&city=berlin&active_city_name=Berlin&start_date=__START_DATE__&end_date=__END_DATE__" }
+          - { name: eventbrite_de,          url: "https://www.eventbrite.de/d/germany/berlin/events/" }
+          - { name: eventbrite_com,         url: "https://www.eventbrite.com/d/germany--berlin/events/" }
+          - { name: meetup_com,             url: "https://www.meetup.com/berlin/events/" }
+          - { name: meetup_com_find,        url: "https://www.meetup.com/find/?allMeetups=false&radius=20&userFreeform=Berlin%2C+Germany" }
+          # Remaining sites use the generic multi-strategy scraper.
+          # (duplicates from the source list - rausgegangen, staatsoper-berlin.de,
+          # ritterbutzke.de - are scraped once, not once per duplicate URL)
+          - { name: berlin_buehnen,         url: "https://www.berlin-buehnen.de/de/spielplan" }
+          - { name: zku_berlin,             url: "https://www.zku-berlin.org/de/timeline/" }
+          - { name: ufafabrik,              url: "https://ufafabrik.de/spielplan.html" }
+          - { name: stadtmuseum,            url: "https://www.stadtmuseum.de/programm" }
+          - { name: werk9,                  url: "https://werk9.de/" }
+          - { name: dokk11,                 url: "https://dokk11.de/" }
+          - { name: schloss_glienicke,      url: "https://www.schloss-und-parkglienicke.de/orangerie/" }
+          - { name: lakestudios,            url: "https://lakestudiosberlin.com/unfinished-fridays/" }
+          - { name: theclubmap,             url: "https://www.theclubmap.com/berlin-techno-partys/" }
+          - { name: renaissancetheater,     url: "https://www.renaissancetheater.de/" }
+          - { name: deutsches_theater,      url: "https://www.deutsches-theater.de/" }
+          - { name: staatsoper_berlin,      url: "https://www.staatsoper-berlin.de/" }
+          - { name: staatsballett_berlin,   url: "https://www.staatsballett-berlin.de/" }
+          - { name: volksbuehne,            url: "https://www.volksbuehne.berlin/" }
+          - { name: reinickendorf_classics, url: "https://www.reinickendorf-classics.de/januar/" }
+          - { name: dice_fm_berlin,         url: "https://dice.fm/browse/berlin-5e426dbb749e68e3e923d1e4" }
+          - { name: improfabrik,            url: "https://improfabrik.de/" }
+          - { name: oper_in_berlin,         url: "https://www.oper-in-berlin.de/de/spielplan/" }
+          - { name: venturecafe_berlin,     url: "https://venturecafe.com/berlin/" }
+          - { name: ritterbutzke,           url: "https://www.ritterbutzke.de/" }
       fail-fast: false
     env:
-      TARGET_URL: ${{ matrix.url_data }}
-    
+      TARGET_URL: ${{ matrix.url }}
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -38,6 +73,12 @@ jobs:
           pip install cloakbrowser python-dotenv pyyaml requests beautifulsoup4 lxml
 
       - name: Install CloakBrowser Binary
+        # This step intermittently segfaults on the GitHub runner (exit 139).
+        # It's non-fatal: the generic scraper works without CloakBrowser
+        # (it's only the 3rd-tier fallback) and CloakBrowser re-downloads the
+        # binary on first launch() anyway, so a failed pre-install must not
+        # take down the whole matrix leg.
+        continue-on-error: true
         run: python -m cloakbrowser install
 
       - name: Configure environment
@@ -45,33 +86,63 @@ jobs:
           echo "JULES_API_KEY=${{ secrets.JULES_API_KEY }}" >> $GITHUB_ENV
           echo "GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}" >> $GITHUB_ENV
 
+      # Substitute date placeholders in the target URL so date-parameterised
+      # sources (e.g. rausgegangen's "by date" view) fetch the coming 7 days.
+      # Sites without placeholders are unaffected.
+      - name: Resolve dynamic dates in URL
+        run: |
+          START_DATE="$(date -u +%Y-%m-%d)"
+          END_DATE="$(date -u -d '+7 days' +%Y-%m-%d)"
+          RESOLVED="${TARGET_URL}"
+          RESOLVED="${RESOLVED//__START_DATE__/${START_DATE}}"
+          RESOLVED="${RESOLVED//__END_DATE__/${END_DATE}}"
+          echo "TARGET_URL=${RESOLVED}" >> "$GITHUB_ENV"
+          echo "Scrape URL: ${RESOLVED}"
+
       - name: Extract site info
         id: site-info
         run: |
           URL="${TARGET_URL}"
-          SITE_NAME=$(echo "$URL" | sed -E 's|https?://(www\.)?||' | sed -E 's|/.*||' | sed 's/\./_/g')
+          SITE_NAME="${{ matrix.name }}"
           echo "site_name=$SITE_NAME" >> $GITHUB_OUTPUT
-          
-          # Determine which script to use
-          if [[ "$URL" == *"rausgegangen"* ]]; then
-            echo "script=scripts/rausgegangen_scraper.py" >> $GITHUB_OUTPUT
-          elif [[ "$URL" == *"eventbrite"* ]]; then
+
+          # Sites with a hand-written scraper get the autonomous repair loop
+          # (retries + Jules-driven fixes); everything else uses the shared
+          # generic scraper directly (repairing a script shared by 20+ sites
+          # based on one site's failure would corrupt it for the rest).
+          # rausgegangen's date view is server-rendered with clean event-detail
+          # slugs, which the generic scraper handles well (cleaner than the old
+          # Jina-markdown scraper), so it routes to the generic path.
+          if [[ "$URL" == *"eventbrite"* ]]; then
             echo "script=scripts/eventbrite_scraper.py" >> $GITHUB_OUTPUT
+            echo "use_repair_loop=true" >> $GITHUB_OUTPUT
           elif [[ "$URL" == *"meetup"* ]]; then
             echo "script=scripts/meetup_scraper.py" >> $GITHUB_OUTPUT
+            echo "use_repair_loop=true" >> $GITHUB_OUTPUT
           else
-            echo "script=scripts/jules_cloak_scraper.py" >> $GITHUB_OUTPUT
+            echo "script=scripts/generic_event_scraper.py" >> $GITHUB_OUTPUT
+            echo "use_repair_loop=false" >> $GITHUB_OUTPUT
           fi
 
-      - name: Run Autonomous Repair Scrape
+      - name: Run scraper
         run: |
-          python scripts/autonomous_repair.py \
-            --script "${{ steps.site-info.outputs.script }}" \
-            --url "${TARGET_URL}" \
-            --site-name "${{ steps.site-info.outputs.site_name }}" \
-            --retries 3
+          if [ "${{ steps.site-info.outputs.use_repair_loop }}" = "true" ]; then
+            python scripts/autonomous_repair.py \
+              --script "${{ steps.site-info.outputs.script }}" \
+              --url "${TARGET_URL}" \
+              --site-name "${{ steps.site-info.outputs.site_name }}" \
+              --retries 3
+          else
+            mkdir -p data/html
+            python "${{ steps.site-info.outputs.script }}" \
+              --url "${TARGET_URL}" \
+              --output "data/raw_${{ steps.site-info.outputs.site_name }}.json" \
+              --save-html \
+              --html-output "data/html/${{ steps.site-info.outputs.site_name }}.html"
+          fi
 
       - name: Upload results
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: scrape-${{ steps.site-info.outputs.site_name }}
@@ -79,13 +150,25 @@ jobs:
             data/raw_${{ steps.site-info.outputs.site_name }}.json
             data/html/${{ steps.site-info.outputs.site_name }}.html
           retention-days: 7
+          if-no-files-found: warn
 
   aggregate-and-deploy:
     needs: autonomous-scrape
+    # Run even if some scrape legs failed (fail-fast is off) so the pipeline
+    # still aggregates, scores and deploys whatever events were collected.
+    if: ${{ always() }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install requests
 
       - name: Download all results
         uses: actions/download-artifact@v4
@@ -107,6 +190,53 @@ jobs:
               json.dump({'events': all_events, 'count': len(all_events)}, out)
           "
 
+      - name: Configure environment
+        run: |
+          echo "JULES_API_KEY=${{ secrets.JULES_API_KEY }}" >> $GITHUB_ENV
+          echo "JULES_SOURCE_ID=${{ secrets.JULES_SOURCE_ID }}" >> $GITHUB_ENV
+
+      # Resolve the Jules source id for this repo at runtime so it doesn't have
+      # to be maintained as a separate secret. Only runs if a JULES_SOURCE_ID
+      # secret wasn't already provided (that takes precedence). Needs the
+      # JULES_API_KEY set above; non-fatal if it can't resolve.
+      - name: Resolve Jules source ID
+        run: |
+          if [ -z "$JULES_SOURCE_ID" ] && [ -n "$JULES_API_KEY" ]; then
+            SOURCE_ID="$(python scripts/jules_client.py find-source "$GITHUB_REPOSITORY" 2>/dev/null || true)"
+            if [ -n "$SOURCE_ID" ]; then
+              echo "JULES_SOURCE_ID=$SOURCE_ID" >> $GITHUB_ENV
+              echo "Resolved Jules source: $SOURCE_ID"
+            else
+              echo "Could not resolve a Jules source for $GITHUB_REPOSITORY; recovery runs without repo context"
+            fi
+          fi
+
+      # The one Jules session in the chain: recover events from sites whose
+      # scrape returned nothing (the hard Cloudflare/JS-heavy pages), using
+      # the saved HTML snapshots. Best-effort - merges whatever it recovers
+      # back into docs/events.json, or leaves it unchanged if Jules is
+      # unavailable.
+      - name: Recover failed scrapes via Jules
+        run: |
+          python scripts/jules_recover_failed.py \
+            --aggregated docs/events.json \
+            --raw-dir data \
+            --html-dir data/html \
+            --output docs/events.json
+
+      # Deterministic scoring/categorization/filtering against the preference
+      # profile (max 15 EUR, free preferred, category + Charlottenburg
+      # proximity weighting, sorted best-to-worst).
+      - name: Score and categorize events
+        run: |
+          python scripts/score_events.py \
+            --input docs/events.json \
+            --output docs/events_scored.json \
+            --max-price 15
+
+      - name: Publish frontend
+        run: cp web/index.html docs/index.html
+
       - name: Commit improvements (if any)
         run: |
           git config --global user.name 'GitHub Actions'
@@ -120,3 +250,4 @@ jobs:
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./docs
+          keep_files: true
