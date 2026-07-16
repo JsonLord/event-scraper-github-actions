@@ -235,19 +235,17 @@ jobs:
             --max-price 15
 
       - name: Publish frontend
-        run: cp web/index.html docs/index.html
+        run: |
+          cp web/index.html docs/index.html
+          touch docs/.nojekyll
 
-      - name: Commit improvements (if any)
+      # Commit the generated docs/ (events data + table) straight to this
+      # branch instead of deploying to a separate gh-pages branch, so GitHub
+      # Pages can be configured to serve from main's /docs folder.
+      - name: Commit events and scraper improvements
         run: |
           git config --global user.name 'GitHub Actions'
           git config --global user.email 'actions@github.com'
-          git add scripts/*.py
-          git diff --staged --quiet || git commit -m "Auto-repair: updated scraper scripts"
+          git add scripts/*.py docs/
+          git diff --staged --quiet || git commit -m "Update events (${{ github.run_id }}) [skip ci]"
           git push || echo "No changes to push or push failed"
-
-      - name: Deploy to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v4
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./docs
-          keep_files: true
