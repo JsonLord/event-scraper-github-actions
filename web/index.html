@@ -161,7 +161,6 @@
         <th data-key="date">Date &amp; Time<span class="arrow"></span></th>
         <th data-key="category">Category<span class="arrow"></span></th>
         <th data-key="price">Price<span class="arrow"></span></th>
-        <th>Link</th>
       </tr>
     </thead>
     <tbody id="rows"></tbody>
@@ -240,7 +239,13 @@
 
       var tdName = document.createElement("td");
       tdName.className = "name";
-      tdName.textContent = ev.title || "Untitled event";
+      var titleLink = document.createElement("a");
+      titleLink.className = "site-link";
+      titleLink.href = ev.url || ev.source_url || "#";
+      titleLink.target = "_blank";
+      titleLink.rel = "noopener noreferrer";
+      titleLink.textContent = ev.title || "Untitled event";
+      tdName.appendChild(titleLink);
       tr.appendChild(tdName);
 
       var tdVenue = document.createElement("td");
@@ -269,16 +274,6 @@
       var tdPrice = document.createElement("td");
       tdPrice.textContent = ev.price_label || (ev.price === 0 ? "Free" : (ev.price != null ? "€" + ev.price : "Check site"));
       tr.appendChild(tdPrice);
-
-      var tdLink = document.createElement("td");
-      var a = document.createElement("a");
-      a.className = "site-link";
-      a.href = ev.url || ev.source_url || "#";
-      a.target = "_blank";
-      a.rel = "noopener noreferrer";
-      a.textContent = "View";
-      tdLink.appendChild(a);
-      tr.appendChild(tdLink);
 
       rowsEl.appendChild(tr);
     });

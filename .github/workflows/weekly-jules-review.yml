@@ -19,6 +19,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 180
     strategy:
+      # Avoid asking the hosted-runner service to acquire all matrix legs at
+      # once. A small queue is more reliable during periods of runner pressure.
+      max-parallel: 4
       matrix:
         include:
           # Sites with a hand-written scraper (run via autonomous_repair.py)
