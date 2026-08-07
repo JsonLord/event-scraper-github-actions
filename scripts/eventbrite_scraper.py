@@ -157,6 +157,44 @@ def parse_price(price_text: str) -> float:
     return float(price_match.group(1).replace(',', '.')) if price_match else 0.0
 
 
+def clean_event_title(title: str) -> str:
+    """Remove Jina's image labels from an Eventbrite event title."""
+    title = re.sub(r'^!?\s*Image\s+\d+\s*:\s*', '', title, flags=re.IGNORECASE)
+    title = re.sub(
+        r'^(?:Hauptbild\s+f(?:ü|u)r|main\s+image(?:\s+for)?|event\s+image(?:\s+for)?)\s*',
+        '',
+        title,
+        flags=re.IGNORECASE,
+    )
+    return re.sub(r'\s+', ' ', re.sub(r'[*_`\[\]]', '', title)).strip(' -:|\t')
+
+
+def extract_markdown_event(text: str, fallback_url: str) -> tuple[str, str]:
+    """Extract a clean title and destination from a Jina markdown line.
+
+    Eventbrite cards are commonly represented as a linked image.  In that
+    form the first Markdown URL is the CDN image, while the outer URL is the
+    useful event destination.
+    """
+    linked_image = re.search(
+        r'\[!\[([^\]]+)\]\(https?://[^)]+\)\]\((https?://[^)]+)\)', text
+    )
+    if linked_image:
+        return clean_event_title(linked_image.group(1)), linked_image.group(2)
+
+    links = re.findall(r'\[([^\]]{5,200})\]\((https?://[^)]+)\)', text)
+    for label, destination in links:
+        if 'eventbrite.' in destination.lower() and '/e/' in destination.lower():
+            return clean_event_title(label), destination
+
+    if links:
+        label, destination = links[0]
+        return clean_event_title(label), destination
+
+    plain_text = re.sub(r'!\[[^\]]*\]\(https?://[^)]+\)', '', text)
+    return clean_event_title(re.sub(r'[#*>-]', '', plain_text)), fallback_url
+
+
 def scrape_eventbrite_with_jina(url: str, price_max: float = 15.0) -> List[Dict[str, Any]]:
     """Fallback parser for GitHub Actions when browser automation is blocked."""
     markdown = fetch_jina_content(url)
@@ -170,9 +208,7 @@ def scrape_eventbrite_with_jina(url: str, price_max: float = 15.0) -> List[Dict[
         if not re.search(r'eventbrite|tickets?|free|gratis|€|berlin|\d{1,2}:\d{2}', text, re.IGNORECASE):
             continue
 
-        link_match = re.search(r'\[([^\]]{5,160})\]\((https?://[^)]+)\)', text)
-        title = link_match.group(1).strip() if link_match else re.sub(r'[#*_`>-]', '', text).strip()
-        event_url = link_match.group(2) if link_match else url
+        title, event_url = extract_markdown_event(text, url)
 
         if len(title) < 5 or title.lower() in seen:
             continue
@@ -188,7 +224,7 @@ def scrape_eventbrite_with_jina(url: str, price_max: float = 15.0) -> List[Dict[
             "time": "",
             "price": price,
             "category": "social",
-            "description": text[:500],
+            "description": title,
             "url": event_url,
             "venue": "Berlin",
             "source_url": url
