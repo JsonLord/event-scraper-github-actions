@@ -3,6 +3,8 @@ name: Event Scraper with Auto-Improvement
 permissions:
   contents: write
   pull-requests: write
+  pages: write
+  id-token: write
 
 on:
   schedule:
@@ -48,16 +50,20 @@ jobs:
         id: scrape
         run: |
           SITE_URL="${{ github.event.inputs.site_url || 'https://rausgegangen.de/en/berlin/tipps-fuer-heute/' }}"
-          SITE_NAME="${{ github.event.inputs.site_name || 'Rausgegangen Berlin' }}"
           
-          python scripts/jules_cloak_scraper.py \
+          python scripts/rausgegangen_scraper.py \
             --url "$SITE_URL" \
-            --site-name "$SITE_NAME" \
             --output data/events.json \
             --price-max 15 \
-            --date-days 14
+            --date-days 14 \
+            --save-html \
+            --html-output data/site.html
           
           EVENT_COUNT=$(python -c "import json; data=json.load(open('data/events.json')); print(data.get('event_count', 0))")
+          if [ "$EVENT_COUNT" -eq 0 ]; then
+            echo "Scraper returned no events; refusing to replace the published event table." >&2
+            exit 1
+          fi
           echo "event_count=$EVENT_COUNT" >> $GITHUB_OUTPUT
 
       - name: Upload events as artifact
@@ -66,6 +72,24 @@ jobs:
           name: events-${{ github.run_id }}
           path: data/events.json
           retention-days: 30
+
+      - name: Build weekly event table
+        run: |
+          mkdir -p _site
+          python scripts/score_events.py \
+            --input data/events.json \
+            --output _site/events_scored.json \
+            --max-price 15
+          cp web/index.html _site/index.html
+          touch _site/.nojekyll
+
+      - name: Set up GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload weekly event table
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ./_site
 
       - name: Save HTML for validation
         if: always()
@@ -82,12 +106,16 @@ jobs:
           git diff --staged --quiet || git commit -m "Update events: ${{ steps.scrape.outputs.event_count }} events [skip ci]"
           git push
 
-      - name: Deploy to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v4
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./data
-          keep_files: true
+  deploy-event-table:
+    needs: scrape-events
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages-${{ github.ref_name }}
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy weekly event table
+        id: deployment
+        uses: actions/deploy-pages@v5
 
   validate-and-improve:
     needs: scrape-events
