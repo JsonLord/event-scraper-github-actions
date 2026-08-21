@@ -2,9 +2,7 @@ name: Publish synthesised event findings
 
 on:
   push:
-    # Publish event-table changes from the current Jules branch and future
-    # branches, rather than limiting Pages builds to main.
-    branches: ["**"]
+    branches: ["main"]
     paths:
       - "data/events.json"
       - "scripts/score_events.py"
@@ -56,9 +54,7 @@ jobs:
 
   deploy:
     environment:
-      # A branch-specific environment prevents the protected `github-pages`
-      # environment from rejecting deployments made from non-main branches.
-      name: github-pages-${{ github.ref_name }}
+      name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     needs: build
