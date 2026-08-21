@@ -267,6 +267,7 @@ jobs:
   publish-pages:
     name: Publish weekly event table
     needs: aggregate-and-deploy
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     environment:
       name: github-pages
