@@ -233,6 +233,12 @@ jobs:
             --html-dir data/html \
             --output docs/events.json
 
+      # Keep the aggregated, recovered source data in Git as well as in the
+      # short-lived Pages artifact. This makes the events shown by the site
+      # inspectable from the repository after the workflow runner is removed.
+      - name: Persist aggregated events in repository
+        run: cp docs/events.json data/events.json
+
       # Deterministic scoring/categorization/filtering against the preference
       # profile (max 15 EUR, free preferred, category + Charlottenburg
       # proximity weighting, sorted best-to-worst).
@@ -256,13 +262,18 @@ jobs:
         with:
           path: ./docs
 
-      - name: Commit improvements (if any)
+      - name: Commit events and improvements (if any)
         run: |
           git config --global user.name 'GitHub Actions'
           git config --global user.email 'actions@github.com'
-          git add scripts/*.py
-          git diff --staged --quiet || git commit -m "Auto-repair: updated scraper scripts"
-          git push || echo "No changes to push or push failed"
+          git add data/events.json scripts/*.py
+          if git diff --staged --quiet; then
+            echo "No event or scraper changes to commit"
+          else
+            git commit -m "Update weekly aggregated events"
+            git pull --rebase
+            git push
+          fi
 
   publish-pages:
     name: Publish weekly event table
