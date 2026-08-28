@@ -88,7 +88,14 @@
     border-radius: 10px;
     background: var(--panel);
   }
-  table { border-collapse: collapse; width: 100%; min-width: 920px; }
+  table { border-collapse: collapse; width: 100%; min-width: 980px; }
+  /* On a phone the table scrolls inside its wrapper rather than forcing the
+     page body sideways. */
+  @media (max-width: 640px) {
+    .table-wrap { margin-left: 8px; margin-right: 8px; }
+    td.desc { max-width: 240px; }
+    td.desc > span { -webkit-line-clamp: 2; }
+  }
   th, td {
     text-align: left;
     padding: 10px 12px;
@@ -109,8 +116,25 @@
   th .arrow { opacity: .55; font-size: 11px; margin-left: 4px; }
   th.active { color: var(--text); }
   tbody tr:hover { background: var(--row-hover); }
+  /* Descriptions run to 400 characters; clamp them so one long blurb can't
+     stretch a row to five times the height of its neighbours. The full text
+     stays available as a tooltip. */
   td.desc { max-width: 360px; color: var(--muted); }
+  /* -webkit-line-clamp needs a block box of its own; applying it directly to
+     the <td> leaves a half-rendered fourth line, so clamp an inner wrapper. */
+  td.desc > span {
+    display: -webkit-box;
+    display: box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    box-orient: vertical;
+    overflow: hidden;
+  }
   td.name { max-width: 220px; font-weight: 600; }
+  td.muted, .muted { color: var(--muted); }
+  td.nowrap { white-space: nowrap; }
+  td.src { font-size: 12px; }
+  a.listing-link { font-weight: 400; font-size: 12px; }
   .chip {
     display: inline-block;
     background: var(--chip-bg);
@@ -161,6 +185,7 @@
         <th data-key="date">Date &amp; Time<span class="arrow"></span></th>
         <th data-key="category">Category<span class="arrow"></span></th>
         <th data-key="price">Price<span class="arrow"></span></th>
+        <th data-key="source">Source<span class="arrow"></span></th>
       </tr>
     </thead>
     <tbody id="rows"></tbody>
@@ -169,9 +194,11 @@
 </div>
 
 <footer>
-  Events are filtered to max 15 EUR (or price unknown). Ratings come from an automated scoring pass over
-  price, category match, and proximity to Charlottenburg - treat as a sorting aid, not a guarantee.
-  Click a column header to sort; click again to reverse.
+  Berlin events, filtered to max 15 EUR (or price unknown) and to the coming week. Ratings come from an
+  automated scoring pass over price, category match, how soon the event is, how complete the listing is,
+  and proximity to Charlottenburg - treat as a sorting aid, not a guarantee. "Check site" means the page
+  did not state a price, not that the event is expensive. A title without a link is one where only the
+  listing page could be found. Click a column header to sort; click again to reverse.
 </footer>
 
 <script>
@@ -184,17 +211,27 @@
     return t ? (d + " " + t) : d;
   }
 
+  // Host of the listing an event came from, for the Source column.
+  function sourceName(ev) {
+    try {
+      return new URL(ev.source_url || ev.url).hostname.replace(/^www\./, "");
+    } catch (e) {
+      return "";
+    }
+  }
+
   function sortValue(ev, key) {
+    if (key === "source") return sourceName(ev);
     if (key === "score") return typeof ev.score === "number" ? ev.score : -1;
     if (key === "price") return ev.price === null || ev.price === undefined ? 999999 : ev.price;
-    if (key === "date") return (ev.date || "") + " " + (ev.time || "");
+    if (key === "date") return (isoDate(ev) || "99999999") + (ev.time || "99:99");
     return (ev[key] || "").toString().toLowerCase();
   }
 
   function matchesSearch(ev, q) {
     if (!q) return true;
     var hay = [ev.title, ev.venue, ev.description, ev.category, ev.price_label]
-      .concat(ev.matched_categories || [])
+      .concat(ev.matched_categories || [], [sourceName(ev)])
       .join(" ")
       .toLowerCase();
     return hay.indexOf(q.toLowerCase()) !== -1;
@@ -239,26 +276,49 @@
 
       var tdName = document.createElement("td");
       tdName.className = "name";
-      var titleLink = document.createElement("a");
-      titleLink.className = "site-link";
-      titleLink.href = ev.url || ev.source_url || "#";
-      titleLink.target = "_blank";
-      titleLink.rel = "noopener noreferrer";
-      titleLink.textContent = ev.title || "Untitled event";
-      tdName.appendChild(titleLink);
+      // has_detail_link is false when the scrape found no event page, only
+      // the listing it came from. Linking those to the listing looked like a
+      // working link and led nowhere useful, so they render as plain text
+      // with the listing offered separately.
+      if (ev.has_detail_link !== false && (ev.url || ev.source_url)) {
+        var titleLink = document.createElement("a");
+        titleLink.className = "site-link";
+        titleLink.href = ev.url || ev.source_url;
+        titleLink.target = "_blank";
+        titleLink.rel = "noopener noreferrer";
+        titleLink.textContent = ev.title || "Untitled event";
+        tdName.appendChild(titleLink);
+      } else {
+        tdName.appendChild(document.createTextNode(ev.title || "Untitled event"));
+        if (ev.source_url) {
+          var listing = document.createElement("a");
+          listing.className = "site-link listing-link";
+          listing.href = ev.source_url;
+          listing.target = "_blank";
+          listing.rel = "noopener noreferrer";
+          listing.textContent = "on listing page";
+          tdName.appendChild(document.createElement("br"));
+          tdName.appendChild(listing);
+        }
+      }
       tr.appendChild(tdName);
 
       var tdVenue = document.createElement("td");
-      tdVenue.textContent = ev.venue || "";
+      tdVenue.textContent = ev.venue || "—";
+      if (!ev.venue) tdVenue.className = "muted";
       tr.appendChild(tdVenue);
 
       var tdDesc = document.createElement("td");
       tdDesc.className = "desc";
-      tdDesc.textContent = ev.description || "";
+      var descText = document.createElement("span");
+      descText.textContent = ev.description || "";
+      tdDesc.appendChild(descText);
+      if (ev.description) tdDesc.title = ev.description;
       tr.appendChild(tdDesc);
 
       var tdDate = document.createElement("td");
       tdDate.textContent = fmtDateTime(ev);
+      tdDate.className = "nowrap";
       tr.appendChild(tdDate);
 
       var tdCat = document.createElement("td");
@@ -273,7 +333,13 @@
 
       var tdPrice = document.createElement("td");
       tdPrice.textContent = ev.price_label || (ev.price === 0 ? "Free" : (ev.price != null ? "€" + ev.price : "Check site"));
+      if (ev.price == null) tdPrice.className = "muted";
       tr.appendChild(tdPrice);
+
+      var tdSource = document.createElement("td");
+      tdSource.className = "muted src";
+      tdSource.textContent = sourceName(ev);
+      tr.appendChild(tdSource);
 
       rowsEl.appendChild(tr);
     });
@@ -284,6 +350,17 @@
       th.classList.toggle("active", key === state.sortKey);
       arrow.textContent = key === state.sortKey ? (state.sortDir === "asc" ? "▲" : "▼") : "";
     });
+  }
+
+  // State the range actually present in the data instead of asserting "the
+  // coming week" - the previous payload spanned 2019 to 2027 under that claim.
+  function eventDateRange(events) {
+    var dates = events.map(isoDate).filter(Boolean).sort();
+    if (!dates.length) return "";
+    function pretty(d) { return d.slice(6, 8) + "." + d.slice(4, 6) + "." + d.slice(0, 4); }
+    return dates[0] === dates[dates.length - 1]
+      ? pretty(dates[0])
+      : pretty(dates[0]) + " – " + pretty(dates[dates.length - 1]);
   }
 
   function updateExportButton() {
@@ -298,12 +375,22 @@
     return (text || "").replace(/[\\;,]/g, function (m) { return "\\" + m; }).replace(/\n/g, "\\n");
   }
 
+  // Dates are normalised server-side, but normalise defensively here too:
+  // this used to require exactly 8 digits after stripping dashes, so a
+  // single-digit month ("2026-8-28" -> "2026828") made the event vanish from
+  // the .ics download with no warning. 53 of 207 rows were unexportable.
+  function isoDate(ev) {
+    var m = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec((ev.date || "").trim());
+    if (!m) return null;
+    return m[1] + String(m[2]).padStart(2, "0") + String(m[3]).padStart(2, "0");
+  }
+
   function icsDateStamp(ev) {
-    var datePart = (ev.date || "").replace(/-/g, "");
-    if (!/^\d{8}$/.test(datePart)) return null;
+    var datePart = isoDate(ev);
+    if (!datePart) return null;
     var timeMatch = (ev.time || "").match(/(\d{1,2})[:.](\d{2})/);
     if (timeMatch) {
-      var hh = timeMatch[1].padStart(2, "0"), mm = timeMatch[2];
+      var hh = String(timeMatch[1]).padStart(2, "0"), mm = timeMatch[2];
       return { start: datePart + "T" + hh + mm + "00", allDay: false };
     }
     return { start: datePart, allDay: true };
@@ -336,6 +423,13 @@
   function exportSelected() {
     var chosen = state.events.filter(function (ev) { return state.selected.has(ev._id); });
     if (!chosen.length) return;
+    var undatable = chosen.filter(function (ev) { return !icsDateStamp(ev); });
+    if (undatable.length) {
+      window.alert(
+        undatable.length + " of " + chosen.length +
+        " selected events have no usable date and will be left out of the download."
+      );
+    }
     var blob = new Blob([buildICS(chosen)], { type: "text/calendar;charset=utf-8" });
     var url = URL.createObjectURL(blob);
     var a = document.createElement("a");
@@ -391,8 +485,10 @@
         ev._id = i;
         return ev;
       });
+      var window_ = eventDateRange(state.events);
       document.getElementById("subtitle").textContent =
-        state.events.length + " events found for the coming week, best match first.";
+        state.events.length + " events" + (window_ ? " (" + window_ + ")" : "") +
+        ", best match first.";
       render();
     })
     .catch(function (err) {

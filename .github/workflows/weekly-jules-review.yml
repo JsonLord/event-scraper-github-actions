@@ -38,7 +38,11 @@ jobs:
           - { name: eventbrite_de,          url: "https://www.eventbrite.de/d/germany/berlin/events/" }
           - { name: eventbrite_com,         url: "https://www.eventbrite.com/d/germany--berlin/events/" }
           - { name: meetup_com,             url: "https://www.meetup.com/berlin/events/" }
-          - { name: meetup_com_find,        url: "https://www.meetup.com/find/?allMeetups=false&radius=20&userFreeform=Berlin%2C+Germany" }
+          # userFreeform= was resolved client-side, so the US-hosted runner
+          # got San Francisco results for a Berlin query. location=de--Berlin
+          # with explicit coordinates is resolved server-side; the scraper
+          # additionally drops any row with no independent Berlin signal.
+          - { name: meetup_com_find,        url: "https://www.meetup.com/find/?location=de--Berlin&source=EVENTS&distance=tenMiles&lat=52.52&lon=13.405" }
           # Remaining sites use the generic multi-strategy scraper.
           # (duplicates from the source list - rausgegangen, staatsoper-berlin.de,
           # ritterbutzke.de - are scraped once, not once per duplicate URL)
@@ -146,6 +150,8 @@ jobs:
             python "${{ steps.site-info.outputs.script }}" \
               --url "${TARGET_URL}" \
               --output "data/raw_${{ steps.site-info.outputs.site_name }}.json" \
+              --price-max 15 \
+              --date-days 7 \
               --save-html \
               --html-output "data/html/${{ steps.site-info.outputs.site_name }}.html"
           fi
@@ -188,16 +194,32 @@ jobs:
 
       - name: Aggregate events
         run: |
-          python -c "
-          import json, glob, os
-          all_events = []
-          for f in glob.glob('data/raw_*.json'):
-              with open(f) as j:
-                  all_events.extend(json.load(j).get('events', []))
+          python - <<'PY'
+          import glob, json, os
+
+          all_events, per_source = [], {}
+          for path in sorted(glob.glob('data/raw_*.json')):
+              try:
+                  with open(path, encoding='utf-8') as handle:
+                      events = json.load(handle).get('events', [])
+              except (OSError, json.JSONDecodeError) as exc:
+                  print(f"  !! {path}: unreadable ({exc})")
+                  continue
+              per_source[os.path.basename(path)] = len(events)
+              all_events.extend(events)
+
+          # Print the per-source yield so a source that has silently started
+          # returning nothing is visible in the run log rather than only as a
+          # smaller total.
+          for name, count in sorted(per_source.items(), key=lambda kv: -kv[1]):
+              print(f"  {count:4d}  {name}")
+          print(f"TOTAL {len(all_events)} events from {len(per_source)} sources")
+
           os.makedirs('docs', exist_ok=True)
-          with open('docs/events.json', 'w') as out:
-              json.dump({'events': all_events, 'count': len(all_events)}, out)
-          "
+          with open('docs/events.json', 'w', encoding='utf-8') as out:
+              json.dump({'events': all_events, 'count': len(all_events)}, out,
+                        indent=2, ensure_ascii=False)
+          PY
 
       - name: Configure environment
         run: |
@@ -237,7 +259,35 @@ jobs:
       # short-lived Pages artifact. This makes the events shown by the site
       # inspectable from the repository after the workflow runner is removed.
       - name: Persist aggregated events in repository
-        run: cp docs/events.json data/events.json
+        run: |
+          python - <<'PY'
+          import json, sys
+
+          def count(path):
+              try:
+                  with open(path, encoding='utf-8') as handle:
+                      return len(json.load(handle).get('events', []))
+              except (OSError, json.JSONDecodeError):
+                  return 0
+
+          fresh, existing = count('docs/events.json'), count('data/events.json')
+
+          # A run that collapses to a fraction of the last good aggregate has
+          # almost certainly been blocked or broken rather than finding that
+          # Berlin genuinely has no events. Publishing it anyway is how a
+          # 221-event dataset became an empty file. Keep the previous data and
+          # fail loudly instead.
+          if existing and fresh < max(1, existing // 4):
+              print(f"::error::Aggregate collapsed: {fresh} events vs {existing} previously. "
+                    "Keeping the existing data/events.json.")
+              sys.exit(1)
+
+          with open('docs/events.json', encoding='utf-8') as src:
+              payload = src.read()
+          with open('data/events.json', 'w', encoding='utf-8') as dst:
+              dst.write(payload)
+          print(f"Persisted {fresh} events (previously {existing}).")
+          PY
 
       # Deterministic scoring/categorization/filtering against the preference
       # profile (max 15 EUR, free preferred, category + Charlottenburg

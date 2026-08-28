@@ -10,10 +10,24 @@ import json
 import argparse
 import logging
 import re
-from datetime import datetime, timedelta
-from typing import List, Dict, Any
+from datetime import datetime
+from typing import List, Dict, Any, Optional
 
 import requests
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
+from event_utils import (  # noqa: E402
+    clean_text,
+    clean_url,
+    dedupe_events,
+    normalize_venue,
+    parse_date,
+    parse_price,
+    parse_time,
+    scrape_window,
+    validate_events,
+)
 
 try:
     from cloakbrowser import launch
@@ -91,60 +105,48 @@ def scrape_meetup(url: str, price_max: float = 15.0, date_range_days: int = 14) 
         
         for i, element in enumerate(elements[:50]):  # Limit to 50 events
             try:
-                # Extract event data
+                # A card with no readable name is page furniture, not an
+                # event. Naming it "Event {i+1}" and defaulting its venue to
+                # "Online" and its price to 0 put a dozen contentless rows at
+                # the very top of the published table, because a price of 0
+                # scored better than any real event's unknown price.
                 title = element.query_selector('h3, h4, [class*="title"]')
-                title_text = title.inner_text().strip() if title else f"Event {i+1}"
-                
-                # Date and time
+                title_text = clean_text(title.inner_text()) if title else ""
+                if not title_text:
+                    continue
+
                 date_elem = element.query_selector('[class*="date"], [class*="time"], time')
                 date_text = date_elem.inner_text().strip() if date_elem else ""
-                
-                # Price
+
                 price_elem = element.query_selector('[class*="price"], [class*="cost"]')
-                price_text = price_elem.inner_text().strip() if price_elem else "Free"
-                
-                # Parse price
-                price = 0
-                if "free" in price_text.lower() or "gratis" in price_text.lower():
-                    price = 0
-                else:
-                    import re
-                    price_match = re.search(r'[\$€£](\d+\.?\d*)', price_text)
-                    if price_match:
-                        price = float(price_match.group(1))
-                
-                # Skip if over price limit
-                if price > price_max:
+                price = parse_price(price_elem.inner_text()) if price_elem else None
+                if price is not None and price > price_max:
                     continue
-                
-                # Venue
+
                 venue_elem = element.query_selector('[class*="venue"], [class*="location"]')
-                venue_text = venue_elem.inner_text().strip() if venue_elem else "Online"
-                
-                # Description
+                venue_text = normalize_venue(venue_elem.inner_text()) if venue_elem else ""
+
                 desc_elem = element.query_selector('[class*="description"], [class*="summary"]')
-                desc_text = desc_elem.inner_text().strip() if desc_elem else ""
-                
-                # URL
+                desc_text = clean_text(desc_elem.inner_text(), max_length=400) if desc_elem else ""
+
                 link_elem = element.query_selector('a')
-                event_url = link_elem.get_attribute('href') if link_elem else url
-                
-                # Create event object
-                event = {
+                event_url = link_elem.get_attribute('href') if link_elem else ""
+                if event_url and not event_url.startswith("http"):
+                    event_url = f"https://www.meetup.com{event_url}"
+
+                events.append({
                     "title": title_text,
-                    "date": parse_meetup_date(date_text),
-                    "time": extract_time(date_text),
+                    "date": parse_meetup_date(date_text) or "",
+                    "time": parse_time(date_text),
                     "price": price,
-                    "category": "social",  # Default category
-                    "description": desc_text[:500] if desc_text else "",
-                    "url": event_url if event_url.startswith('http') else f"https://meetup.com{event_url}",
+                    "category": "",
+                    "description": desc_text,
+                    "url": clean_url(event_url or url),
                     "venue": venue_text,
-                    "source_url": url
-                }
-                
-                events.append(event)
-                logger.info(f"Extracted event: {title_text} - €{price}")
-                
+                    "source_url": url,
+                })
+                logger.info(f"Extracted event: {title_text}")
+
             except Exception as e:
                 logger.warning(f"Error extracting event {i}: {e}")
                 continue
@@ -197,24 +199,23 @@ def scrape_meetup_with_jina(url: str, price_max: float = 15.0) -> List[Dict[str,
         if len(title) < 5 or title.lower() in seen:
             continue
 
-        price = 0.0
-        price_match = re.search(r'(\d+[,.]\d+|\d+)\s*(?:€|EUR)', text, re.IGNORECASE)
-        if price_match:
-            price = float(price_match.group(1).replace(',', '.'))
-        if price > price_max:
+        price = parse_price(text)
+        if price is not None and price > price_max:
             continue
 
         seen.add(title.lower())
         events.append({
-            "title": title[:180],
-            "date": parse_meetup_date(text),
-            "time": extract_time(text),
+            "title": clean_text(title, max_length=180),
+            "date": parse_meetup_date(text) or "",
+            "time": parse_time(text),
             "price": price,
-            "category": "social",
-            "description": text[:500],
-            "url": event_url,
-            "venue": "Berlin",
-            "source_url": url
+            "category": "",
+            "description": clean_text(text, max_length=400),
+            "url": clean_url(event_url),
+            # "Berlin" as a blanket venue was how San Francisco meetups
+            # acquired a Berlin address in the published table.
+            "venue": "",
+            "source_url": url,
         })
 
         if len(events) >= 50:
@@ -223,27 +224,20 @@ def scrape_meetup_with_jina(url: str, price_max: float = 15.0) -> List[Dict[str,
     return events
 
 
-def parse_meetup_date(date_text: str) -> str:
-    """Parse Meetup date text to YYYY-MM-DD format"""
-    from datetime import datetime, timedelta
-    
-    # Try common date formats
-    formats = [
-        "%b %d, %Y",  # Jan 15, 2024
-        "%B %d, %Y",  # January 15, 2024
-        "%d %b %Y",   # 15 Jan 2024
-        "%Y-%m-%d",   # 2024-01-15
-    ]
-    
-    for fmt in formats:
+def parse_meetup_date(date_text: str) -> Optional[str]:
+    """Parse Meetup date text to ISO YYYY-MM-DD, or None when absent.
+
+    Falling back to today turned every card whose date selector missed into a
+    confident-looking event happening now.
+    """
+    if not date_text:
+        return None
+    for fmt in ("%b %d, %Y", "%B %d, %Y", "%d %b %Y", "%Y-%m-%d"):
         try:
-            dt = datetime.strptime(date_text, fmt)
-            return dt.strftime("%Y-%m-%d")
-        except:
+            return datetime.strptime(date_text.strip(), fmt).strftime("%Y-%m-%d")
+        except ValueError:
             continue
-    
-    # If parsing fails, return today's date as fallback
-    return datetime.now().strftime("%Y-%m-%d")
+    return parse_date(date_text)
 
 
 def extract_time(date_text: str) -> str:
@@ -265,7 +259,8 @@ def main():
     parser.add_argument("--url", required=True, help="Meetup.com URL to scrape")
     parser.add_argument("--output", required=True, help="Output JSON file")
     parser.add_argument("--price-max", type=float, default=15.0, help="Maximum event price")
-    parser.add_argument("--date-days", type=int, default=14, help="Date range in days")
+    parser.add_argument("--date-days", type=int, default=7,
+                        help="Only keep events starting within this many days from today")
     parser.add_argument("--save-html", action="store_true", help="Save HTML for analysis")
     parser.add_argument("--html-output", help="Path where fetched page content should be saved")
     
@@ -278,18 +273,38 @@ def main():
             price_max=args.price_max,
             date_range_days=args.date_days
         )
-        
-        # Create output
+
+        # Meetup is a global platform whose "popular events nearby" module
+        # geolocates the caller, so a Berlin query answered from a US-hosted
+        # runner returns San Francisco. require_berlin_signal drops anything
+        # with no independent tie to Berlin.
+        window_start, window_end = scrape_window(args.date_days)
+        kept, rejected = validate_events(
+            events,
+            source_url=args.url,
+            window_start=window_start,
+            window_end=window_end,
+            max_price=args.price_max,
+            require_berlin_signal=True,
+        )
+        events = dedupe_events(kept)
+        logger.info(
+            f"{len(events)} Berlin events kept for {window_start}..{window_end} "
+            f"({rejected} rejected as unusable, out of window or not in Berlin)"
+        )
+
         output = {
             "source": args.url,
             "scraped_at": datetime.now().isoformat(),
             "event_count": len(events),
+            "window_start": window_start.isoformat(),
+            "window_end": window_end.isoformat(),
             "events": events
         }
         
         # Save to file
-        with open(args.output, "w") as f:
-            json.dump(output, f, indent=2)
+        with open(args.output, "w", encoding="utf-8") as f:
+            json.dump(output, f, indent=2, ensure_ascii=False)
         
         print(f"✓ Scraped {len(events)} events to {args.output}")
         

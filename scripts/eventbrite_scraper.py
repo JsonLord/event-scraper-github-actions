@@ -10,10 +10,25 @@ import json
 import argparse
 import logging
 import re
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import List, Dict, Any
 
 import requests
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
+from event_utils import (  # noqa: E402
+    clean_text,
+    clean_url,
+    dedupe_events,
+    looks_synthetic_title,
+    normalize_venue,
+    parse_date,
+    parse_price as parse_price_or_none,
+    parse_time,
+    scrape_window,
+    validate_events,
+)
 
 try:
     from cloakbrowser import launch
@@ -69,7 +84,9 @@ def scrape_eventbrite(url: str, price_max: float = 15.0, date_range_days: int = 
             try:
                 # Title
                 title_elem = element.query_selector('h3, h2, [class*="title"]')
-                title_text = title_elem.inner_text().strip() if title_elem else f"Event {i+1}"
+                title_text = clean_text(title_elem.inner_text()) if title_elem else ""
+                if not title_text:
+                    continue
 
                 # Date and time
                 date_elem = element.query_selector('[class*="date"], [class*="time"], div.event-card-details__status')
@@ -77,45 +94,30 @@ def scrape_eventbrite(url: str, price_max: float = 15.0, date_range_days: int = 
 
                 # Price - Eventbrite often shows price in a specific badge or list item
                 price_elem = element.query_selector('div.event-card__price, [class*="price"]')
-                price_text = price_elem.inner_text().strip() if price_elem else "Free"
-
-                # Parse price
-                price = 0.0
-                if "free" in price_text.lower() or "gratis" in price_text.lower():
-                    price = 0.0
-                else:
-                    import re
-                    price_match = re.search(r'(\d+[,.]\d+)', price_text)
-                    if price_match:
-                        price = float(price_match.group(1).replace(',', '.'))
-
-                if price > price_max:
+                price = parse_price_or_none(price_elem.inner_text()) if price_elem else None
+                if price is not None and price > price_max:
                     continue
 
-                # Venue
                 venue_elem = element.query_selector('[class*="venue"], [class*="location"]')
-                venue_text = venue_elem.inner_text().strip() if venue_elem else "Berlin"
+                venue_text = normalize_venue(venue_elem.inner_text()) if venue_elem else ""
 
-                # URL
                 link_elem = element.query_selector('a.event-card-link, a')
-                event_url = link_elem.get_attribute('href') if link_elem else url
+                event_url = link_elem.get_attribute('href') if link_elem else ""
                 if event_url and not event_url.startswith('http'):
                     event_url = f"https://www.eventbrite.de{event_url}"
 
-                # Description (usually truncated on list view)
-                desc_text = f"Event at {venue_text} on {date_text}"
-
-                # Create event object with standardized schema
+                # Standardised schema; anything the card did not state stays
+                # empty rather than being filled with a plausible guess.
                 event = {
                     "title": title_text,
-                    "date": datetime.now().strftime("%Y-%m-%d"), # Simplified parsing
-                    "time": "",
+                    "date": parse_date(date_text) or "",
+                    "time": parse_time(date_text),
                     "price": price,
-                    "category": "social",
-                    "description": desc_text,
-                    "url": event_url,
+                    "category": "",
+                    "description": "",
+                    "url": clean_url(event_url or url),
                     "venue": venue_text,
-                    "source_url": url
+                    "source_url": url,
                 }
 
                 events.append(event)
@@ -210,23 +212,27 @@ def scrape_eventbrite_with_jina(url: str, price_max: float = 15.0) -> List[Dict[
 
         title, event_url = extract_markdown_event(text, url)
 
-        if len(title) < 5 or title.lower() in seen:
+        # Jina prefixes its output with "URL Source: <url>"; that header line
+        # matched the keyword filter and shipped as two published "events".
+        if len(title) < 5 or title.lower() in seen or looks_synthetic_title(title):
             continue
 
-        price = parse_price(text)
-        if price > price_max:
+        price = parse_price_or_none(text)
+        if price is not None and price > price_max:
             continue
 
         seen.add(title.lower())
         events.append({
-            "title": title[:180],
-            "date": datetime.now().strftime("%Y-%m-%d"),
-            "time": "",
+            "title": clean_text(title, max_length=180),
+            # Stamping every row with today's date and a "social" category
+            # gave junk rows a full price and category score.
+            "date": parse_date(text) or "",
+            "time": parse_time(text),
             "price": price,
-            "category": "social",
-            "description": title,
-            "url": event_url,
-            "venue": "Berlin",
+            "category": "",
+            "description": clean_text(text, max_length=400),
+            "url": clean_url(event_url),
+            "venue": "",
             "source_url": url
         })
 
@@ -241,7 +247,8 @@ def main():
     parser.add_argument("--url", default="https://www.eventbrite.de/d/germany/berlin/events/", help="URL to scrape")
     parser.add_argument("--output", required=True, help="Output JSON file")
     parser.add_argument("--price-max", type=float, default=15.0, help="Max price")
-    parser.add_argument("--date-days", type=int, default=14, help="Date range")
+    parser.add_argument("--date-days", type=int, default=7,
+                        help="Only keep events starting within this many days from today")
     parser.add_argument("--save-html", action="store_true", help="Save HTML")
     parser.add_argument("--html-output", help="Path where fetched page content should be saved")
 
@@ -258,10 +265,29 @@ def main():
             except Exception as e:
                 logger.warning(f"Could not save Eventbrite HTML snapshot: {e}")
         
+        # Eventbrite is a global platform: scope results to Berlin and to the
+        # target week before publishing anything.
+        window_start, window_end = scrape_window(args.date_days)
+        kept, rejected = validate_events(
+            events,
+            source_url=args.url,
+            window_start=window_start,
+            window_end=window_end,
+            max_price=args.price_max,
+            require_berlin_signal=True,
+        )
+        events = dedupe_events(kept)
+        logger.info(
+            f"{len(events)} Berlin events kept for {window_start}..{window_end} "
+            f"({rejected} rejected as unusable, out of window or not in Berlin)"
+        )
+
         output = {
             "source": args.url,
             "scraped_at": datetime.now().isoformat(),
             "event_count": len(events),
+            "window_start": window_start.isoformat(),
+            "window_end": window_end.isoformat(),
             "events": events
         }
 

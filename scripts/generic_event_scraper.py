@@ -30,12 +30,34 @@ import logging
 import os
 import re
 import sys
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Any, Dict, List, Optional
 from urllib.parse import urljoin
 
 import requests
 from bs4 import BeautifulSoup
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
+from event_utils import (  # noqa: E402
+    DATE_DE_RE,
+    DATE_ISO_RE,
+    DATE_TEXT_RE,
+    FREE_RE,
+    PRICE_RE,
+    TIME_RE,
+    clean_text,
+    clean_url,
+    dedupe_events,
+    normalize_date,
+    parse_date,
+    parse_price,
+    parse_time,
+    scrape_window,
+    title_from_slug,
+    title_looks_noisy,
+    validate_events,
+)
 
 logging.basicConfig(
     level=os.environ.get("LOG_LEVEL", "INFO"),
@@ -62,132 +84,41 @@ EVENT_CLASS_HINTS = (
     "show-item",
 )
 
-PRICE_RE = re.compile(
-    r'(?:€\s*(\d+[.,]?\d*)|(\d+[.,]?\d*)\s*€|(\d+[.,]?\d*)\s*EUR)',
+# Hrefs that lead to a real event page rather than back into site navigation.
+DETAIL_HREF_HINTS = (
+    "/event", "/events/", "/veranstaltung", "/termin", "/programm/", "/show/",
+    "/produktion", "/stueck", "/konzert", "/spielplan/event", "/e/", "/tickets",
+)
+
+# Navigation and utility links that must never be mistaken for an event link.
+NON_DETAIL_HREF_RE = re.compile(
+    r'(?:^#|^mailto:|^tel:|/(?:impressum|datenschutz|kontakt|newsletter|login|'
+    r'anmelden|search|suche|cart|warenkorb|agb|privacy|cookie)\b)',
     re.IGNORECASE,
 )
-FREE_RE = re.compile(r'\b(free|gratis|kostenlos|eintritt frei|freier eintritt)\b', re.IGNORECASE)
-DATE_ISO_RE = re.compile(r'\b(\d{4}-\d{2}-\d{2})\b')
-DATE_DE_RE = re.compile(r'\b(\d{1,2}\.\s?\d{1,2}\.\s?\d{2,4})\b')
-DATE_TEXT_RE = re.compile(
-    r'\b(\d{1,2})\.?\s*'
-    r'(Jan(?:uar)?|Feb(?:ruar)?|M(?:ä|ae)r(?:z)?|Apr(?:il)?|Mai|Jun(?:i)?|Jul(?:i)?|'
-    r'Aug(?:ust)?|Sep(?:t(?:ember)?)?|Okt(?:ober)?|Nov(?:ember)?|Dez(?:ember)?|'
-    r'January|February|March|April|May|June|July|August|September|October|November|December)'
-    # Only treat a following number as a year if it's a full 4 digits,
-    # otherwise it's likely a time (e.g. "16. July 19:00").
-    r'\.?\s*(?:(\d{4})(?!\d))?\b',
-    re.IGNORECASE,
-)
-TIME_RE = re.compile(r'\b(\d{1,2}[:.]\d{2})\s*(?:Uhr|h)?\b')
-
-MONTH_NAME_TO_NUM = {
-    "jan": 1, "januar": 1, "january": 1,
-    "feb": 2, "februar": 2, "february": 2,
-    "mar": 3, "mär": 3, "maer": 3, "märz": 3, "maerz": 3, "march": 3,
-    "apr": 4, "april": 4,
-    "mai": 5, "may": 5,
-    "jun": 6, "juni": 6, "june": 6,
-    "jul": 7, "juli": 7, "july": 7,
-    "aug": 8, "august": 8,
-    "sep": 9, "sept": 9, "september": 9,
-    "okt": 10, "oktober": 10, "oct": 10, "october": 10,
-    "nov": 11, "november": 11,
-    "dez": 12, "dezember": 12, "dec": 12, "december": 12,
-}
 
 
-def _month_from_name(name: str) -> Optional[int]:
-    name = name.lower().rstrip(".")
-    for key, num in MONTH_NAME_TO_NUM.items():
-        if name.startswith(key):
-            return num
-    return None
+def _best_detail_url(scopes, source_url: str) -> str:
+    """Pick the most event-like link near a card, falling back to the listing.
 
-
-def parse_price(text: str) -> Optional[float]:
-    """Return price in EUR, 0.0 if explicitly free, or None if unknown."""
-    if FREE_RE.search(text):
-        return 0.0
-    match = PRICE_RE.search(text)
-    if match:
-        raw = next(g for g in match.groups() if g)
-        try:
-            return float(raw.replace(',', '.'))
-        except ValueError:
-            return None
-    return None
-
-
-def title_looks_noisy(title: str) -> bool:
-    """True if a card title looks like concatenated listing text rather than a
-    clean event name (contains a time/date token, a listing badge, or is very
-    long) - a cue to prefer a slug-derived title instead."""
-    if len(title) > 80:
-        return True
-    if TIME_RE.search(title) or DATE_TEXT_RE.search(title) or DATE_ISO_RE.search(title):
-        return True
-    badges = ("pick of the day", "presented", "sponsored", "today,", "tomorrow,")
-    low = title.lower()
-    return any(b in low for b in badges)
-
-
-def title_from_slug(url: str) -> Optional[str]:
-    """Derive a readable title from an event-detail URL slug, e.g.
-    '/events/rising-spaces-the-first-exhibition-11/' -> 'Rising Spaces The
-    First Exhibition'. Returns None if the URL has no slug-like segment."""
-    if not url:
-        return None
-    path = url.split("?")[0].rstrip("/")
-    segment = path.rsplit("/", 1)[-1]
-    if "-" not in segment:
-        return None
-    # Drop a trailing numeric id ("...-11") that many slugs carry.
-    segment = re.sub(r'-\d+$', '', segment)
-    words = [w for w in segment.split("-") if w]
-    if not words:
-        return None
-    return " ".join(w.capitalize() for w in words)
-
-
-def parse_date(text: str) -> str:
-    """Best-effort date extraction; falls back to today's date."""
-    iso = DATE_ISO_RE.search(text)
-    if iso:
-        return iso.group(1)
-    de = DATE_DE_RE.search(text)
-    if de:
-        parts = re.split(r'\.\s?', de.group(1).strip('.'))
-        parts = [p for p in parts if p]
-        try:
-            day, month = int(parts[0]), int(parts[1])
-            year = int(parts[2]) if len(parts) > 2 else datetime.now().year
-            if year < 100:
-                year += 2000
-            return f"{year:04d}-{month:02d}-{day:02d}"
-        except (ValueError, IndexError):
-            pass
-    textual = DATE_TEXT_RE.search(text)
-    if textual:
-        month = _month_from_name(textual.group(2))
-        if month:
-            day = int(textual.group(1))
-            year = int(textual.group(3)) if textual.group(3) else datetime.now().year
-            try:
-                candidate = datetime(year, month, day)
-                # No explicit year and the date is well in the past: it's
-                # almost certainly next year's occurrence.
-                if not textual.group(3) and candidate < datetime.now() - timedelta(days=31):
-                    candidate = datetime(year + 1, month, day)
-                return candidate.strftime("%Y-%m-%d")
-            except ValueError:
-                pass
-    return datetime.now().strftime("%Y-%m-%d")
-
-
-def parse_time(text: str) -> str:
-    match = TIME_RE.search(text)
-    return match.group(1).replace('.', ':') if match else ""
+    Taking the first <a> in scope returned navigation chrome as often as an
+    event page, which is why 36 published rows linked straight back to the
+    listing they came from.
+    """
+    best = ""
+    for scope in scopes:
+        if not scope:
+            continue
+        for anchor in scope.find_all("a", href=True):
+            href = anchor["href"].strip()
+            if not href or NON_DETAIL_HREF_RE.search(href):
+                continue
+            absolute = urljoin(source_url, href)
+            if any(hint in absolute.lower() for hint in DETAIL_HREF_HINTS):
+                return clean_url(absolute)
+            if not best:
+                best = clean_url(absolute)
+    return best or source_url
 
 
 def is_bot_challenge(html: str) -> bool:
@@ -248,17 +179,21 @@ def extract_jsonld_events(html: str, source_url: str) -> List[Dict[str, Any]]:
                     price = None
 
             start_date = node.get("startDate", "") or ""
-            date_part, _, time_part = start_date.partition("T")
+
+            offer_url = offers.get("url") if isinstance(offers, dict) else None
+            event_url = node.get("url") or offer_url or source_url
 
             events.append({
-                "title": node.get("name", "Untitled event"),
-                "date": date_part or datetime.now().strftime("%Y-%m-%d"),
-                "time": time_part[:5],
+                "title": clean_text(node.get("name")),
+                # schema.org dates arrive as "2026-8-29" or with a time and
+                # offset attached; publish a single zero-padded ISO form.
+                "date": normalize_date(start_date) or "",
+                "time": parse_time(start_date),
                 "price": price,
-                "category": "",
-                "description": (node.get("description") or "")[:500],
-                "url": node.get("url") or source_url,
-                "venue": venue or "",
+                "category": clean_text(node.get("eventAttendanceMode") or ""),
+                "description": clean_text(node.get("description"), max_length=400),
+                "url": clean_url(urljoin(source_url, str(event_url))),
+                "venue": clean_text(venue),
                 "source_url": source_url,
             })
     return events
@@ -296,8 +231,7 @@ def extract_heuristic_events(html: str, source_url: str) -> List[Dict[str, Any]]
         # image and price fields) - widen the search to nearby ancestors.
         search_scopes = [el, el.parent, getattr(el.parent, "parent", None)]
 
-        href_link = next((s.find("a", href=True) for s in search_scopes if s and s.find("a", href=True)), None)
-        event_url = urljoin(source_url, href_link["href"]) if href_link else source_url
+        event_url = _best_detail_url(search_scopes, source_url)
 
         title = ""
         for scope in search_scopes:
@@ -331,22 +265,31 @@ def extract_heuristic_events(html: str, source_url: str) -> List[Dict[str, Any]]
         # A date often only appears once, on an ancestor "day group" heading
         # (e.g. a calendar table cell), not repeated on each event fragment -
         # widen the date search to nearby ancestor text as a fallback.
+        # The card's own text wins; ancestor text is appended, not prepended.
+        # parse_date returns the first match it finds, so prepending the
+        # listing's day heading made every card inherit that heading's date -
+        # 67 rows in the last run were stamped with the page date instead of
+        # their own ("So, 30. Aug" published as 27 Aug).
         date_context = text
         anc = el
         for _ in range(5):
             anc = getattr(anc, "parent", None)
             if not anc:
                 break
-            date_context = anc.get_text(" ", strip=True)[:60] + " " + date_context
+            date_context = date_context + " " + anc.get_text(" ", strip=True)[:60]
 
+        description = clean_text(text, max_length=400)
         events.append({
             "title": title[:200],
-            "date": parse_date(date_context),
+            "date": parse_date(date_context) or "",
             "time": parse_time(text),
             "price": parse_price(text),
             "category": "",
-            "description": text[:500],
+            "description": description,
             "url": event_url,
+            # Venue is recovered from the card text by validate_event(); the
+            # extractors used to hardcode "" and leave the Location column
+            # blank on nearly two thirds of published rows.
             "venue": "",
             "source_url": source_url,
         })
@@ -414,13 +357,13 @@ def extract_jina_events(markdown: str, source_url: str) -> List[Dict[str, Any]]:
             continue
         seen.add(title.lower())
         events.append({
-            "title": title[:200],
-            "date": parse_date(text),
+            "title": clean_text(title, max_length=200),
+            "date": parse_date(text) or "",
             "time": parse_time(text),
             "price": parse_price(text),
             "category": "",
-            "description": text[:500],
-            "url": event_url,
+            "description": clean_text(text, max_length=400),
+            "url": clean_url(event_url),
             "venue": "",
             "source_url": source_url,
         })
@@ -470,7 +413,8 @@ def main():
     parser.add_argument("--url", required=True, help="URL to scrape")
     parser.add_argument("--output", required=True, help="Output JSON file")
     parser.add_argument("--price-max", type=float, default=15.0, help="Max event price")
-    parser.add_argument("--date-days", type=int, default=14, help="Date range in days (informational)")
+    parser.add_argument("--date-days", type=int, default=7,
+                        help="Only keep events starting within this many days from today")
     parser.add_argument("--save-html", action="store_true", help="Save a page snapshot for analysis")
     parser.add_argument("--html-output", help="Path where fetched page content should be saved")
 
@@ -482,7 +426,19 @@ def main():
         logger.error(f"Scraping failed: {e}")
         events = []
 
-    filtered = [e for e in events if e.get("price") is None or e["price"] <= args.price_max]
+    window_start, window_end = scrape_window(args.date_days)
+    kept, rejected = validate_events(
+        events,
+        source_url=args.url,
+        window_start=window_start,
+        window_end=window_end,
+        max_price=args.price_max,
+    )
+    filtered = dedupe_events(kept)
+    logger.info(
+        f"{len(filtered)} events kept for {window_start}..{window_end} "
+        f"({rejected} rejected as unusable or out of window)"
+    )
 
     if args.save_html:
         html_output = args.html_output or "data/html/generic.html"
@@ -495,6 +451,8 @@ def main():
         "source": args.url,
         "scraped_at": datetime.now().isoformat(),
         "event_count": len(filtered),
+        "window_start": window_start.isoformat(),
+        "window_end": window_end.isoformat(),
         "events": filtered,
     }
 
