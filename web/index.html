@@ -81,8 +81,18 @@
     border-color: var(--accent);
   }
   button:disabled { opacity: .5; cursor: not-allowed; }
+  .stream-head {
+    margin: 26px clamp(16px, 4vw, 40px) 8px;
+    display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap;
+  }
+  .stream-head h2 { margin: 0; font-size: 16px; }
+  .stream-head .note { color: var(--muted); font-size: 13px; }
+  .stream-empty {
+    margin: 0 clamp(16px, 4vw, 40px) 12px;
+    color: var(--muted); font-size: 13.5px;
+  }
   .table-wrap {
-    margin: 0 clamp(16px, 4vw, 40px) 32px;
+    margin: 0 clamp(16px, 4vw, 40px) 8px;
     overflow-x: auto;
     border: 1px solid var(--border);
     border-radius: 10px;
@@ -186,28 +196,13 @@
   <button id="exportBtn" class="primary" disabled>Add selected to calendar (.ics)</button>
 </div>
 
-<div class="table-wrap">
-  <table id="table">
-    <thead>
-      <tr>
-        <th style="width:28px"><input type="checkbox" id="selectAll" title="Select all visible"></th>
-        <th data-key="score">Rating<span class="arrow"></span></th>
-        <th data-key="title">Name<span class="arrow"></span></th>
-        <th data-key="venue">Location<span class="arrow"></span></th>
-        <th data-key="description">Description<span class="arrow"></span></th>
-        <th data-key="date">Date &amp; Time<span class="arrow"></span></th>
-        <th data-key="category">Category<span class="arrow"></span></th>
-        <th data-key="price">Price<span class="arrow"></span></th>
-        <th data-key="source">Source<span class="arrow"></span></th>
-      </tr>
-    </thead>
-    <tbody id="rows"></tbody>
-  </table>
-  <div class="empty" id="emptyMsg" hidden>No events match your filters.</div>
-</div>
+<div id="sections"></div>
+<div class="empty" id="emptyMsg" hidden>No events match your filters.</div>
 
 <footer>
-  Berlin events, filtered to max 20 EUR (or price unknown) and to the coming week. Grouped by day, and
+  Berlin events, filtered to max 20 EUR (or price unknown) and to the coming week. Entrepreneurship and
+  sport sit in their own tables, because a running club and an opera are not alternatives to each other.
+  Each table is grouped by day, and
   within each day ordered free first, then cheapest to dearest; events whose price the listing did not
   state ("Check site") come last in the day. Ratings come from an
   automated scoring pass over price, category match, how soon the event is, how complete the listing is,
@@ -288,148 +283,241 @@
     rowsEl.appendChild(tr);
   }
 
-  function render() {
-    var rowsEl = document.getElementById("rows");
-    var emptyEl = document.getElementById("emptyMsg");
-    rowsEl.innerHTML = "";
+  var COLUMNS = [
+    ["score","Rating"], ["title","Name"], ["venue","Location"], ["description","Description"],
+    ["date","Date &amp; Time"], ["category","Category"], ["price","Price"], ["source","Source"]
+  ];
+  // Entrepreneurship and sport get their own tables: a running club and an
+  // opera are not alternatives, so ranking them against each other is noise.
+  var STREAMS = [
+    ["main",    "Culture, music &amp; nightlife", "Everything that isn't networking or sport."],
+    ["network", "Entrepreneurship &amp; networking", "Startup, founder and networking events."],
+    ["sport",   "Sport &amp; movement", "Running clubs, cycling meetups, classes and games."]
+  ];
 
-    var list = state.events.filter(function (ev) {
-      if (state.freeOnly && ev.price !== 0) return false;
-      return matchesSearch(ev, state.search);
-    });
+  function buildTable(streamKey) {
+    var wrap = document.createElement("div");
+    wrap.className = "table-wrap";
+    var table = document.createElement("table");
+    var thead = document.createElement("thead");
+    var tr = document.createElement("tr");
 
-    list.sort(function (a, b) {
-      var av = sortValue(a, state.sortKey), bv = sortValue(b, state.sortKey);
-      var cmp = av < bv ? -1 : av > bv ? 1 : 0;
-      if (cmp === 0 && state.sortKey !== "price") {
-        // Within a day (or any other tie) fall back to the price order, so
-        // each date reads free first and then cheapest to dearest.
-        var ap = priceRank(a), bp = priceRank(b);
-        cmp = ap < bp ? -1 : ap > bp ? 1 : 0;
-      }
-      if (cmp === 0) {
-        var at = a.time || "99:99", bt = b.time || "99:99";
-        cmp = at < bt ? -1 : at > bt ? 1 : 0;
-      }
-      return state.sortDir === "asc" ? cmp : -cmp;
-    });
-
-    emptyEl.hidden = list.length > 0;
-
-    // Day grouping only makes sense while the list is in date order; sorting
-    // by another column deliberately cuts across days.
-    var grouped = state.sortKey === "date";
-    var perDay = {};
-    if (grouped) {
-      list.forEach(function (ev) {
-        var key = isoDate(ev) || "unknown";
-        perDay[key] = (perDay[key] || 0) + 1;
+    var thCheck = document.createElement("th");
+    thCheck.style.width = "28px";
+    var all = document.createElement("input");
+    all.type = "checkbox";
+    all.title = "Select all visible in this table";
+    all.addEventListener("change", function () {
+      visibleFor(streamKey).forEach(function (ev) {
+        if (all.checked) state.selected.add(ev._id); else state.selected.delete(ev._id);
       });
-    }
-    var lastDay = null;
+      updateExportButton();
+      render();
+    });
+    thCheck.appendChild(all);
+    tr.appendChild(thCheck);
 
-    list.forEach(function (ev) {
-      if (grouped) {
-        var day = isoDate(ev) || "unknown";
-        if (day !== lastDay) {
-          appendDayHeader(rowsEl, ev, perDay[day]);
-          lastDay = day;
+    COLUMNS.forEach(function (col) {
+      var th = document.createElement("th");
+      th.setAttribute("data-key", col[0]);
+      th.innerHTML = col[1] + '<span class="arrow"></span>';
+      th.addEventListener("click", function () {
+        if (state.sortKey === col[0]) {
+          state.sortDir = state.sortDir === "asc" ? "desc" : "asc";
+        } else {
+          state.sortKey = col[0];
+          state.sortDir = col[0] === "score" ? "desc" : "asc";
         }
-      }
+        render();
+      });
+      tr.appendChild(th);
+    });
+    thead.appendChild(tr);
+    table.appendChild(thead);
+    var tbody = document.createElement("tbody");
+    table.appendChild(tbody);
+    wrap.appendChild(table);
+    return { wrap: wrap, tbody: tbody, thead: thead };
+  }
+
+  function passesFilters(ev) {
+    if (state.freeOnly && ev.price !== 0) return false;
+    return matchesSearch(ev, state.search);
+  }
+
+  function visibleFor(streamKey) {
+    return state.events.filter(function (ev) {
+      return (ev.stream || "main") === streamKey && passesFilters(ev);
+    });
+  }
+
+  function compare(a, b) {
+    var av = sortValue(a, state.sortKey), bv = sortValue(b, state.sortKey);
+    var cmp = av < bv ? -1 : av > bv ? 1 : 0;
+    if (cmp === 0 && state.sortKey !== "price") {
+      // Within a day (or any other tie) fall back to the price order, so each
+      // date reads free first and then cheapest to dearest.
+      var ap = priceRank(a), bp = priceRank(b);
+      cmp = ap < bp ? -1 : ap > bp ? 1 : 0;
+    }
+    if (cmp === 0) {
+      var at = a.time || "99:99", bt = b.time || "99:99";
+      cmp = at < bt ? -1 : at > bt ? 1 : 0;
+    }
+    return state.sortDir === "asc" ? cmp : -cmp;
+  }
+
+  function buildRow(ev) {
       var tr = document.createElement("tr");
 
-      var tdCheck = document.createElement("td");
-      var cb = document.createElement("input");
-      cb.type = "checkbox";
-      cb.checked = state.selected.has(ev._id);
-      cb.addEventListener("change", function () {
-        if (cb.checked) state.selected.add(ev._id); else state.selected.delete(ev._id);
-        updateExportButton();
-      });
-      tdCheck.appendChild(cb);
-      tr.appendChild(tdCheck);
+    var tdCheck = document.createElement("td");
+    var cb = document.createElement("input");
+    cb.type = "checkbox";
+    cb.checked = state.selected.has(ev._id);
+    cb.addEventListener("change", function () {
+      if (cb.checked) state.selected.add(ev._id); else state.selected.delete(ev._id);
+      updateExportButton();
+    });
+    tdCheck.appendChild(cb);
+    tr.appendChild(tdCheck);
 
-      var tdScore = document.createElement("td");
-      tdScore.className = "score";
-      tdScore.textContent = typeof ev.score === "number" ? ev.score : "-";
-      tr.appendChild(tdScore);
+    var tdScore = document.createElement("td");
+    tdScore.className = "score";
+    tdScore.textContent = typeof ev.score === "number" ? ev.score : "-";
+    tr.appendChild(tdScore);
 
-      var tdName = document.createElement("td");
-      tdName.className = "name";
-      // has_detail_link is false when the scrape found no event page, only
-      // the listing it came from. Linking those to the listing looked like a
-      // working link and led nowhere useful, so they render as plain text
-      // with the listing offered separately.
-      if (ev.has_detail_link !== false && (ev.url || ev.source_url)) {
-        var titleLink = document.createElement("a");
-        titleLink.className = "site-link";
-        titleLink.href = ev.url || ev.source_url;
-        titleLink.target = "_blank";
-        titleLink.rel = "noopener noreferrer";
-        titleLink.textContent = ev.title || "Untitled event";
-        tdName.appendChild(titleLink);
-      } else {
-        tdName.appendChild(document.createTextNode(ev.title || "Untitled event"));
-        if (ev.source_url) {
-          var listing = document.createElement("a");
-          listing.className = "site-link listing-link";
-          listing.href = ev.source_url;
-          listing.target = "_blank";
-          listing.rel = "noopener noreferrer";
-          listing.textContent = "on listing page";
-          tdName.appendChild(document.createElement("br"));
-          tdName.appendChild(listing);
-        }
+    var tdName = document.createElement("td");
+    tdName.className = "name";
+    // has_detail_link is false when the scrape found no event page, only
+    // the listing it came from. Linking those to the listing looked like a
+    // working link and led nowhere useful, so they render as plain text
+    // with the listing offered separately.
+    if (ev.has_detail_link !== false && (ev.url || ev.source_url)) {
+      var titleLink = document.createElement("a");
+      titleLink.className = "site-link";
+      titleLink.href = ev.url || ev.source_url;
+      titleLink.target = "_blank";
+      titleLink.rel = "noopener noreferrer";
+      titleLink.textContent = ev.title || "Untitled event";
+      tdName.appendChild(titleLink);
+    } else {
+      tdName.appendChild(document.createTextNode(ev.title || "Untitled event"));
+      if (ev.source_url) {
+        var listing = document.createElement("a");
+        listing.className = "site-link listing-link";
+        listing.href = ev.source_url;
+        listing.target = "_blank";
+        listing.rel = "noopener noreferrer";
+        listing.textContent = "on listing page";
+        tdName.appendChild(document.createElement("br"));
+        tdName.appendChild(listing);
       }
-      tr.appendChild(tdName);
+    }
+    tr.appendChild(tdName);
 
-      var tdVenue = document.createElement("td");
-      tdVenue.textContent = ev.venue || "—";
-      if (!ev.venue) tdVenue.className = "muted";
-      tr.appendChild(tdVenue);
+    var tdVenue = document.createElement("td");
+    tdVenue.textContent = ev.venue || "—";
+    if (!ev.venue) tdVenue.className = "muted";
+    tr.appendChild(tdVenue);
 
-      var tdDesc = document.createElement("td");
-      tdDesc.className = "desc";
-      var descText = document.createElement("span");
-      descText.textContent = ev.description || "";
-      tdDesc.appendChild(descText);
-      if (ev.description) tdDesc.title = ev.description;
-      tr.appendChild(tdDesc);
+    var tdDesc = document.createElement("td");
+    tdDesc.className = "desc";
+    var descText = document.createElement("span");
+    descText.textContent = ev.description || "";
+    tdDesc.appendChild(descText);
+    if (ev.description) tdDesc.title = ev.description;
+    tr.appendChild(tdDesc);
 
-      var tdDate = document.createElement("td");
-      tdDate.textContent = fmtDateTime(ev);
-      tdDate.className = "nowrap";
-      tr.appendChild(tdDate);
+    var tdDate = document.createElement("td");
+    tdDate.textContent = fmtDateTime(ev);
+    tdDate.className = "nowrap";
+    tr.appendChild(tdDate);
 
-      var tdCat = document.createElement("td");
-      (ev.matched_categories && ev.matched_categories.length ? ev.matched_categories : [ev.category || "general"])
-        .forEach(function (c) {
-          var chip = document.createElement("span");
-          chip.className = "chip";
-          chip.textContent = c;
-          tdCat.appendChild(chip);
+    var tdCat = document.createElement("td");
+    (ev.matched_categories && ev.matched_categories.length ? ev.matched_categories : [ev.category || "general"])
+      .forEach(function (c) {
+        var chip = document.createElement("span");
+        chip.className = "chip";
+        chip.textContent = c;
+        tdCat.appendChild(chip);
+      });
+    tr.appendChild(tdCat);
+
+    var tdPrice = document.createElement("td");
+    tdPrice.textContent = ev.price_label || (ev.price === 0 ? "Free" : (ev.price != null ? "€" + ev.price : "Check site"));
+    if (ev.price == null) tdPrice.className = "muted";
+    tr.appendChild(tdPrice);
+
+    var tdSource = document.createElement("td");
+    tdSource.className = "muted src";
+    tdSource.textContent = sourceName(ev);
+    tr.appendChild(tdSource);
+
+    return tr;
+  }
+
+  function render() {
+    var host = document.getElementById("sections");
+    host.innerHTML = "";
+    var anyVisible = false;
+
+    STREAMS.forEach(function (streamDef) {
+      var key = streamDef[0];
+      var inStream = state.events.filter(function (ev) { return (ev.stream || "main") === key; });
+      // A stream with no events at all this week is left out entirely; one
+      // emptied only by the current filters says so, so the table does not
+      // look broken.
+      if (!inStream.length) return;
+
+      var head = document.createElement("div");
+      head.className = "stream-head";
+      var h2 = document.createElement("h2");
+      h2.innerHTML = streamDef[1];
+      head.appendChild(h2);
+      var note = document.createElement("span");
+      note.className = "note";
+      note.textContent = inStream.length === 1 ? "1 event" : inStream.length + " events";
+      head.appendChild(note);
+      host.appendChild(head);
+
+      var list = inStream.filter(passesFilters).sort(compare);
+      if (!list.length) {
+        var msg = document.createElement("div");
+        msg.className = "stream-empty";
+        msg.textContent = "No events here match your filters.";
+        host.appendChild(msg);
+        return;
+      }
+      anyVisible = true;
+
+      var built = buildTable(key);
+      var grouped = state.sortKey === "date";
+      var perDay = {};
+      if (grouped) {
+        list.forEach(function (ev) {
+          var d = isoDate(ev) || "unknown";
+          perDay[d] = (perDay[d] || 0) + 1;
         });
-      tr.appendChild(tdCat);
+      }
+      var lastDay = null;
+      list.forEach(function (ev) {
+        if (grouped) {
+          var day = isoDate(ev) || "unknown";
+          if (day !== lastDay) { appendDayHeader(built.tbody, ev, perDay[day]); lastDay = day; }
+        }
+        built.tbody.appendChild(buildRow(ev));
+      });
 
-      var tdPrice = document.createElement("td");
-      tdPrice.textContent = ev.price_label || (ev.price === 0 ? "Free" : (ev.price != null ? "€" + ev.price : "Check site"));
-      if (ev.price == null) tdPrice.className = "muted";
-      tr.appendChild(tdPrice);
-
-      var tdSource = document.createElement("td");
-      tdSource.className = "muted src";
-      tdSource.textContent = sourceName(ev);
-      tr.appendChild(tdSource);
-
-      rowsEl.appendChild(tr);
+      built.thead.querySelectorAll("th[data-key]").forEach(function (th) {
+        var k = th.getAttribute("data-key");
+        var arrow = th.querySelector(".arrow");
+        th.classList.toggle("active", k === state.sortKey);
+        arrow.textContent = k === state.sortKey ? (state.sortDir === "asc" ? "\u25b2" : "\u25bc") : "";
+      });
+      host.appendChild(built.wrap);
     });
 
-    document.querySelectorAll("th[data-key]").forEach(function (th) {
-      var key = th.getAttribute("data-key");
-      var arrow = th.querySelector(".arrow");
-      th.classList.toggle("active", key === state.sortKey);
-      arrow.textContent = key === state.sortKey ? (state.sortDir === "asc" ? "▲" : "▼") : "";
-    });
+    document.getElementById("emptyMsg").hidden = anyVisible || !state.events.length;
   }
 
   // State the range actually present in the data instead of asserting "the
@@ -440,7 +528,7 @@
     function pretty(d) { return d.slice(6, 8) + "." + d.slice(4, 6) + "." + d.slice(0, 4); }
     return dates[0] === dates[dates.length - 1]
       ? pretty(dates[0])
-      : pretty(dates[0]) + " – " + pretty(dates[dates.length - 1]);
+      : pretty(dates[0]) + " \u2013 " + pretty(dates[dates.length - 1]);
   }
 
   function updateExportButton() {
@@ -521,19 +609,6 @@
     URL.revokeObjectURL(url);
   }
 
-  document.querySelectorAll("th[data-key]").forEach(function (th) {
-    th.addEventListener("click", function () {
-      var key = th.getAttribute("data-key");
-      if (state.sortKey === key) {
-        state.sortDir = state.sortDir === "asc" ? "desc" : "asc";
-      } else {
-        state.sortKey = key;
-        state.sortDir = key === "score" ? "desc" : "asc";
-      }
-      render();
-    });
-  });
-
   document.getElementById("search").addEventListener("input", function (e) {
     state.search = e.target.value;
     render();
@@ -541,18 +616,6 @@
 
   document.getElementById("freeOnly").addEventListener("change", function (e) {
     state.freeOnly = e.target.checked;
-    render();
-  });
-
-  document.getElementById("selectAll").addEventListener("change", function (e) {
-    var visible = state.events.filter(function (ev) {
-      if (state.freeOnly && ev.price !== 0) return false;
-      return matchesSearch(ev, state.search);
-    });
-    visible.forEach(function (ev) {
-      if (e.target.checked) state.selected.add(ev._id); else state.selected.delete(ev._id);
-    });
-    updateExportButton();
     render();
   });
 

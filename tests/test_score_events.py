@@ -8,7 +8,9 @@ ordering properties that prevent that.
 from datetime import date
 
 from scripts.score_events import (
+    CATEGORY_WEIGHTS,
     MAX_PRICE,
+    category_weight,
     imminence_score,
     match_categories,
     price_score,
@@ -139,3 +141,57 @@ def test_price_bands_stay_monotonic_up_to_the_new_cutoff():
     assert price_score(20.0) < price_score(15.0) < price_score(10.0) < price_score(0.0)
     assert price_score(20.0) < price_score(None) < price_score(10.0)
     assert price_score(25.0) == 0
+
+
+# --------------------------------------------------------------------------
+# Weighted categories and separate tables
+# --------------------------------------------------------------------------
+
+def test_category_weights_follow_the_stated_order():
+    """Confirmed: dancing 20 > music 18 > culture 12, workshops and free
+    guided tours 15."""
+    assert CATEGORY_WEIGHTS["dancing"] == 20
+    assert CATEGORY_WEIGHTS["music"] == 18
+    assert CATEGORY_WEIGHTS["participating workshops"] == 15
+    assert CATEGORY_WEIGHTS["guided tours"] == 15
+    assert CATEGORY_WEIGHTS["culture"] == 12
+    assert (CATEGORY_WEIGHTS["dancing"] > CATEGORY_WEIGHTS["music"]
+            > CATEGORY_WEIGHTS["participating workshops"] > CATEGORY_WEIGHTS["culture"])
+
+
+def test_a_dance_event_outscores_an_equivalent_culture_event():
+    dance = _event(title="Tanzabend im Festsaal", price=0.0, url="https://example.de/events/tanz")
+    culture = _event(title="Ausstellung im Museum", price=0.0, url="https://example.de/events/aus")
+    assert score_event(dance, TODAY)["score"] > score_event(culture, TODAY)["score"]
+
+
+def test_a_free_guided_tour_outscores_a_paid_one():
+    free_tour = _event(title="Führung durch die Ausstellung", price=0.0,
+                       url="https://example.de/events/f1")
+    paid_tour = _event(title="Führung durch die Ausstellung", price=12.0,
+                       url="https://example.de/events/f2")
+    assert category_weight("guided tours", 0.0) == 15
+    assert category_weight("guided tours", 12.0) == 6
+    assert score_event(free_tour, TODAY)["score"] > score_event(paid_tour, TODAY)["score"]
+
+
+def test_sport_and_networking_route_to_their_own_tables():
+    run = _event(title="Sunday Run Club Tempelhof", url="https://example.de/events/run")
+    net = _event(title="Founder Networking Breakfast", url="https://example.de/events/net")
+    opera = _event(title="Die Zauberflöte", url="https://example.de/events/opera")
+    assert score_event(run, TODAY)["stream"] == "sport"
+    assert score_event(net, TODAY)["stream"] == "network"
+    assert score_event(opera, TODAY)["stream"] == "main"
+
+
+def test_a_dance_class_is_not_filed_under_sport():
+    """'Hip Hop Dance Workout' matches both; dancing is the stronger stated
+    preference, so it stays in the main table."""
+    ev = _event(title="Hip Hop Dance Workout", url="https://example.de/events/hh")
+    assert score_event(ev, TODAY)["stream"] == "main"
+
+
+def test_a_comedy_show_is_not_filed_under_networking():
+    """'Bad 4 Business' matched the bare keyword 'business'."""
+    ev = _event(title="English Comedy: Bad 4 Business", url="https://example.de/events/c")
+    assert score_event(ev, TODAY)["stream"] == "main"

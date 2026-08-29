@@ -55,31 +55,66 @@ MID_PRICE = 15.0
 # Order defines display priority when multiple categories match.
 CATEGORY_KEYWORDS = {
     "dancing": ["dance", "dancing", "tanz", "ballet", "ballett", "choreograph"],
-    "music": ["concert", "konzert", "music", "musik", "band", "live music", "dj set", "festival", "gig"],
-    "outside events": ["outdoor", "open air", "openair", "freiluft", "garden", "biergarten", "terrace"],
-    "entrepreneurial events": ["startup", "entrepreneur", "business", "networking", "pitch", "venture", "founder"],
+    "music": ["concert", "konzert", "music", "musik", "band", "live music", "dj set", "festival", "gig",
+              "techno", "house", "rave", "club night", "dj"],
+    "outside events": ["outdoor", "open air", "openair", "freiluft", "garten", "garden", "biergarten",
+                       "terrace", "picknick", "picnic"],
+    # "business" on its own routed a comedy show called "Bad 4 Business" into
+    # the networking table; the multi-word forms carry the actual intent.
+    "entrepreneurial events": ["startup", "entrepreneur", "networking", "pitch night", "venture",
+                               "founder", "coworking", "gründer", "gruender", "investor",
+                               "demo day", "business networking", "business breakfast",
+                               "business brunch", "freelancer"],
     "social gatherings": ["meetup", "social", "gathering", "community", "mixer", "stammtisch"],
-    "theater": ["theater", "theatre", "schauspiel", "bühne", "buehne", "drama"],
+    "theater": ["theater", "theatre", "schauspiel", "bühne", "buehne", "drama", "improv", "kabarett"],
     "culture": ["museum", "kultur", "culture", "exhibition", "ausstellung", "gallery", "kunst", "art"],
     "musical": ["musical"],
-    "participating workshops": ["workshop", "seminar", "hands-on", "kurs", "participat", "mitmach"],
+    "participating workshops": ["workshop", "seminar", "hands-on", "kurs", "participat", "mitmach", "class"],
+    # Free guided tours are a category in their own right; see TOUR_FREE_WEIGHT.
+    "guided tours": ["führung", "fuehrung", "guided tour", "rundgang", "kiezspaziergang", "stadtführung"],
+    # Sport gets its own table, so it needs its own category to route on.
+    "sport": ["running", "run club", "lauf", "jogging", "cycling", "radfahren", "bike ride", "yoga",
+              "fitness", "bouldern", "climbing", "klettern", "swimming", "schwimmen", "marathon",
+              "wandern", "hiking", "skate", "volleyball", "basketball", "football", "fußball",
+              "tennis", "workout", "calisthenics", "pilates", "sport"],
 }
+
+# Confirmed preference order: dancing 20 > music 18 > culture 12, with
+# workshops and free guided tours at 15. The unmarked weights are estimates.
+CATEGORY_WEIGHTS = {
+    "dancing": 20,                  # confirmed
+    "music": 18,                    # confirmed
+    "outside events": 16,           # estimate
+    "participating workshops": 15,  # confirmed
+    "guided tours": 15,             # confirmed, when free
+    "social gatherings": 14,        # estimate
+    "theater": 14,                  # estimate
+    "sport": 14,                    # estimate
+    "culture": 12,                  # confirmed
+    "musical": 10,                  # estimate
+    "entrepreneurial events": 10,   # estimate
+}
+# A guided tour is worth its full weight when free; a paid one much less.
+TOUR_PAID_WEIGHT = 6
 
 CHARLOTTENBURG_KEYWORDS = [
     "charlottenburg", "schloss charlottenburg", "kurfürstendamm", "kurfuerstendamm",
     "kudamm", "savignyplatz", "wilmersdorf", "halensee", "westend",
 ]
 
-# Diminishing credit: the strongest match is worth most, each further match
-# much less. A description that matches four categories is almost always
-# repeated listing chrome, not an unusually rich event.
-CATEGORY_POINTS = (20, 8, 3)
+# Diminishing credit on *additional* categories: the strongest match carries
+# its own weight, each further match a fraction of its weight. A description
+# matching four categories is usually repeated listing chrome, not a richer
+# event.
+CATEGORY_FALLOFF = (1.0, 0.4, 0.15)
 # A keyword found only in a long blurb is far weaker evidence than one in the
 # title or venue. Weighting them equally let a row whose description happened
 # to contain "Theater Musiktheater Tanz Performance Musical" outscore a
 # cleanly titled concert - which is exactly how berlin-buehnen's listing
 # chrome reached the top of the table.
-SECONDARY_CATEGORY_POINTS = (6, 2)
+# A keyword found only in a long blurb is far weaker evidence than one in the
+# title or venue, so a description-only match earns a fraction of its weight.
+SECONDARY_CATEGORY_SHARE = 0.35
 PROXIMITY_BONUS = 20
 
 PRICE_FREE_POINTS = 40
@@ -153,12 +188,43 @@ def split_categories(event: Dict[str, Any]) -> "tuple[List[str], List[str], bool
 
 
 def match_categories(event: Dict[str, Any]) -> List[str]:
-    """Categories the event matches, most title-relevant first."""
+    """Categories the event matches, strongest and most title-relevant first."""
     primary, secondary, near = split_categories(event)
+    price = event.get("price")
+    primary = sorted(primary, key=lambda c: -category_weight(c, price))
+    secondary = sorted(secondary, key=lambda c: -category_weight(c, price))
     matched = primary + secondary
     if near:
         matched.append("near Charlottenburg")
     return matched
+
+
+# The page renders one table per stream, because a running club and an opera
+# are not alternatives to each other - putting them in one ranked list forces
+# a comparison that is never useful.
+STREAMS = ("sport", "network", "main")
+
+
+def event_stream(primary: List[str], secondary: List[str]) -> str:
+    """Route an event to its table.
+
+    A title match wins over a description-only one, so a dance class whose
+    blurb happens to say "workout" stays in the main table rather than being
+    filed under sport.
+    """
+    if "sport" in primary:
+        # A dance event that also mentions sport is dancing first: dancing is
+        # the strongest stated preference, sport is a separate interest.
+        if "dancing" in primary:
+            return "main"
+        return "sport"
+    if "entrepreneurial events" in primary:
+        return "network"
+    if "sport" in secondary and not primary:
+        return "sport"
+    if "entrepreneurial events" in secondary and not primary:
+        return "network"
+    return "main"
 
 
 def imminence_score(event_date: Optional[str], today: Optional[date] = None) -> int:
@@ -195,12 +261,24 @@ def completeness_score(event: Dict[str, Any]) -> int:
     return penalty
 
 
-def category_score(primary: List[str], secondary: List[str]) -> int:
-    """Diminishing credit, with description-only matches worth much less."""
-    return (
-        sum(points for points, _ in zip(CATEGORY_POINTS, primary))
-        + sum(points for points, _ in zip(SECONDARY_CATEGORY_POINTS, secondary))
+def category_weight(name: str, price: Optional[float]) -> int:
+    """Weight for one category, discounting a guided tour that is not free."""
+    weight = CATEGORY_WEIGHTS.get(name, 10)
+    if name == "guided tours" and price not in (None, 0):
+        return TOUR_PAID_WEIGHT
+    return weight
+
+
+def category_score(primary: List[str], secondary: List[str],
+                   price: Optional[float] = None) -> int:
+    """Weighted credit, strongest category first and each further one less."""
+    ranked = sorted((category_weight(c, price) for c in primary), reverse=True)
+    score = sum(w * f for w, f in zip(ranked, CATEGORY_FALLOFF))
+    ranked_secondary = sorted((category_weight(c, price) for c in secondary), reverse=True)
+    score += SECONDARY_CATEGORY_SHARE * sum(
+        w * f for w, f in zip(ranked_secondary, CATEGORY_FALLOFF)
     )
+    return round(score)
 
 
 def score_event(event: Dict[str, Any], today: Optional[date] = None) -> Dict[str, Any]:
@@ -212,13 +290,14 @@ def score_event(event: Dict[str, Any], today: Optional[date] = None) -> Dict[str
 
     score = (
         price_score(price)
-        + category_score(primary, secondary)
+        + category_score(primary, secondary, price)
         + proximity_pts
         + imminence_score(event.get("date"), today)
         + completeness_score(event)
     )
 
     scored = dict(event)
+    scored["stream"] = event_stream(primary, secondary)
     scored["price"] = price
     scored["price_label"] = format_price_label(price)
     scored["matched_categories"] = matched
@@ -256,15 +335,19 @@ def main():
 
     scored = score_and_filter_events(events, args.max_price)
 
+    counts = {name: sum(1 for e in scored if e.get("stream") == name) for name in STREAMS}
     payload = {
         "count": len(scored),
         "generated_at": date.today().isoformat(),
+        "stream_counts": counts,
         "events": scored,
     }
     with open(args.output, "w", encoding="utf-8") as f:
         json.dump(payload, f, indent=2, ensure_ascii=False)
 
     print(f"Scored {len(scored)} events (from {len(events)} input events) to {args.output}")
+    for name in STREAMS:
+        print(f"  {counts[name]:4d}  {name}")
     return 0
 
 
