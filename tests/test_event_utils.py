@@ -388,3 +388,15 @@ def test_twenty_euro_event_is_within_the_cutoff():
         TODAY,
         WINDOW_END,
     ) is None
+
+
+def test_fbclid_and_utm_params_are_stripped():
+    """A pasted lakestudios link carried ig/social UTM tags plus a long
+    fbclid token; both must not survive into the published URL."""
+    dirty = (
+        "https://lakestudiosberlin.com/event/unfinished-fridays-100-festival-edition/"
+        "?utm_source=ig&utm_medium=social&utm_content=link_in_bio&fbclid=PAZXh0bgNhZW0"
+    )
+    assert clean_url(dirty) == (
+        "https://lakestudiosberlin.com/event/unfinished-fridays-100-festival-edition/"
+    )

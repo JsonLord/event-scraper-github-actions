@@ -43,6 +43,17 @@ jobs:
           # with explicit coordinates is resolved server-side; the scraper
           # additionally drops any row with no independent Berlin signal.
           - { name: meetup_com_find,        url: "https://www.meetup.com/find/?location=de--Berlin&source=EVENTS&distance=tenMiles&lat=52.52&lon=13.405" }
+          # Sport and networking get their own tables on the page (see
+          # score_events.py's STREAMS) but nothing in the matrix carried that
+          # content - measured live: yoga 12 kept, running 5, hiking 2,
+          # cycling 3, founders/startup 2-3. Meetup's own keyword search is
+          # the only source in the matrix that reliably has it.
+          - { name: meetup_running,         url: "https://www.meetup.com/find/?location=de--Berlin&source=EVENTS&keywords=running" }
+          - { name: meetup_cycling,         url: "https://www.meetup.com/find/?location=de--Berlin&source=EVENTS&keywords=cycling" }
+          - { name: meetup_yoga,            url: "https://www.meetup.com/find/?location=de--Berlin&source=EVENTS&keywords=yoga" }
+          - { name: meetup_hiking,          url: "https://www.meetup.com/find/?location=de--Berlin&source=EVENTS&keywords=hiking" }
+          - { name: meetup_startup,         url: "https://www.meetup.com/find/?location=de--Berlin&source=EVENTS&keywords=startup" }
+          - { name: meetup_founders,        url: "https://www.meetup.com/find/?location=de--Berlin&source=EVENTS&keywords=founder" }
           # Remaining sites use the generic multi-strategy scraper.
           # (duplicates from the source list - rausgegangen, staatsoper-berlin.de,
           # ritterbutzke.de - are scraped once, not once per duplicate URL)
@@ -71,7 +82,22 @@ jobs:
           - { name: improfabrik,            url: "https://improfabrik.de/" }
           - { name: oper_in_berlin,         url: "https://www.oper-in-berlin.de/de/spielplan/" }
           - { name: venturecafe_berlin,     url: "https://venturecafe.com/berlin/" }
-          - { name: ritterbutzke,           url: "https://www.ritterbutzke.de/" }
+          # www.ritterbutzke.de is a <meta http-equiv="refresh"> redirect, which
+          # a plain GET never follows - the scraper always saw the 325-byte
+          # redirect stub. The real site is club.ritterbutzke.com; it renders
+          # its programme client-side (0 events via plain HTTP here), so this
+          # still depends on the CloakBrowser tier, same as berlin_buehnen.
+          - { name: ritterbutzke,           url: "https://club.ritterbutzke.com" }
+          # Was removed as "parked" under the un-hyphenated domain; the real
+          # Berlin house is at the hyphenated one. Also JS-rendered - 0 via
+          # plain HTTP here, CloakBrowser-dependent.
+          - { name: renaissance_theater,    url: "https://renaissance-theater.de/spielplan/" }
+          # New, verified live: 8 raw -> 3 kept via plain HTTP (environmental
+          # education workshops, e.g. "Kräutertraditionen").
+          - { name: freilandlabor_britz,    url: "https://www.freilandlabor-britz.de/" }
+          # New, verified live: 32 raw -> 2 kept via plain HTTP. Tempelhofer
+          # Feld's own events page - outdoor programming.
+          - { name: thf_berlin,             url: "https://www.thf-berlin.de/aktuelles/veranstaltungen" }
       fail-fast: false
     env:
       TARGET_URL: ${{ matrix.url }}
