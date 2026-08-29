@@ -78,6 +78,11 @@ BOT_CHALLENGE_MARKERS = (
     "access denied",
 )
 
+# Upper bound on rows taken from one source. Generous rather than tight: it
+# exists to stop a pathological page from ballooning a run, not to trim
+# results, and the date window plus validation do the real filtering.
+MAX_EVENTS_PER_SOURCE = 400
+
 EVENT_CLASS_HINTS = (
     "event", "teaser", "views-row", "card", "listing", "termin",
     "veranstaltung", "programme-item", "program-item", "spielplan",
@@ -199,7 +204,70 @@ def extract_jsonld_events(html: str, source_url: str) -> List[Dict[str, Any]]:
     return events
 
 
-def extract_heuristic_events(html: str, source_url: str) -> List[Dict[str, Any]]:
+def extract_time_element_events(
+    html: str, source_url: str, max_events: int = MAX_EVENTS_PER_SOURCE
+) -> List[Dict[str, Any]]:
+    """Build events from ``<time datetime="...">`` markers and their cards.
+
+    ``<time datetime>`` is the standard machine-readable date carrier and is
+    far more reliable than scraping a rendered date string, but nothing in the
+    pipeline looked at it. Several theatre sites publish their whole programme
+    this way and yielded nothing at all: Volksbuehne exposes 168 such markers
+    (and 96 event links) yet the class-hint scan found zero candidates,
+    because its cards carry no event-ish class and no date text inside them.
+    """
+    soup = BeautifulSoup(html, "lxml")
+    events = []
+    for marker in soup.find_all(attrs={"datetime": True}):
+        iso = normalize_date(marker.get("datetime"))
+        if not iso:
+            continue
+
+        # Walk up to the smallest ancestor that also carries a link, which is
+        # the event card; stop before swallowing the whole listing.
+        card, link = marker, None
+        for _ in range(6):
+            card = card.parent
+            if card is None:
+                break
+            link = card.find("a", href=True)
+            if link is not None:
+                break
+        if card is None:
+            continue
+
+        card_text = card.get_text(" ", strip=True)
+        if len(card_text) > 3000:
+            continue
+
+        title = ""
+        heading = card.find(["h1", "h2", "h3", "h4", "h5"])
+        if heading:
+            title = heading.get_text(" ", strip=True)
+        if not title and link is not None:
+            title = link.get_text(" ", strip=True)
+        if not title:
+            title = card_text[:120]
+        if title_looks_noisy(title):
+            title = title_from_slug(urljoin(source_url, link["href"]) if link else "") or title
+
+        events.append({
+            "title": clean_text(title, max_length=200),
+            "date": iso,
+            "time": parse_time(marker.get("datetime")) or parse_time(card_text),
+            "price": parse_price(card_text),
+            "category": "",
+            "description": clean_text(card_text, max_length=400),
+            "url": _best_detail_url([card, card.parent], source_url),
+            "venue": "",
+            "source_url": source_url,
+        })
+        if len(events) >= max_events:
+            break
+    return events
+
+
+def extract_heuristic_events(html: str, source_url: str, max_events: int = MAX_EVENTS_PER_SOURCE) -> List[Dict[str, Any]]:
     soup = BeautifulSoup(html, "lxml")
     candidates = []
     for el in soup.find_all(True):
@@ -214,18 +282,35 @@ def extract_heuristic_events(html: str, source_url: str) -> List[Dict[str, Any]]
             continue
         candidates.append((el, text))
 
-    # Drop candidates that are nested inside another candidate, keeping the
-    # outermost matching element so a whole event card is captured together
-    # rather than a price/date fragment nested within it.
+    # Keep whole event cards, not fragments - but a *list container* usually
+    # carries an event-ish class too, and "outermost wins" then collapsed a
+    # whole listing into one row: stadtmuseum went from 42 candidates to 2 and
+    # Eventbrite from 27 to 3. An element holding two or more other candidates
+    # is a container, so prefer its children; one holding at most a single
+    # candidate is a card, so prefer it over its fragments.
+    candidate_set = {id(el) for el, _ in candidates}
     kept = []
     for el, text in candidates:
-        if any(el is not other and other in el.parents for other, _ in candidates):
-            continue
+        contained = sum(
+            1 for descendant in el.find_all(True)
+            if id(descendant) in candidate_set and descendant is not el
+        )
+        if contained >= 2:
+            continue  # a list of events, not an event
+        if any(
+            el is not other
+            and other in el.parents
+            and sum(1 for d in other.find_all(True) if id(d) in candidate_set and d is not other) < 2
+            for other, _ in candidates
+        ):
+            continue  # a fragment inside a card that was itself kept
         kept.append((el, text))
 
     events = []
     seen_titles = set()
-    for el, text in kept[:60]:
+    # rausgegangen's date view yields 205 valid candidates; a hardcoded [:60]
+    # silently discarded 71% of the biggest source in the matrix.
+    for el, text in kept[:max_events]:
         # Titles and links are often siblings of the matched fragment rather
         # than inside it (e.g. a Drupal "views-row" wrapping separate title,
         # image and price fields) - widen the search to nearby ancestors.
@@ -270,18 +355,24 @@ def extract_heuristic_events(html: str, source_url: str) -> List[Dict[str, Any]]
         # listing's day heading made every card inherit that heading's date -
         # 67 rows in the last run were stamped with the page date instead of
         # their own ("So, 30. Aug" published as 27 Aug).
-        date_context = text
-        anc = el
-        for _ in range(5):
-            anc = getattr(anc, "parent", None)
-            if not anc:
-                break
-            date_context = date_context + " " + anc.get_text(" ", strip=True)[:60]
+        # The card's own text is authoritative. Ancestor text is consulted only
+        # when the card states no date at all (a calendar cell whose day
+        # heading sits on a parent), never merged in alongside it.
+        event_date = parse_date(text)
+        if not event_date:
+            anc = el
+            for _ in range(5):
+                anc = getattr(anc, "parent", None)
+                if not anc:
+                    break
+                event_date = parse_date(anc.get_text(" ", strip=True)[:120])
+                if event_date:
+                    break
 
         description = clean_text(text, max_length=400)
         events.append({
             "title": title[:200],
-            "date": parse_date(date_context) or "",
+            "date": event_date or "",
             "time": parse_time(text),
             "price": parse_price(text),
             "category": "",
@@ -340,7 +431,7 @@ def fetch_jina_content(url: str) -> Optional[str]:
         return None
 
 
-def extract_jina_events(markdown: str, source_url: str) -> List[Dict[str, Any]]:
+def extract_jina_events(markdown: str, source_url: str, max_events: int = MAX_EVENTS_PER_SOURCE) -> List[Dict[str, Any]]:
     events = []
     seen = set()
     for line in markdown.splitlines():
@@ -367,41 +458,74 @@ def extract_jina_events(markdown: str, source_url: str) -> List[Dict[str, Any]]:
             "venue": "",
             "source_url": source_url,
         })
-        if len(events) >= 60:
+        if len(events) >= max_events:
             break
     return events
+
+
+def _merge(*batches: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """Combine strategy outputs, preferring the richest row per event URL.
+
+    Strategies see different parts of a page: JSON-LD carries prices and
+    venues, <time datetime> carries exact dates, the class-hint scan carries
+    cards the other two miss. Merging keeps all three contributions instead of
+    discarding two of them.
+    """
+    merged: Dict[str, Dict[str, Any]] = {}
+    order: List[str] = []
+    for batch in batches:
+        for event in batch:
+            key = (event.get("url") or "") + "|" + str(event.get("title", "")).lower()
+            if key not in merged:
+                merged[key] = event
+                order.append(key)
+                continue
+            existing = merged[key]
+            for field, value in event.items():
+                if value not in (None, "") and existing.get(field) in (None, ""):
+                    existing[field] = value
+    return [merged[k] for k in order]
+
+
+def scrape_document(html: str, url: str, label: str) -> List[Dict[str, Any]]:
+    """Run every extraction strategy over one document and merge the results.
+
+    Previously the first strategy that returned anything won outright, so a
+    page whose JSON-LD described four events never had its remaining fifty
+    cards scanned.
+    """
+    jsonld = extract_jsonld_events(html, url)
+    timed = extract_time_element_events(html, url)
+    heuristic = extract_heuristic_events(html, url)
+    logger.info(
+        f"{label}: JSON-LD {len(jsonld)}, <time datetime> {len(timed)}, "
+        f"heuristic scan {len(heuristic)}"
+    )
+    return _merge(jsonld, timed, heuristic)
 
 
 def scrape(url: str) -> List[Dict[str, Any]]:
     html = fetch_plain(url)
     if html and not is_bot_challenge(html):
-        events = extract_jsonld_events(html, url)
+        events = scrape_document(html, url, "plain HTML")
         if events:
-            logger.info(f"Found {len(events)} events via JSON-LD (plain HTML)")
-            return events
-        events = extract_heuristic_events(html, url)
-        if events:
-            logger.info(f"Found {len(events)} events via heuristic scan (plain HTML)")
+            logger.info(f"Found {len(events)} candidate events from plain HTML")
             return events
     else:
         logger.info("Plain GET returned a bot challenge or failed; escalating to CloakBrowser")
 
     rendered = render_with_cloakbrowser(url)
     if rendered:
-        events = extract_jsonld_events(rendered, url)
+        events = scrape_document(rendered, url, "rendered DOM")
         if events:
-            logger.info(f"Found {len(events)} events via JSON-LD (rendered DOM)")
-            return events
-        events = extract_heuristic_events(rendered, url)
-        if events:
-            logger.info(f"Found {len(events)} events via heuristic scan (rendered DOM)")
+            logger.info(f"Found {len(events)} candidate events from the rendered DOM")
             return events
 
     markdown = fetch_jina_content(url)
     if markdown:
         events = extract_jina_events(markdown, url)
         if events:
-            logger.info(f"Found {len(events)} events via Jina Reader fallback")
+            logger.info(f"Found {len(events)} candidate events via Jina Reader fallback")
             return events
 
     logger.warning(f"No events could be extracted from {url}")

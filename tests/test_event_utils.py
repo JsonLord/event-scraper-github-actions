@@ -9,6 +9,8 @@ from datetime import date
 
 from scripts.event_utils import (
     clean_text,
+    refine_title_from_description,
+    strip_listing_chrome,
     clean_url,
     collapse_repeated_phrases,
     dedupe_events,
@@ -264,3 +266,76 @@ def test_dedupe_matches_across_differing_date_formats():
         {"title": "Giselle", "date": "2026-08-29", "url": "https://a.de/giselle", "has_detail_link": True},
     ]
     assert len(dedupe_events(events)) == 1
+
+
+# --------------------------------------------------------------------------
+# Date precedence and title recovery (recall pass)
+# --------------------------------------------------------------------------
+
+def test_card_date_beats_a_page_date_appended_after_it():
+    """Trying day.month.year before textual months let a "29.08.2026" picked up
+    from ancestor text outrank the card's own "Di, 01. Sep"."""
+    context = "Di, 01. Sep | 19:45 The Big Lebowski Freiluftkino 29.08.2026 Alle Termine"
+    assert parse_date(context, TODAY) == "2026-09-01"
+
+
+def test_german_day_month_is_not_a_start_time():
+    """staatsoper's "Mo. 10.08. Tagesvorschau" produced a time of "10:08"."""
+    assert parse_time("Mo. 10.08. Tagesvorschau") == ""
+    assert parse_time("Beginn 19.30 Uhr") == "19:30"
+    assert parse_time("20.00") == "20:00"
+
+
+def test_calendar_headings_are_not_events():
+    assert looks_synthetic_title("Aug.")
+    assert looks_synthetic_title("Mo.")
+    assert not looks_synthetic_title("Augenblick Festival")
+
+
+def test_slug_title_regains_the_sites_own_typography():
+    """Slugs drop umlauts: "Filmvorfuhrung" should come back as
+    "Filmvorführung" from the card text."""
+    refined = refine_title_from_description(
+        "Filmvorfuhrung Mord Im Dom",
+        'Do, 03. Sep | 15:00 Filmvorführung Mord im Dom Bode-Museum 14,00 €',
+    )
+    assert refined == "Filmvorführung Mord im Dom"
+
+
+def test_slug_title_survives_a_dropped_leading_character():
+    """rausgegangen slugifies "Führung" to "uhrung"."""
+    assert refine_title_from_description(
+        "Uhrung Durch Die Ausstellung",
+        "Today | 10:30 Führung durch die Ausstellung ICONIC",
+    ) == "Führung durch die Ausstellung"
+
+
+def test_unmatched_slug_title_is_left_alone():
+    assert refine_title_from_description("No Match Here", "unrelated text") == "No Match Here"
+
+
+def test_listing_chrome_is_stripped_from_a_card_title():
+    assert strip_listing_chrome(
+        "PICK OF THE DAY Di, 01. Sep | 19:30 Sponsored Milonaut 5,00 € Konzerte"
+    ) == "Milonaut"
+    assert strip_listing_chrome("The Big Lebowski") == "The Big Lebowski"
+
+
+def test_venue_is_stripped_from_the_end_of_a_recovered_title():
+    event = validate_event(
+        {
+            "title": "Today, 29. Aug | 15:00 Outbox Me Battle x Tanz im August "
+                     "HAU Hebbel am Ufer Free admission",
+            "date": "",
+            "description": "Today, 29. Aug | 15:00 Outbox Me Battle x Tanz im August "
+                           "HAU Hebbel am Ufer Free admission",
+            "url": "https://rausgegangen.de/en/events/outbox-me-battle-x-tanz-im-august-0/",
+            "venue": "",
+        },
+        "https://rausgegangen.de/en/berlin/eventsbydate/",
+        date(2026, 8, 29),
+        date(2026, 9, 5),
+    )
+    assert event["title"] == "Outbox Me Battle x Tanz im August"
+    assert event["venue"] == "HAU Hebbel am Ufer"
+    assert event["price"] == 0.0

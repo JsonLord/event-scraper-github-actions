@@ -44,8 +44,17 @@ DATE_TEXT_RE = re.compile(
 # time: the old r'\b(\d{1,2}[:.]\d{2})\b' turned "27.08.2026" into "27:08" on
 # every berlin-buehnen row. The lookbehind stops a match starting mid-number
 # ("08.20" inside "27.08.2026") and the lookahead rejects a third date group.
+# A colon always separates a time. A dot is ambiguous in German ("19.30" is a
+# time, "10.08." is a date), so a dot-separated match is rejected when a
+# trailing dot marks it as a day.month date - that is how staatsoper's
+# "Mo. 10.08. Tagesvorschau" produced a start time of "10:08".
 TIME_RE = re.compile(
-    r'(?<![\d.:])([01]?\d|2[0-3])[:.]([0-5]\d)(?!\.\d)(?!\d)\s*(?:(am|pm)\b)?',
+    r'(?<![\d.:])'
+    r'(?:'
+    r'([01]?\d|2[0-3]):([0-5]\d)'
+    r'|([01]?\d|2[0-3])\.([0-5]\d)(?!\s*\.)'
+    r')'
+    r'(?!\.?\d)\s*(?:(am|pm)\b)?',
     re.IGNORECASE,
 )
 # "20 Uhr" / "8pm" - an hour with no minutes.
@@ -108,23 +117,31 @@ def parse_date(text: str, today: Optional[date] = None) -> Optional[str]:
         return None
     today = today or date.today()
 
+    # Pick the *earliest* date in the text, not whichever format matches first
+    # anywhere in it. Trying day.month.year ahead of textual months meant a
+    # "29.08.2026" picked up from appended ancestor text outranked the card's
+    # own "Di, 01. Sep", so a whole listing inherited the page's date.
+    candidates = []
+
     iso = DATE_ISO_RE.search(text)
     if iso:
         found = normalize_date(iso.group(0))
         if found:
-            return found
+            candidates.append((iso.start(), found))
 
     de = DATE_DE_RE.search(text)
     if de:
-        day, month, year_raw = de.group(1), de.group(2), de.group(3)
         try:
-            day, month = int(day), int(month)
-            if year_raw:
-                year = int(year_raw)
+            day, month = int(de.group(1)), int(de.group(2))
+            if de.group(3):
+                year = int(de.group(3))
                 if year < 100:
                     year += 2000
-                return date(year, month, day).isoformat()
-            return _nearest_occurrence(month, day, today)
+                candidates.append((de.start(), date(year, month, day).isoformat()))
+            else:
+                nearest = _nearest_occurrence(month, day, today)
+                if nearest:
+                    candidates.append((de.start(), nearest))
         except ValueError:
             pass
 
@@ -135,11 +152,19 @@ def parse_date(text: str, today: Optional[date] = None) -> Optional[str]:
             try:
                 day = int(textual.group(1))
                 if textual.group(3):
-                    return date(int(textual.group(3)), month, day).isoformat()
-                return _nearest_occurrence(month, day, today)
+                    candidates.append(
+                        (textual.start(), date(int(textual.group(3)), month, day).isoformat())
+                    )
+                else:
+                    nearest = _nearest_occurrence(month, day, today)
+                    if nearest:
+                        candidates.append((textual.start(), nearest))
             except ValueError:
                 pass
-    return None
+
+    if not candidates:
+        return None
+    return min(candidates)[1]
 
 
 def _nearest_occurrence(month: int, day: int, today: date) -> Optional[str]:
@@ -166,8 +191,9 @@ def parse_time(text: str) -> str:
         return ""
     match = TIME_RE.search(text)
     if match:
-        hour, minute, meridiem = int(match.group(1)), match.group(2), match.group(3)
-        hour = _apply_meridiem(hour, meridiem)
+        hour_raw = match.group(1) or match.group(3)
+        minute = match.group(2) or match.group(4)
+        hour = _apply_meridiem(int(hour_raw), match.group(5))
         return f"{hour:02d}:{minute}" if hour is not None else ""
 
     hour_only = HOUR_ONLY_RE.search(text)
@@ -299,8 +325,17 @@ JUNK_TITLES = {
     "kalender", "calendar", "events", "veranstaltungen", "tickets", "newsletter",
     "impressum", "datenschutz", "kontakt", "menu", "home", "startseite",
     "more", "mehr", "alle events", "all events", "comment", "kommentar",
-    "untitled event", "unknown event",
+    "untitled event", "unknown event", "spielplan & tickets", "übersicht",
 }
+
+# A bare month or weekday name is a calendar divider, not an event ("Aug."
+# leaked through from a theatre's month heading).
+CALENDAR_HEADING_RE = re.compile(
+    r'^(?:mo|di|mi|do|fr|sa|so|mon|tue|wed|thu|fri|sat|sun)[a-z]*\.?$'
+    r'|^(?:jan|feb|m(?:ä|ae)r|apr|mai|jun|jul|aug|sep|okt|nov|dez|march|may|june|july|'
+    r'october|december)[a-z]*\.?$',
+    re.IGNORECASE,
+)
 
 
 def looks_synthetic_title(title: str) -> bool:
@@ -318,6 +353,8 @@ def looks_synthetic_title(title: str) -> bool:
     if SYNTHETIC_TITLE_RE.match(stripped) or URL_TITLE_RE.match(stripped):
         return True
     if stripped.lstrip("#").strip().lower() in JUNK_TITLES:
+        return True
+    if CALENDAR_HEADING_RE.match(stripped):
         return True
     # A title that is only a date/time and punctuation carries no name.
     if DATE_TITLE_RE.match(stripped) and not re.search(r'[A-Za-zÄÖÜäöüß]{4,}', stripped):
@@ -337,6 +374,88 @@ def title_looks_noisy(title: str) -> bool:
         return True
     low = title.lower()
     return any(b in low for b in ("pick of the day", "sponsored", "today,", "tomorrow,"))
+
+
+def _fold(text: str) -> str:
+    """Lowercase and strip diacritics and punctuation, for loose matching."""
+    decomposed = unicodedata.normalize("NFKD", text.lower())
+    return re.sub(r'[^a-z0-9]', '', "".join(c for c in decomposed if not unicodedata.combining(c)))
+
+
+def _find_folded_span(description: str, target_words: List[str]) -> Optional[str]:
+    """Find the description span matching ``target_words`` word by word.
+
+    Words are compared folded, and either side may be a suffix of the other,
+    because slugifiers sometimes drop a leading character when transliterating
+    ("Führung" becomes the slug word "uhrung").
+    """
+    if not target_words:
+        return None
+    words = description.split()
+    folded = [_fold(w) for w in words]
+    n = len(target_words)
+    for start in range(len(words) - n + 1):
+        if all(
+            a and b and (a == b or a.endswith(b) or b.endswith(a))
+            for a, b in zip(folded[start:start + n], target_words)
+        ):
+            return " ".join(words[start:start + n]).strip(" -\u2013\u2014:|,")
+    return None
+
+
+def refine_title_from_description(title: str, description: str) -> str:
+    """Recover the properly typed title when it was derived from a URL slug.
+
+    Slugs drop diacritics and punctuation, so a slug-derived name reads
+    "Filmvorfuhrung Mord Im Dom Die Medici" while the card carries the real
+    "Filmvorführung „Mord im Dom - Die Medici" (2022)". A slug also often
+    carries more than the display title, so try the whole thing first and then
+    progressively shorter prefixes, keeping the longest span that matches.
+    """
+    if not title or not description:
+        return title
+    slug_words = [w for w in (_fold(w) for w in title.split()) if w]
+    for length in range(len(slug_words), 1, -1):
+        match = _find_folded_span(description, slug_words[:length])
+        if match:
+            return match
+    return title
+
+
+# Leading listing chrome on a card title: promo badges, then a weekday-and-date
+# stamp, then a start time - "PICK OF THE DAY Di, 01. Sep | 19:30 Milonaut".
+LISTING_PREFIX_RE = re.compile(
+    r'^(?:\s*(?:pick\s+of\s+the\s+day|sponsored|anzeige|featured|today|tomorrow|heute|morgen)\b[\s,:|-]*)*'
+    r'(?:\s*(?:Mo|Di|Mi|Do|Fr|Sa|So|Mon|Tue|Wed|Thu|Fri|Sat|Sun)[a-z]*\.?[\s,]*)?'
+    r'(?:\s*\d{1,2}\.?\s*(?:Jan|Feb|M(?:ä|ae)r|Apr|Mai|May|Jun|Jul|Aug|Sep|Okt|Oct|Nov|Dez|Dec)[a-z]*\.?'
+    r'(?:\s*\d{4})?[\s,|-]*)?'
+    r'(?:\s*\d{1,2}[:.]\d{2}\s*(?:Uhr)?[\s,|-]*)?'
+    r'(?:\s*(?:sponsored|anzeige)\b[\s,:|-]*)*',
+    re.IGNORECASE,
+)
+
+# Trailing chrome: the price and category tags a listing appends after the name.
+LISTING_SUFFIX_RE = re.compile(
+    r'\s*(?:'
+    r'\d+(?:[.,]\d{2})?\s*(?:€|EUR)|free\s+admission|freier\s+eintritt|kostenlos|'
+    r'keine\s+preisangabe|from\s+\d|ab\s+\d'
+    r').*$',
+    re.IGNORECASE,
+)
+
+
+def strip_listing_chrome(title: str) -> str:
+    """Remove date, time, badge and price furniture from around a card title.
+
+    rausgegangen renders a card as one string - "PICK OF THE DAY Di, 01. Sep |
+    19:30 Sponsored Milonaut ... keine Preisangabe Konzerte" - and when the URL
+    slug is unusable that whole string was published as the event name.
+    """
+    if not title:
+        return ""
+    stripped = LISTING_PREFIX_RE.sub("", title, count=1)
+    stripped = LISTING_SUFFIX_RE.sub("", stripped)
+    return stripped.strip(" -\u2013\u2014:|,.") or title
 
 
 def title_from_slug(url: str) -> Optional[str]:
@@ -430,7 +549,10 @@ VENUE_BEFORE_WEEKDAY_RE = re.compile(
 )
 VENUE_BEFORE_PRICE_RE = re.compile(
     r'(?P<venue>.{3,60}?)\s*(?:'
-    r'\d+(?:[.,]\d{2})?\s*(?:€|EUR)|free\s+admission|freier\s+eintritt|kostenlos|eintritt\s+frei'
+    r'\d+(?:[.,]\d{2})?\s*(?:€|EUR)|free\s+admission|freier\s+eintritt|kostenlos|eintritt\s+frei|'
+    # A listing that declines to state a price still marks the spot where the
+    # price would go, which is just as good a right-hand boundary for a venue.
+    r'keine\s+preisangabe|no\s+price|preis\s+auf\s+anfrage'
     r')',
     re.IGNORECASE,
 )
@@ -641,13 +763,29 @@ def validate_event(
         title = recovered or ""
 
     if title_looks_noisy(title):
-        title = title_from_slug(url) or title
+        slug_title = title_from_slug(url)
+        if slug_title:
+            # Prefer the site's own typography over the slug's flattened form.
+            title = refine_title_from_description(slug_title, description)
+        else:
+            # No usable slug: strip the listing furniture off the card string.
+            candidate = strip_listing_chrome(title)
+            if candidate and not title_looks_noisy(candidate):
+                title = candidate
 
     if looks_synthetic_title(title):
         return None
 
     if not venue:
         venue = extract_venue(description, title)
+
+    # A card string stripped of its date and price chrome often still ends with
+    # the venue ("Milonaut Luftschloss Tempelhofer Feld"). The venue has its
+    # own column, so drop it from the name once it is known.
+    if venue and title.lower().endswith(venue.lower()) and len(title) > len(venue) + 2:
+        trimmed = title[: -len(venue)].strip(" -\u2013\u2014:|,.")
+        if trimmed and not looks_synthetic_title(trimmed):
+            title = trimmed
 
     iso_date = normalize_date(event.get("date")) or parse_date(str(event.get("date") or ""))
     if not iso_date:
@@ -669,6 +807,12 @@ def validate_event(
             price = float(price)
         except (TypeError, ValueError):
             price = None
+    # The card text is where most listings state their price ("Free admission",
+    # "5,00 €"). Strategies that read structured markup - schema.org offers,
+    # <time datetime> cards - often have no price field at all, so fall back to
+    # the text before giving up and publishing "Check site".
+    if price is None:
+        price = parse_price(description)
     if price is not None and price > max_price:
         return None
 

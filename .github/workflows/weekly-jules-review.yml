@@ -51,12 +51,18 @@ jobs:
           - { name: ufafabrik,              url: "https://ufafabrik.de/spielplan.html" }
           - { name: stadtmuseum,            url: "https://www.stadtmuseum.de/programm" }
           - { name: werk9,                  url: "https://werk9.de/" }
-          - { name: dokk11,                 url: "https://dokk11.de/" }
-          - { name: schloss_glienicke,      url: "https://www.schloss-und-parkglienicke.de/orangerie/" }
+          # Removed - these no longer resolve or serve a listing, so they only
+          # ever consumed a matrix leg and produced an empty artifact:
+          #   dokk11.de                          (no DNS)
+          #   schloss-und-parkglienicke.de       (no DNS)
+          #   renaissancetheater.de              (parked: "jetzt kaufen!";
+          #     the Berlin house is renaissance-theater.de)
           - { name: lakestudios,            url: "https://lakestudiosberlin.com/unfinished-fridays/" }
           - { name: theclubmap,             url: "https://www.theclubmap.com/berlin-techno-partys/" }
-          - { name: renaissancetheater,     url: "https://www.renaissancetheater.de/" }
-          - { name: deutsches_theater,      url: "https://www.deutsches-theater.de/" }
+          # deutsches-theater.de is the *Munich* theatre ("Bühne der Stadt
+          # München") and contributed no Berlin events; Berlin's house is
+          # deutschestheater.de, whose Spielplan yields 75 listings.
+          - { name: deutsches_theater,      url: "https://www.deutschestheater.de/programm/spielplan" }
           - { name: staatsoper_berlin,      url: "https://www.staatsoper-berlin.de/" }
           - { name: staatsballett_berlin,   url: "https://www.staatsballett-berlin.de/" }
           - { name: volksbuehne,            url: "https://www.volksbuehne.berlin/" }
