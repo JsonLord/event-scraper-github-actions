@@ -368,6 +368,26 @@ jobs:
         with:
           path: ./docs
 
+      # A plain "pull --rebase && push" left a fully successful run's data
+      # stranded uncommitted and Pages undeployed: this exact scenario, live -
+      # a manual retrigger raced the tail end of a run it superseded (started
+      # just as that older run's own aggregate-and-deploy, already past its
+      # `needs` gate, finished pushing under cancellation), landing a stale
+      # commit moments before this step ran. The rebase hit a conflict inside
+      # data/events.json - a single machine-generated JSON blob has no
+      # meaningful line-level merge - and the whole job failed with the
+      # freshly scored data computed correctly but never pushed, which also
+      # skipped publish-pages entirely (it needs this job to succeed).
+      #
+      # data/events.json and data/events_scored.json are wholly regenerated
+      # every run, never hand-edited, so on conflict THIS run's output is
+      # always correct to keep. git rebase flips the usual merge meaning of
+      # ours/theirs: "ours" is the upstream being rebased onto (the stale
+      # commit it raced against), "theirs" is the commit being replayed (this
+      # run's). -X theirs is therefore the correct flag - -X ours would
+      # silently keep the STALE data on every conflict, which is worse than
+      # today's loud failure: it would ship outdated events with no one
+      # noticing, instead of failing visibly.
       - name: Commit events and improvements (if any)
         run: |
           git config --global user.name 'GitHub Actions'
@@ -375,11 +395,26 @@ jobs:
           git add data/events.json data/events_scored.json scripts/*.py
           if git diff --staged --quiet; then
             echo "No event or scraper changes to commit"
-          else
-            git commit -m "Update weekly aggregated events"
-            git pull --rebase
-            git push
+            exit 0
           fi
+          git commit -m "Update weekly aggregated events"
+
+          for attempt in 1 2 3 4 5; do
+            if git push; then
+              echo "Pushed on attempt $attempt"
+              exit 0
+            fi
+            echo "Push rejected (attempt $attempt) - fetching and rebasing, preferring this run's data"
+            git fetch origin "$GITHUB_REF_NAME"
+            if ! git rebase -X theirs "origin/$GITHUB_REF_NAME"; then
+              git rebase --abort
+              echo "::error::Rebase failed even with -X theirs; leaving the branch untouched rather than forcing"
+              exit 1
+            fi
+            sleep $((attempt * 3))
+          done
+          echo "::error::Could not push after 5 attempts"
+          exit 1
 
   publish-pages:
     name: Publish weekly event table
