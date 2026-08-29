@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Score, categorize and filter scraped Berlin events against a fixed preference
-profile, then sort best-to-worst.
+profile, then order them by day and, within each day, from free to dearest.
 
 This is the deterministic reference implementation of the scoring spec Jules
 is asked to (re)write in scripts/jules_event_scorer.py, and also the fallback
@@ -9,7 +9,7 @@ used when that Jules call is unavailable or fails - so the pipeline always
 produces docs/events_scored.json.
 
 Preference profile:
-- Price: free is best, up to 10 EUR is preferred, up to 15 EUR is the hard
+- Price: free is best, up to 10 EUR is preferred, up to 20 EUR is the hard
   cutoff. An undetected price scores *neutrally*, between the preferred and
   cutoff bands. It used to score 5 against 40 for free, which mattered
   enormously because two thirds of real listings never state a price in a
@@ -39,10 +39,18 @@ from typing import Any, Dict, List, Optional
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from event_utils import dedupe_events, format_price_label  # noqa: E402
+from event_utils import (  # noqa: E402
+    DEFAULT_MAX_PRICE,
+    day_sort_key,
+    dedupe_events,
+    format_price_label,
+)
 
-MAX_PRICE = 15.0
+MAX_PRICE = DEFAULT_MAX_PRICE
 PREFERRED_PRICE = 10.0
+# Between the preferred band and the hard cutoff, so a mid-priced ticket
+# still ranks below a cheap one without being treated as unaffordable.
+MID_PRICE = 15.0
 
 # Order defines display priority when multiple categories match.
 CATEGORY_KEYWORDS = {
@@ -77,7 +85,8 @@ PROXIMITY_BONUS = 20
 PRICE_FREE_POINTS = 40
 PRICE_PREFERRED_POINTS = 30
 PRICE_UNKNOWN_POINTS = 24
-PRICE_CUTOFF_POINTS = 18
+PRICE_MID_POINTS = 18
+PRICE_CUTOFF_POINTS = 12
 
 # Soonness, keyed by whole days between today and the event.
 IMMINENCE_BANDS = ((1, 18), (3, 14), (7, 8))
@@ -115,6 +124,8 @@ def price_score(price: Optional[float]) -> int:
         return PRICE_FREE_POINTS
     if price <= PREFERRED_PRICE:
         return PRICE_PREFERRED_POINTS
+    if price <= MID_PRICE:
+        return PRICE_MID_POINTS
     if price <= MAX_PRICE:
         return PRICE_CUTOFF_POINTS
     return 0
@@ -224,14 +235,10 @@ def score_and_filter_events(
     filtered = [e for e in events if e.get("price") is None or e.get("price", 0) <= max_price]
     deduped = dedupe_events(filtered)
     scored = [score_event(e, today) for e in deduped]
-    scored.sort(
-        key=lambda e: (
-            -e["score"],
-            e.get("date") or "9999-12-31",
-            e.get("time") or "99:99",
-            str(e.get("title", "")).lower(),
-        )
-    )
+    # Day-grouped: earliest date first, and within each day free events first
+    # then ascending by price. The rating stays on every row and remains
+    # sortable in the page, but it no longer decides the reading order.
+    scored.sort(key=day_sort_key)
     return scored
 
 
@@ -239,7 +246,8 @@ def main():
     parser = argparse.ArgumentParser(description="Score, categorize and filter events")
     parser.add_argument("--input", required=True, help="Aggregated events JSON file (list under 'events')")
     parser.add_argument("--output", required=True, help="Output JSON file")
-    parser.add_argument("--max-price", type=float, default=MAX_PRICE, help="Hard price cutoff in EUR")
+    parser.add_argument("--max-price", type=float, default=MAX_PRICE,
+                        help=f"Hard price cutoff in EUR (default {MAX_PRICE:g})")
     args = parser.parse_args()
 
     with open(args.input, encoding="utf-8") as f:

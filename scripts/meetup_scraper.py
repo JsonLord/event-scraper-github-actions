@@ -18,6 +18,7 @@ import requests
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from event_utils import (  # noqa: E402
+    DEFAULT_MAX_PRICE,
     clean_text,
     clean_url,
     dedupe_events,
@@ -43,7 +44,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-def scrape_meetup(url: str, price_max: float = 15.0, date_range_days: int = 14) -> List[Dict[str, Any]]:
+def scrape_meetup(url: str, price_max: float = DEFAULT_MAX_PRICE, date_range_days: int = 14) -> List[Dict[str, Any]]:
     """
     Scrape events from Meetup.com.
     
@@ -179,7 +180,7 @@ def fetch_jina_content(url: str) -> str:
     return response.text
 
 
-def scrape_meetup_with_jina(url: str, price_max: float = 15.0) -> List[Dict[str, Any]]:
+def scrape_meetup_with_jina(url: str, price_max: float = DEFAULT_MAX_PRICE) -> List[Dict[str, Any]]:
     """Fallback parser for GitHub Actions when browser automation is blocked."""
     markdown = fetch_jina_content(url)
     events = []
@@ -258,7 +259,8 @@ def main():
     parser = argparse.ArgumentParser(description="Meetup.com Event Scraper")
     parser.add_argument("--url", required=True, help="Meetup.com URL to scrape")
     parser.add_argument("--output", required=True, help="Output JSON file")
-    parser.add_argument("--price-max", type=float, default=15.0, help="Maximum event price")
+    parser.add_argument("--price-max", type=float, default=DEFAULT_MAX_PRICE,
+                        help=f"Maximum event price in EUR (default {DEFAULT_MAX_PRICE:g})")
     parser.add_argument("--date-days", type=int, default=7,
                         help="Only keep events starting within this many days from today")
     parser.add_argument("--save-html", action="store_true", help="Save HTML for analysis")

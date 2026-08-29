@@ -171,7 +171,7 @@ class ScraperImprover:
         1. Keep the existing functionality that works
         2. Add selectors/parsing logic for the missed event patterns
         3. Handle multiple event container types if needed
-        4. Maintain price filtering (≤15€) and date range (14 days)
+        4. Maintain price filtering (≤20€) and date range (14 days)
         5. Return the same event schema: title, date, time, price, category, description, url, venue, source_url
         
         IMPORTANT: This is a GENERAL improvement, not just for these specific events.

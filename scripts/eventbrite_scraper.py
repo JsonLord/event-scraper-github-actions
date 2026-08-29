@@ -18,6 +18,7 @@ import requests
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from event_utils import (  # noqa: E402
+    DEFAULT_MAX_PRICE,
     clean_text,
     clean_url,
     dedupe_events,
@@ -44,7 +45,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-def scrape_eventbrite(url: str, price_max: float = 15.0, date_range_days: int = 14) -> List[Dict[str, Any]]:
+def scrape_eventbrite(url: str, price_max: float = DEFAULT_MAX_PRICE, date_range_days: int = 14) -> List[Dict[str, Any]]:
     """
     Scrape events from Eventbrite.
     """
@@ -197,7 +198,7 @@ def extract_markdown_event(text: str, fallback_url: str) -> tuple[str, str]:
     return clean_event_title(re.sub(r'[#*>-]', '', plain_text)), fallback_url
 
 
-def scrape_eventbrite_with_jina(url: str, price_max: float = 15.0) -> List[Dict[str, Any]]:
+def scrape_eventbrite_with_jina(url: str, price_max: float = DEFAULT_MAX_PRICE) -> List[Dict[str, Any]]:
     """Fallback parser for GitHub Actions when browser automation is blocked."""
     markdown = fetch_jina_content(url)
     events = []
@@ -246,7 +247,8 @@ def main():
     parser = argparse.ArgumentParser(description="Eventbrite Scraper")
     parser.add_argument("--url", default="https://www.eventbrite.de/d/germany/berlin/events/", help="URL to scrape")
     parser.add_argument("--output", required=True, help="Output JSON file")
-    parser.add_argument("--price-max", type=float, default=15.0, help="Max price")
+    parser.add_argument("--price-max", type=float, default=DEFAULT_MAX_PRICE,
+                        help=f"Max price in EUR (default {DEFAULT_MAX_PRICE:g})")
     parser.add_argument("--date-days", type=int, default=7,
                         help="Only keep events starting within this many days from today")
     parser.add_argument("--save-html", action="store_true", help="Save HTML")

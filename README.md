@@ -4,7 +4,7 @@ A GitHub-powered event scraping system that replaces the original Heron-based im
 
 ## Overview
 
-This system scrapes event listings from various Berlin websites, filters for affordable events (≤15€), and provides a weekly overview. It has been adapted to run on GitHub Actions instead of the original Heron cron system.
+This system scrapes event listings from various Berlin websites, filters for affordable events (≤20€), and provides a weekly overview. It has been adapted to run on GitHub Actions instead of the original Heron cron system.
 
 ## Key Changes from Original
 
@@ -122,14 +122,14 @@ urls:
 scraper_settings:
   max_retries: 3
   timeout: 120
-  price_filter: 15.0
+  price_filter: 20.0
   date_range_days: 14
 ```
 
 ## Data Flow
 
 1. **Scraping Phase**: Individual scrapers (rausgegangen_scraper.py, etc.) extract events from websites
-2. **Filtering & Storage**: Events are filtered (price ≤15€) and stored in events.db
+2. **Filtering & Storage**: Events are filtered (price ≤20€) and stored in events.db
 3. **Validation Phase**: Desk Agent 2.0 (placeholder) validates scrapes and finds missed events
 4. **Improvement Phase**: Scraper scripts are automatically updated based on validation results
 5. **Presentation**: Events are exported to JSON and displayed via GitHub Pages

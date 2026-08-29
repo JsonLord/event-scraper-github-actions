@@ -75,10 +75,10 @@ def update_events_file(review_results: Dict[str, Any], output_dir: str):
     """
     all_events = review_results.get("all_events", [])
     
-    # Filter by price (≤15€) and date (within 14 days)
+    # Filter by price (≤20€) and date (within 14 days)
     from datetime import datetime, timedelta
     
-    max_price = 15
+    max_price = 20
     cutoff_date = datetime.now() + timedelta(days=14)
     
     filtered_events = []

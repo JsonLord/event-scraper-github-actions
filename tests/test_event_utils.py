@@ -13,6 +13,8 @@ from scripts.event_utils import (
     strip_listing_chrome,
     clean_url,
     collapse_repeated_phrases,
+    day_sort_key,
+    price_sort_key,
     dedupe_events,
     extract_venue,
     format_price_label,
@@ -339,3 +341,50 @@ def test_venue_is_stripped_from_the_end_of_a_recovered_title():
     assert event["title"] == "Outbox Me Battle x Tanz im August"
     assert event["venue"] == "HAU Hebbel am Ufer"
     assert event["price"] == 0.0
+
+
+# --------------------------------------------------------------------------
+# Cutoff, price ranges and ordering
+# --------------------------------------------------------------------------
+
+def test_price_range_reports_the_entry_price():
+    """Only the upper bound carries the currency mark, so a first-match read
+    advertised the dearest ticket ("12,90 to 15,03 €" became €15.03)."""
+    assert parse_price("12,90 to 15,03 €") == 12.90
+    assert parse_price("von 10 bis 20 EUR") == 10.0
+    assert parse_price("from 12,10 €") == 12.10
+
+
+def test_venue_does_not_absorb_a_price_fragment():
+    assert extract_venue(
+        "Sa | 20:00 New York Comedy Showcase Z-Bar 12,90 to 15,03 €",
+        "New York Comedy Showcase",
+    ) == "Z-Bar"
+
+
+def test_prices_sort_free_first_then_ascending_with_unknown_last():
+    prices = [None, 19.5, 0.0, 7.0]
+    assert sorted(prices, key=price_sort_key) == [0.0, 7.0, 19.5, None]
+
+
+def test_day_sort_key_groups_by_date_before_price():
+    cheap_later = {"date": "2026-08-30", "price": 0.0, "time": "20:00", "title": "b"}
+    dearer_sooner = {"date": "2026-08-29", "price": 18.0, "time": "20:00", "title": "a"}
+    assert day_sort_key(dearer_sooner) < day_sort_key(cheap_later)
+
+
+def test_twenty_euro_event_is_within_the_cutoff():
+    assert validate_event(
+        {"title": "Konzert im Festsaal", "date": "2026-08-28", "price": 20.0,
+         "url": "https://example.de/events/konzert"},
+        "https://example.de/events/",
+        TODAY,
+        WINDOW_END,
+    ) is not None
+    assert validate_event(
+        {"title": "Konzert im Festsaal", "date": "2026-08-28", "price": 20.01,
+         "url": "https://example.de/events/konzert"},
+        "https://example.de/events/",
+        TODAY,
+        WINDOW_END,
+    ) is None

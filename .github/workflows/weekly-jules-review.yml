@@ -156,7 +156,7 @@ jobs:
             python "${{ steps.site-info.outputs.script }}" \
               --url "${TARGET_URL}" \
               --output "data/raw_${{ steps.site-info.outputs.site_name }}.json" \
-              --price-max 15 \
+              --price-max 20 \
               --date-days 7 \
               --save-html \
               --html-output "data/html/${{ steps.site-info.outputs.site_name }}.html"
@@ -296,14 +296,15 @@ jobs:
           PY
 
       # Deterministic scoring/categorization/filtering against the preference
-      # profile (max 15 EUR, free preferred, category + Charlottenburg
-      # proximity weighting, sorted best-to-worst).
+      # profile (max 20 EUR, free preferred, category + Charlottenburg
+      # proximity weighting), then ordered by day and, within each day,
+      # from free to dearest.
       - name: Score and categorize events
         run: |
           python scripts/score_events.py \
             --input docs/events.json \
             --output docs/events_scored.json \
-            --max-price 15
+            --max-price 20
 
       - name: Publish frontend
         run: |

@@ -46,6 +46,7 @@ from event_utils import (  # noqa: E402
     FREE_RE,
     PRICE_RE,
     TIME_RE,
+    DEFAULT_MAX_PRICE,
     clean_text,
     clean_url,
     dedupe_events,
@@ -536,7 +537,8 @@ def main():
     parser = argparse.ArgumentParser(description="Generic multi-strategy event scraper")
     parser.add_argument("--url", required=True, help="URL to scrape")
     parser.add_argument("--output", required=True, help="Output JSON file")
-    parser.add_argument("--price-max", type=float, default=15.0, help="Max event price")
+    parser.add_argument("--price-max", type=float, default=DEFAULT_MAX_PRICE,
+                        help=f"Max event price in EUR (default {DEFAULT_MAX_PRICE:g})")
     parser.add_argument("--date-days", type=int, default=7,
                         help="Only keep events starting within this many days from today")
     parser.add_argument("--save-html", action="store_true", help="Save a page snapshot for analysis")

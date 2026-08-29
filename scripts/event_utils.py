@@ -591,6 +591,12 @@ def extract_venue(description: str = "", title: str = "") -> str:
 
 def _clean_venue_candidate(raw: str) -> str:
     venue = clean_text(raw)
+    # A range's low end sits before the currency mark, so it can be swept into
+    # the venue capture ("Z-Bar 12,90 to"). Trim any trailing price fragment.
+    venue = re.sub(
+        r'[\s,;:|-]*\d+(?:[.,]\d{1,2})?\s*(?:€|EUR)?\s*(?:to|bis|[-\u2013\u2014])?\s*$',
+        '', venue, flags=re.IGNORECASE,
+    ).strip(" !?.,;:|-\u2013\u2014")
     if not venue or venue.lower() in VENUE_STOPWORDS:
         return ""
     # Venue names are short; a long run is listing text, not a place.
@@ -611,6 +617,19 @@ def normalize_venue(venue: Any) -> str:
 # Price
 # --------------------------------------------------------------------------
 
+# The affordability cutoff for the whole pipeline. Every scraper CLI, the
+# scorer and the workflows read this rather than repeating a literal, so the
+# threshold moves in one place.
+DEFAULT_MAX_PRICE = 20.0
+
+# "12,90 to 15,03 €" / "von 10 bis 20 EUR" - only the upper bound carries the
+# currency mark, so a plain first-match read reported the dearest ticket.
+PRICE_RANGE_RE = re.compile(
+    r'(\d+(?:[.,]\d{1,2})?)\s*(?:€|EUR)?\s*(?:to|bis|[-\u2013\u2014])\s*'
+    r'(\d+(?:[.,]\d{1,2})?)\s*(?:€|EUR)',
+    re.IGNORECASE,
+)
+
 PRICE_RE = re.compile(
     r'(?:€\s*(\d+(?:[.,]\d{1,2})?)|(\d+(?:[.,]\d{1,2})?)\s*€|(\d+(?:[.,]\d{1,2})?)\s*EUR)',
     re.IGNORECASE,
@@ -630,6 +649,15 @@ def parse_price(text: str) -> Optional[float]:
     """
     if not text:
         return None
+
+    # A range is quoted low-to-high; the entry price is the low end.
+    span = PRICE_RANGE_RE.search(text)
+    if span:
+        try:
+            return min(float(g.replace(',', '.')) for g in span.groups())
+        except ValueError:
+            pass
+
     match = PRICE_RE.search(text)
     if match:
         raw = next(g for g in match.groups() if g)
@@ -737,7 +765,7 @@ def validate_event(
     source_url: str,
     window_start: date,
     window_end: date,
-    max_price: float = 15.0,
+    max_price: float = DEFAULT_MAX_PRICE,
     require_berlin_signal: bool = False,
 ) -> Optional[Dict[str, Any]]:
     """Normalise one scraped row, or return None if it cannot be trusted.
@@ -847,7 +875,7 @@ def validate_events(
     source_url: str,
     window_start: date,
     window_end: date,
-    max_price: float = 15.0,
+    max_price: float = DEFAULT_MAX_PRICE,
     require_berlin_signal: bool = False,
 ) -> Tuple[List[Dict[str, Any]], int]:
     """Validate a batch; returns (kept, rejected_count)."""
@@ -861,6 +889,29 @@ def validate_events(
         else:
             rejected += 1
     return kept, rejected
+
+
+def price_sort_key(price: Optional[float]) -> Tuple[int, float]:
+    """Order prices free-first, then ascending, with unknown prices last.
+
+    An unstated price cannot be placed on the cheap-to-expensive axis, so it
+    sorts after every known price rather than being guessed at either end.
+    """
+    if price is None:
+        return (1, 0.0)
+    return (0, float(price))
+
+
+def day_sort_key(event: Dict[str, Any]) -> Tuple[str, int, float, str, str]:
+    """Group by day, then order each day free-first and ascending by price."""
+    price_bucket, price_value = price_sort_key(event.get("price"))
+    return (
+        event.get("date") or "9999-12-31",
+        price_bucket,
+        price_value,
+        event.get("time") or "99:99",
+        str(event.get("title", "")).lower(),
+    )
 
 
 def dedupe_events(events: Iterable[Dict[str, Any]]) -> List[Dict[str, Any]]:

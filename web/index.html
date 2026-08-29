@@ -135,6 +135,19 @@
   td.nowrap { white-space: nowrap; }
   td.src { font-size: 12px; }
   a.listing-link { font-weight: 400; font-size: 12px; }
+  /* Day separator inside the table body. Sticky under the header so the day
+     you are reading stays named while you scroll through it. */
+  tr.day-row td {
+    position: sticky;
+    top: 37px;
+    background: var(--chip-bg);
+    border-bottom: 1px solid var(--border);
+    padding: 7px 12px;
+    font-size: 13px;
+    z-index: 1;
+  }
+  tr.day-row:hover td { background: var(--chip-bg); }
+  .day-count { color: var(--muted); font-weight: 400; margin-left: 8px; font-size: 12px; }
   .chip {
     display: inline-block;
     background: var(--chip-bg);
@@ -194,16 +207,18 @@
 </div>
 
 <footer>
-  Berlin events, filtered to max 15 EUR (or price unknown) and to the coming week. Ratings come from an
+  Berlin events, filtered to max 20 EUR (or price unknown) and to the coming week. Grouped by day, and
+  within each day ordered free first, then cheapest to dearest; events whose price the listing did not
+  state ("Check site") come last in the day. Ratings come from an
   automated scoring pass over price, category match, how soon the event is, how complete the listing is,
-  and proximity to Charlottenburg - treat as a sorting aid, not a guarantee. "Check site" means the page
-  did not state a price, not that the event is expensive. A title without a link is one where only the
-  listing page could be found. Click a column header to sort; click again to reverse.
+  and proximity to Charlottenburg - treat as a hint, not a guarantee. A title without a link is one where
+  only the listing page could be found. Click a column header to sort by it instead; click again to
+  reverse. Sorting by any column other than Date &amp; Time turns off the day grouping.
 </footer>
 
 <script>
 (function () {
-  var state = { events: [], sortKey: "score", sortDir: "desc", search: "", freeOnly: false, selected: new Set() };
+  var state = { events: [], sortKey: "date", sortDir: "asc", search: "", freeOnly: false, selected: new Set() };
 
   function fmtDateTime(ev) {
     var d = ev.date || "";
@@ -220,11 +235,17 @@
     }
   }
 
+  // Free first, then ascending by price, with an unstated price last: it
+  // cannot be placed on the cheap-to-dear axis, so it does not pretend to be.
+  function priceRank(ev) {
+    return (ev.price === null || ev.price === undefined) ? Infinity : ev.price;
+  }
+
   function sortValue(ev, key) {
     if (key === "source") return sourceName(ev);
     if (key === "score") return typeof ev.score === "number" ? ev.score : -1;
-    if (key === "price") return ev.price === null || ev.price === undefined ? 999999 : ev.price;
-    if (key === "date") return (isoDate(ev) || "99999999") + (ev.time || "99:99");
+    if (key === "price") return priceRank(ev);
+    if (key === "date") return isoDate(ev) || "99999999";
     return (ev[key] || "").toString().toLowerCase();
   }
 
@@ -235,6 +256,36 @@
       .join(" ")
       .toLowerCase();
     return hay.indexOf(q.toLowerCase()) !== -1;
+  }
+
+  var DAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+  var MONTH_NAMES = ["January", "February", "March", "April", "May", "June",
+                     "July", "August", "September", "October", "November", "December"];
+
+  function dayHeading(ev) {
+    var iso = isoDate(ev);
+    if (!iso) return "Date to be confirmed";
+    var d = new Date(Number(iso.slice(0, 4)), Number(iso.slice(4, 6)) - 1, Number(iso.slice(6, 8)));
+    var today = new Date(); today.setHours(0, 0, 0, 0);
+    var days = Math.round((d - today) / 86400000);
+    var prefix = days === 0 ? "Today - " : days === 1 ? "Tomorrow - " : "";
+    return prefix + DAY_NAMES[d.getDay()] + ", " + d.getDate() + " " + MONTH_NAMES[d.getMonth()];
+  }
+
+  function appendDayHeader(rowsEl, ev, count) {
+    var tr = document.createElement("tr");
+    tr.className = "day-row";
+    var td = document.createElement("td");
+    td.colSpan = 9;
+    var strong = document.createElement("strong");
+    strong.textContent = dayHeading(ev);
+    td.appendChild(strong);
+    var tally = document.createElement("span");
+    tally.className = "day-count";
+    tally.textContent = count === 1 ? "1 event" : count + " events";
+    td.appendChild(tally);
+    tr.appendChild(td);
+    rowsEl.appendChild(tr);
   }
 
   function render() {
@@ -250,12 +301,41 @@
     list.sort(function (a, b) {
       var av = sortValue(a, state.sortKey), bv = sortValue(b, state.sortKey);
       var cmp = av < bv ? -1 : av > bv ? 1 : 0;
+      if (cmp === 0 && state.sortKey !== "price") {
+        // Within a day (or any other tie) fall back to the price order, so
+        // each date reads free first and then cheapest to dearest.
+        var ap = priceRank(a), bp = priceRank(b);
+        cmp = ap < bp ? -1 : ap > bp ? 1 : 0;
+      }
+      if (cmp === 0) {
+        var at = a.time || "99:99", bt = b.time || "99:99";
+        cmp = at < bt ? -1 : at > bt ? 1 : 0;
+      }
       return state.sortDir === "asc" ? cmp : -cmp;
     });
 
     emptyEl.hidden = list.length > 0;
 
+    // Day grouping only makes sense while the list is in date order; sorting
+    // by another column deliberately cuts across days.
+    var grouped = state.sortKey === "date";
+    var perDay = {};
+    if (grouped) {
+      list.forEach(function (ev) {
+        var key = isoDate(ev) || "unknown";
+        perDay[key] = (perDay[key] || 0) + 1;
+      });
+    }
+    var lastDay = null;
+
     list.forEach(function (ev) {
+      if (grouped) {
+        var day = isoDate(ev) || "unknown";
+        if (day !== lastDay) {
+          appendDayHeader(rowsEl, ev, perDay[day]);
+          lastDay = day;
+        }
+      }
       var tr = document.createElement("tr");
 
       var tdCheck = document.createElement("td");
@@ -488,7 +568,7 @@
       var window_ = eventDateRange(state.events);
       document.getElementById("subtitle").textContent =
         state.events.length + " events" + (window_ ? " (" + window_ + ")" : "") +
-        ", best match first.";
+        ", grouped by day, free first.";
       render();
     })
     .catch(function (err) {

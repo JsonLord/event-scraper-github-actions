@@ -8,6 +8,7 @@ ordering properties that prevent that.
 from datetime import date
 
 from scripts.score_events import (
+    MAX_PRICE,
     imminence_score,
     match_categories,
     price_score,
@@ -97,17 +98,44 @@ def test_title_matches_rank_ahead_of_description_only_matches():
     assert categories[0] == "dancing"
 
 
-def test_results_are_sorted_by_score_then_date():
+def test_results_are_grouped_by_day_then_priced_free_first():
+    """The published order is an agenda: earliest day first, and inside each
+    day free events, then ascending by price, with unstated prices last."""
     events = [
-        _event(title="Later", date="2026-09-02", price=None, url="https://example.de/events/later"),
-        _event(title="Free tonight", date="2026-08-27", price=0.0,
-               description="Live concert in the garden.", url="https://example.de/events/tonight"),
-        _event(title="Tomorrow", date="2026-08-28", price=None, url="https://example.de/events/tomorrow"),
+        _event(title="Day2 ten", date="2026-08-30", price=10.0, url="https://example.de/events/d2-ten"),
+        _event(title="Day1 unknown", date="2026-08-29", price=None, url="https://example.de/events/d1-unknown"),
+        _event(title="Day1 free", date="2026-08-29", price=0.0, url="https://example.de/events/d1-free"),
+        _event(title="Day2 free", date="2026-08-30", price=0.0, url="https://example.de/events/d2-free"),
+        _event(title="Day1 twelve", date="2026-08-29", price=12.0, url="https://example.de/events/d1-twelve"),
     ]
-    ordered = score_and_filter_events(events, today=TODAY)
-    assert [e["title"] for e in ordered][0] == "Free tonight"
-    assert ordered == sorted(ordered, key=lambda e: -e["score"])
+    ordered = [e["title"] for e in score_and_filter_events(events, today=TODAY)]
+    assert ordered == [
+        "Day1 free", "Day1 twelve", "Day1 unknown",
+        "Day2 free", "Day2 ten",
+    ]
+
+
+def test_unknown_price_sorts_after_every_known_price_within_a_day():
+    events = [
+        _event(title="Unknown", date="2026-08-29", price=None, url="https://example.de/events/u"),
+        _event(title="Dearest", date="2026-08-29", price=19.5, url="https://example.de/events/d"),
+    ]
+    ordered = [e["title"] for e in score_and_filter_events(events, today=TODAY)]
+    assert ordered == ["Dearest", "Unknown"]
 
 
 def test_events_above_the_cutoff_are_removed():
     assert score_and_filter_events([_event(price=40.0)], today=TODAY) == []
+
+
+def test_the_cutoff_is_twenty_euro():
+    """Raised from 15: a 20 EUR ticket is kept, 20.01 is not."""
+    assert MAX_PRICE == 20.0
+    assert len(score_and_filter_events([_event(price=20.0)], today=TODAY)) == 1
+    assert score_and_filter_events([_event(price=20.01)], today=TODAY) == []
+
+
+def test_price_bands_stay_monotonic_up_to_the_new_cutoff():
+    assert price_score(20.0) < price_score(15.0) < price_score(10.0) < price_score(0.0)
+    assert price_score(20.0) < price_score(None) < price_score(10.0)
+    assert price_score(25.0) == 0

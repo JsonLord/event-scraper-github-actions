@@ -37,7 +37,7 @@ jobs:
           python scripts/score_events.py \
             --input data/events.json \
             --output _site/events_scored.json \
-            --max-price 15
+            --max-price 20
 
       - name: Build event table
         run: |
