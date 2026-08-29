@@ -27,6 +27,8 @@ Preference profile:
   category match.
 - Proximity to Charlottenburg: a location bonus, not a content category;
   matched via keywords against the venue and text.
+- Favorite sources: a flat per-source bonus for listings the user has told us
+  they like, independent of category or venue matching.
 """
 
 import argparse
@@ -118,6 +120,18 @@ SECONDARY_CATEGORY_SHARE = 0.35
 # Cut from 20: at that size a free event merely near Charlottenburg outranked
 # events that actually matched the preference, and it rated much too high.
 PROXIMITY_BONUS = 8
+
+# Sources the user explicitly said they like get a flat bonus regardless of
+# category or venue - a standing vote of confidence in the programming,
+# independent of how well the listing text happens to match a keyword.
+# Matched against source_url (the listing page an event came from), not the
+# per-event detail url, since that is what identifies which site scraped it.
+FAVORITE_SOURCES = {
+    "berlin-buehnen.de": 16,  # "I really like this website" - user request
+}
+FAVORITE_SOURCE_PATTERNS = {
+    domain: re.compile(re.escape(domain), re.IGNORECASE) for domain in FAVORITE_SOURCES
+}
 
 PRICE_FREE_POINTS = 40
 PRICE_PREFERRED_POINTS = 30
@@ -366,6 +380,15 @@ def event_stream(primary: List[str], secondary: List[str]) -> str:
     return "main"
 
 
+def favorite_source_score(event: Dict[str, Any]) -> int:
+    """Flat bonus for a source the user has told us they like."""
+    source = str(event.get("source_url") or event.get("url") or "")
+    for domain, pattern in FAVORITE_SOURCE_PATTERNS.items():
+        if pattern.search(source):
+            return FAVORITE_SOURCES[domain]
+    return 0
+
+
 def imminence_score(event_date: Optional[str], today: Optional[date] = None) -> int:
     """Points for how soon the event is; distant events sink.
 
@@ -454,6 +477,7 @@ def score_event(event: Dict[str, Any], today: Optional[date] = None) -> Dict[str
         + completeness_score(event)
         + participation_score(event)
         + timing_score(event)
+        + favorite_source_score(event)
     )
 
     scored = dict(event)
