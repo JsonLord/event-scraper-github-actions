@@ -338,6 +338,15 @@ jobs:
             --output docs/events_scored.json \
             --max-price 20
 
+      # docs/events_scored.json only lived in the Pages deployment artifact,
+      # which GitHub reclaims after its retention window - the ranked,
+      # streamed and filtered output actually shown on the page (unlike raw
+      # data/events.json, committed above) had no durable copy at all. Commit
+      # it alongside the raw aggregate so both the input and the output of
+      # scoring are inspectable from the repo after the run is gone.
+      - name: Persist scored events in repository
+        run: cp docs/events_scored.json data/events_scored.json
+
       - name: Publish frontend
         run: |
           cp web/index.html docs/index.html
@@ -355,7 +364,7 @@ jobs:
         run: |
           git config --global user.name 'GitHub Actions'
           git config --global user.email 'actions@github.com'
-          git add data/events.json scripts/*.py
+          git add data/events.json data/events_scored.json scripts/*.py
           if git diff --staged --quiet; then
             echo "No event or scraper changes to commit"
           else
