@@ -98,6 +98,12 @@ jobs:
           # New, verified live: 32 raw -> 2 kept via plain HTTP. Tempelhofer
           # Feld's own events page - outdoor programming.
           - { name: thf_berlin,             url: "https://www.thf-berlin.de/aktuelles/veranstaltungen" }
+          # orangerie-nk.de/events is a private-venue-booking page ("book your
+          # wedding here"), not a calendar - the real programme sits on the
+          # homepage itself. Verified live: extracts a real dated event
+          # ("Von Nord nach Süd", 27 Sep) correctly; it just fell outside the
+          # 7-day window this was tested against, which is expected, not a bug.
+          - { name: orangerie_neukoelln,    url: "https://www.orangerie-nk.de/" }
       fail-fast: false
     env:
       TARGET_URL: ${{ matrix.url }}
