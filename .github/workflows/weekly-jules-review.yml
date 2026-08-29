@@ -157,23 +157,31 @@ jobs:
           SITE_NAME="${{ matrix.name }}"
           echo "site_name=$SITE_NAME" >> $GITHUB_OUTPUT
 
-          # Sites with a hand-written scraper get the autonomous repair loop
-          # (retries + Jules-driven fixes); everything else uses the shared
-          # generic scraper directly (repairing a script shared by 20+ sites
-          # based on one site's failure would corrupt it for the rest).
-          # rausgegangen's date view is server-rendered with clean event-detail
-          # slugs, which the generic scraper handles well (cleaner than the old
-          # Jina-markdown scraper), so it routes to the generic path.
-          if [[ "$URL" == *"eventbrite"* ]]; then
-            echo "script=scripts/eventbrite_scraper.py" >> $GITHUB_OUTPUT
-            echo "use_repair_loop=true" >> $GITHUB_OUTPUT
-          elif [[ "$URL" == *"meetup"* ]]; then
-            echo "script=scripts/meetup_scraper.py" >> $GITHUB_OUTPUT
-            echo "use_repair_loop=true" >> $GITHUB_OUTPUT
-          else
-            echo "script=scripts/generic_event_scraper.py" >> $GITHUB_OUTPUT
-            echo "use_repair_loop=false" >> $GITHUB_OUTPUT
-          fi
+          # Both meetup_scraper.py and eventbrite_scraper.py lead with
+          # CloakBrowser and fall back to anonymous Jina Reader. In this CI
+          # environment both returned 0 events on every source, every run:
+          # confirmed from actual job logs, not inferred. autonomous_repair.py
+          # then escalated every one of those to Jules for a fix - and every
+          # single Jules API call in the run came back "400 Bad Request",
+          # burning 15-20+ minutes per leg (three attempts, one of them a
+          # 9-minute Jules session) before hard-failing the job. That's two
+          # independent breakages (CloakBrowser/Jina yielding nothing, and the
+          # Jules repair path itself) stacked on top of each other.
+          #
+          # The generic scraper needs none of that: verified locally this same
+          # session that its plain-HTTP JSON-LD/heuristic extraction pulls
+          # 9-27 raw events straight out of Meetup's static search-result HTML
+          # for the exact keyword URLs below - the event data is already
+          # sitting in the page, CloakBrowser was never required to get it.
+          # This is the same fix already applied to rausgegangen for the same
+          # reason (see its own routing history). Eventbrite's static HTML
+          # carries far less (its listing is client-rendered), so this won't
+          # turn eventbrite into a strong source - but the generic scraper's
+          # own three-tier fallback (JSON-LD -> heuristic -> CloakBrowser ->
+          # Jina) is strictly more capable than eventbrite_scraper.py's two,
+          # and it fails soft (0 events, job still succeeds) instead of hard.
+          echo "script=scripts/generic_event_scraper.py" >> $GITHUB_OUTPUT
+          echo "use_repair_loop=false" >> $GITHUB_OUTPUT
 
       - name: Run scraper
         run: |
