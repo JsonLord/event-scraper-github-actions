@@ -12,6 +12,7 @@ from scripts.score_events import (
     MAX_PRICE,
     category_weight,
     exclusion_reason,
+    favorite_source_score,
     participation_score,
     timing_score,
     imminence_score,
@@ -274,6 +275,33 @@ def test_excluded_events_do_not_reach_the_output():
 # --------------------------------------------------------------------------
 # Timing
 # --------------------------------------------------------------------------
+
+# --------------------------------------------------------------------------
+# Favorite sources
+# --------------------------------------------------------------------------
+
+def test_a_favorite_source_gets_a_flat_bonus():
+    """User: "i really like this website: berlin-buehnen.de ... push events
+    from the site in scoring." The bonus applies to the listing source, not
+    to venue or category text, and does not fire for other sources."""
+    favorite = _event(
+        title="InTakt (2026)",
+        source_url="https://www.berlin-buehnen.de/de/spielplan",
+    )
+    other = _event(
+        title="InTakt (2026)",
+        source_url="https://example.de/events/",
+    )
+    assert favorite_source_score(favorite) == 16
+    assert favorite_source_score(other) == 0
+    assert score_event(favorite, TODAY)["score"] == score_event(other, TODAY)["score"] + 16
+
+
+def test_favorite_source_falls_back_to_url_when_source_url_is_missing():
+    ev = _event(url="https://www.berlin-buehnen.de/de/produktion/foo")
+    ev.pop("source_url")
+    assert favorite_source_score(ev) == 16
+
 
 def test_weekend_evenings_are_the_sweet_spot():
     fri_evening = _event(date="2026-08-28", time="20:00")   # Friday
