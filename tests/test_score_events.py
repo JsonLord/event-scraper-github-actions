@@ -11,6 +11,9 @@ from scripts.score_events import (
     CATEGORY_WEIGHTS,
     MAX_PRICE,
     category_weight,
+    exclusion_reason,
+    participation_score,
+    timing_score,
     imminence_score,
     match_categories,
     price_score,
@@ -195,3 +198,86 @@ def test_a_comedy_show_is_not_filed_under_networking():
     """'Bad 4 Business' matched the bare keyword 'business'."""
     ev = _event(title="English Comedy: Bad 4 Business", url="https://example.de/events/c")
     assert score_event(ev, TODAY)["stream"] == "main"
+
+
+# --------------------------------------------------------------------------
+# Participation: taking part vs sitting and watching
+# --------------------------------------------------------------------------
+
+def test_a_festival_outscores_the_same_art_form_as_a_performance():
+    """Calibration's clearest signal: an opera *festival* rated correct while
+    an opera *performance* rated much too high, and a ballet *opening
+    festival* was the only event rated too low."""
+    festival = _event(title="Eröffnungsfest Staatsballett Berlin",
+                      url="https://example.de/events/fest")
+    performance = _event(title="Vorstellung: Giselle", url="https://example.de/events/vorst")
+    assert score_event(festival, TODAY)["score"] > score_event(performance, TODAY)["score"]
+
+
+def test_watching_is_penalised_and_joining_is_not():
+    assert participation_score(_event(title="Lesung mit dem Autor")) < 0
+    assert participation_score(_event(title="Vernissage und Gala")) < 0
+    assert participation_score(_event(title="Sommerfest im Garten")) > 0
+    assert participation_score(_event(title="Speed Friending Stammtisch")) > 0
+
+
+def test_a_guided_tour_is_penalised_less_than_a_performance():
+    tour = participation_score(_event(title="Führung durch die Ausstellung"))
+    show = participation_score(_event(title="Revue: Die grosse Show"))
+    assert show < tour < 0
+
+
+def test_paid_comedy_is_penalised_but_cheap_comedy_is_not():
+    """'Paid improv or comedy shows score very low' - but a €4 show rated
+    about right, so the penalty starts above the near-free band."""
+    assert participation_score(_event(title="Stand-up Comedy Night", price=15.0)) < 0
+    assert participation_score(_event(title="Stand-up Comedy Night", price=4.0)) == 0
+    assert participation_score(_event(title="Improv Open Mic", price=0.0)) == 0
+
+
+def test_protest_is_not_treated_as_a_social_gathering():
+    assert participation_score(_event(title="Protest Picknick am Kanzleramt")) < 0
+
+
+# --------------------------------------------------------------------------
+# Hard exclusions
+# --------------------------------------------------------------------------
+
+def test_kids_film_and_retail_events_are_excluded_entirely():
+    for title, reason in [
+        ("Daumenkino Kinderprogramm", "kids"),
+        ("Fantasy Filmfest: Screening", "film"),
+        ("TASCHEN Sale im Store", "retail"),
+    ]:
+        assert exclusion_reason(_event(title=title)) == reason
+    assert exclusion_reason(_event(title="Tanzabend im Festsaal")) is None
+
+
+def test_an_adults_only_note_is_not_read_as_family_programming():
+    """A guided tour was excluded because it says it is *not* suitable for
+    children - the keyword matched a negation."""
+    assert exclusion_reason(_event(
+        title="Führung durch die Ausstellung",
+        description="The guided tour is in German and is not suitable for children under 14.",
+    )) is None
+
+
+def test_excluded_events_do_not_reach_the_output():
+    events = [
+        _event(title="Kinderprogramm im Museum", url="https://example.de/events/k"),
+        _event(title="Tanzabend im Festsaal", url="https://example.de/events/t"),
+    ]
+    titles = [e["title"] for e in score_and_filter_events(events, today=TODAY)]
+    assert titles == ["Tanzabend im Festsaal"]
+
+
+# --------------------------------------------------------------------------
+# Timing
+# --------------------------------------------------------------------------
+
+def test_weekend_evenings_are_the_sweet_spot():
+    fri_evening = _event(date="2026-08-28", time="20:00")   # Friday
+    tue_morning = _event(date="2026-09-01", time="10:00")   # Tuesday
+    assert timing_score(fri_evening) == 22
+    assert timing_score(tue_morning) == -8
+    assert timing_score(_event(date="2026-08-29", time="")) == 10  # Saturday, no time

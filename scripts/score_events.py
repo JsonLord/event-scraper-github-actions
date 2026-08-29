@@ -115,13 +115,23 @@ CATEGORY_FALLOFF = (1.0, 0.4, 0.15)
 # A keyword found only in a long blurb is far weaker evidence than one in the
 # title or venue, so a description-only match earns a fraction of its weight.
 SECONDARY_CATEGORY_SHARE = 0.35
-PROXIMITY_BONUS = 20
+# Cut from 20: at that size a free event merely near Charlottenburg outranked
+# events that actually matched the preference, and it rated much too high.
+PROXIMITY_BONUS = 8
 
 PRICE_FREE_POINTS = 40
 PRICE_PREFERRED_POINTS = 30
 PRICE_UNKNOWN_POINTS = 24
 PRICE_MID_POINTS = 18
 PRICE_CUTOFF_POINTS = 12
+
+# "Weekend evenings are the sweet spot": Friday to Sunday, starting after
+# work. A weekday morning slot is actively worse than no signal at all.
+WEEKEND_BONUS = 10
+EVENING_BONUS = 12
+MORNING_PENALTY = -8
+EVENING_FROM_HOUR = 18
+MORNING_BEFORE_HOUR = 12
 
 # Soonness, keyed by whole days between today and the event.
 IMMINENCE_BANDS = ((1, 18), (3, 14), (7, 8))
@@ -199,6 +209,135 @@ def match_categories(event: Dict[str, Any]) -> List[str]:
     return matched
 
 
+# --------------------------------------------------------------------------
+# Participation: the axis that actually separates a good evening from a bad one
+# --------------------------------------------------------------------------
+#
+# Calibration against 23 real events showed category alone cannot express the
+# preference. An opera *festival* and an opera *performance* score identically
+# on category, yet one was rated right and the other much too high; a ballet
+# *opening festival* was the only event rated too LOW. The distinction is
+# whether you do something with other people or sit and watch - "social
+# gathering, but with something happening".
+#
+# So passive consumption is penalised rather than participation being rewarded:
+# that keeps dancing and festivals, which were already rated correctly, exactly
+# where they are instead of inflating them further.
+
+SPECTATOR_STRONG = [
+    "lesung", "reading", "vortrag", "lecture", "screening", "vorstellung",
+    "matinee", "revue", "show", "brunch", "konzertant", "podiumsdiskussion",
+    "ausstellungseröffnung", "vernissage", "gala",
+]
+SPECTATOR_MILD = [
+    "führung", "fuehrung", "guided tour", "rundgang", "stadtführung",
+    "ausstellung", "exhibition", "museum",
+]
+# Political actions are not what "meeting people" means here.
+NON_SOCIAL = ["protest", "demonstration", "kundgebung", "mahnwache", "vigil"]
+
+# Comedy and stand-up are watched, not joined. Free or nearly free they are a
+# cheap way to be out among people; at full price they rated very low.
+COMEDY = ["comedy", "stand-up", "standup", "improv", "kleinkunst", "open mic"]
+COMEDY_FREE_LIMIT = 5.0
+
+# The positive half of the axis: a festival, an opening or a party is people
+# gathered with something happening, which is the whole preference. The one
+# event rated too LOW in calibration was a ballet *opening festival*.
+# No bare "fest": keyword matching allows a trailing suffix, so it fired on
+# the venue "Festsaal Kreuzberg" and handed a social bonus to every event in
+# the building. The compounds that really mean a festival are listed instead.
+SOCIAL_ACTIVE = [
+    "festival", "sommerfest", "stadtfest", "hoffest", "straßenfest", "strassenfest",
+    "eröffnungsfest", "eroeffnungsfest", "fest im", "eröffnung", "eroeffnung",
+    "opening", "party", "jam", "meetup", "mixer", "mingle", "speed friending",
+    "speed dating", "stammtisch", "kennenlernen", "tandem", "quiz", "karaoke",
+    "open decks", "get-together",
+]
+SOCIAL_ACTIVE_BONUS = 12
+
+SPECTATOR_STRONG_PENALTY = -26
+SPECTATOR_MILD_PENALTY = -12
+NON_SOCIAL_PENALTY = -22
+COMEDY_PAID_PENALTY = -24
+
+_SPECTATOR_STRONG_PATTERN = _keyword_pattern(SPECTATOR_STRONG)
+_SPECTATOR_MILD_PATTERN = _keyword_pattern(SPECTATOR_MILD)
+_NON_SOCIAL_PATTERN = _keyword_pattern(NON_SOCIAL)
+_COMEDY_PATTERN = _keyword_pattern(COMEDY)
+_SOCIAL_ACTIVE_PATTERN = _keyword_pattern(SOCIAL_ACTIVE)
+
+
+def participation_score(event: Dict[str, Any]) -> int:
+    """Net points for taking part rather than watching.
+
+    Positive for a gathering with something happening, negative for something
+    you sit and watch. This is the axis category alone could not express.
+    """
+    haystack = " ".join(
+        str(event.get(f, "")) for f in ("title", "venue", "category", "description")
+    )
+    penalty = 0
+    if _SOCIAL_ACTIVE_PATTERN.search(haystack):
+        penalty += SOCIAL_ACTIVE_BONUS
+    if _COMEDY_PATTERN.search(haystack):
+        price = event.get("price")
+        if price is not None and price > COMEDY_FREE_LIMIT:
+            penalty += COMEDY_PAID_PENALTY
+    elif _SPECTATOR_STRONG_PATTERN.search(haystack):
+        penalty += SPECTATOR_STRONG_PENALTY
+    elif _SPECTATOR_MILD_PATTERN.search(haystack):
+        penalty += SPECTATOR_MILD_PENALTY
+    if _NON_SOCIAL_PATTERN.search(haystack):
+        penalty += NON_SOCIAL_PENALTY
+    return penalty
+
+
+# --------------------------------------------------------------------------
+# Hard exclusions
+# --------------------------------------------------------------------------
+#
+# Some things are not "rank them lower", they are "do not show me these":
+# children's programming, film screenings, and retail or brand promotions.
+# Excluding beats a large penalty because a demoted event still occupies a row.
+
+EXCLUDE_KIDS = ["kinder", "kids", "familienprogramm", "jugendliche", "children",
+                "kinderprogramm", "familienführung"]
+EXCLUDE_FILM = ["film", "kino", "cinema", "screening", "filmfest", "omeu", "omdu",
+                "freiluftkino", "arthouse", "dokumentarfilm"]
+EXCLUDE_RETAIL = ["sale", "outlet", "rabatt", "flagship", "store", "open day",
+                  "semesterbeginn", "sommerglück", "sommerglueck", "shopping"]
+# "not suitable for children under 12" is an ADULT signal that a plain keyword
+# read as family programming.
+NOT_KIDS_RE = re.compile(
+    r"\b(?:not suitable for children|nicht (?:geeignet )?f(?:ü|ue)r kinder|no children|"
+    r"ab 18|18\+|adults only|nur f(?:ü|ue)r erwachsene|keine kinder)", re.IGNORECASE
+)
+
+EXCLUSIONS = {
+    "kids": _keyword_pattern(EXCLUDE_KIDS),
+    "film": _keyword_pattern(EXCLUDE_FILM),
+    "retail": _keyword_pattern(EXCLUDE_RETAIL),
+}
+
+
+EXCLUDED_COUNTS: Dict[str, int] = {}
+
+
+def exclusion_reason(event: Dict[str, Any]) -> Optional[str]:
+    """Why this event should not be shown at all, or None to keep it."""
+    haystack = " ".join(
+        str(event.get(f, "")) for f in ("title", "venue", "category", "description")
+    )
+    for name, pattern in EXCLUSIONS.items():
+        if not pattern.search(haystack):
+            continue
+        if name == "kids" and NOT_KIDS_RE.search(haystack):
+            continue  # an explicitly adults-only event, not family programming
+        return name
+    return None
+
+
 # The page renders one table per stream, because a running club and an opera
 # are not alternatives to each other - putting them in one ranked list forces
 # a comparison that is never useful.
@@ -248,6 +387,25 @@ def imminence_score(event_date: Optional[str], today: Optional[date] = None) -> 
     return IMMINENCE_DEFAULT
 
 
+def timing_score(event: Dict[str, Any]) -> int:
+    """Weekend and evening bonus, morning penalty."""
+    points = 0
+    try:
+        when = date.fromisoformat(event.get("date") or "")
+    except (ValueError, TypeError):
+        when = None
+    if when and when.weekday() >= 4:  # Friday, Saturday, Sunday
+        points += WEEKEND_BONUS
+    start = str(event.get("time") or "")
+    if len(start) >= 2 and start[:2].isdigit():
+        hour = int(start[:2])
+        if hour >= EVENING_FROM_HOUR:
+            points += EVENING_BONUS
+        elif hour < MORNING_BEFORE_HOUR:
+            points += MORNING_PENALTY
+    return points
+
+
 def completeness_score(event: Dict[str, Any]) -> int:
     """Negative points for fields the scrape could not fill.
 
@@ -294,6 +452,8 @@ def score_event(event: Dict[str, Any], today: Optional[date] = None) -> Dict[str
         + proximity_pts
         + imminence_score(event.get("date"), today)
         + completeness_score(event)
+        + participation_score(event)
+        + timing_score(event)
     )
 
     scored = dict(event)
@@ -313,6 +473,16 @@ def score_and_filter_events(
 ) -> List[Dict[str, Any]]:
     filtered = [e for e in events if e.get("price") is None or e.get("price", 0) <= max_price]
     deduped = dedupe_events(filtered)
+    # Exclusions are applied after de-duplication so the reported counts match
+    # what a reader would otherwise have seen.
+    kept = []
+    for event in deduped:
+        reason = exclusion_reason(event)
+        if reason:
+            EXCLUDED_COUNTS[reason] = EXCLUDED_COUNTS.get(reason, 0) + 1
+            continue
+        kept.append(event)
+    deduped = kept
     scored = [score_event(e, today) for e in deduped]
     # Day-grouped: earliest date first, and within each day free events first
     # then ascending by price. The rating stays on every row and remains
@@ -348,6 +518,10 @@ def main():
     print(f"Scored {len(scored)} events (from {len(events)} input events) to {args.output}")
     for name in STREAMS:
         print(f"  {counts[name]:4d}  {name}")
+    # Never drop rows silently: an exclusion rule that starts over-matching is
+    # only visible if the run says how much it removed.
+    for reason, n in sorted(EXCLUDED_COUNTS.items(), key=lambda kv: -kv[1]):
+        print(f"  {n:4d}  excluded ({reason})")
     return 0
 
 
