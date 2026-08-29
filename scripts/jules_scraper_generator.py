@@ -91,7 +91,7 @@ class ScraperGenerator:
         3. HANDLES multiple HTML structures (grid, list, card layouts)
         4. PARSES alternative date/price formats
         5. EXTRACTS events from sidebars, modals, lazy-loaded content
-        6. MAINTAINS price filtering (≤15€) and date range (14 days)
+        6. MAINTAINS price filtering (≤20€) and date range (14 days)
         7. RETURNS same event schema: title, date, time, price, category, description, url, venue, source_url
         
         IMPORTANT:

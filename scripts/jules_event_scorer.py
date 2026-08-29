@@ -161,7 +161,7 @@ def main():
     parser = argparse.ArgumentParser(description="Score events via one Jules API call, with a deterministic fallback")
     parser.add_argument("--input", required=True, help="Aggregated events JSON file")
     parser.add_argument("--output", required=True, help="Output scored events JSON file")
-    parser.add_argument("--max-price", type=float, default=15.0)
+    parser.add_argument("--max-price", type=float, default=20.0)
     parser.add_argument("--agent-id", default="jules-1")
     parser.add_argument("--source-id", default=os.environ.get("JULES_SOURCE_ID"))
     parser.add_argument("--timeout", type=int, default=900, help="Max seconds to wait for the Jules session")

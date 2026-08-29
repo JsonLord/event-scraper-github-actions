@@ -41,7 +41,7 @@ jobs:
         run: |
           echo "JULES_API_KEY=${{ secrets.JULES_API_KEY }}" >> $GITHUB_ENV
           echo "GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}" >> $GITHUB_ENV
-          echo "EVENT_PRICE_MAX=15" >> $GITHUB_ENV
+          echo "EVENT_PRICE_MAX=20" >> $GITHUB_ENV
           echo "EVENT_DATE_RANGE_DAYS=14" >> $GITHUB_ENV
 
       - name: Run event scraper
@@ -53,18 +53,18 @@ jobs:
           python scripts/jules_cloak_scraper.py \
             --url "$SITE_URL" \
             --site-name "$SITE_NAME" \
-            --output data/events.json \
-            --price-max 15 \
+            --output data/raw_rausgegangen_daily.json \
+            --price-max 20 \
             --date-days 14
           
-          EVENT_COUNT=$(python -c "import json; data=json.load(open('data/events.json')); print(data.get('event_count', 0))")
+          EVENT_COUNT=$(python -c "import json; data=json.load(open('data/raw_rausgegangen_daily.json')); print(data.get('event_count', 0))")
           echo "event_count=$EVENT_COUNT" >> $GITHUB_OUTPUT
 
       - name: Upload events as artifact
         uses: actions/upload-artifact@v4
         with:
           name: events-${{ github.run_id }}
-          path: data/events.json
+          path: data/raw_rausgegangen_daily.json
           retention-days: 30
 
       - name: Save HTML for validation
@@ -73,21 +73,20 @@ jobs:
           mkdir -p data/html
           mv data/site.html data/html/ 2>/dev/null || true
 
-      - name: Commit and push events
+      # This daily job scrapes a single site and must never touch
+      # data/events.json, which holds the full aggregate from the weekly
+      # matrix run. It used to overwrite it - eleven consecutive
+      # "Update events: 0 events" commits destroyed a 221-event aggregate -
+      # and push with [skip ci], which also suppressed the Pages rebuild, so
+      # the published site stayed frozen on a stale artifact.
+      - name: Commit and push daily scrape
         run: |
           git config --global user.name 'GitHub Actions'
           git config --global user.email 'actions@github.com'
-          
-          git add data/events.json
-          git diff --staged --quiet || git commit -m "Update events: ${{ steps.scrape.outputs.event_count }} events [skip ci]"
-          git push
 
-      - name: Deploy to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v4
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./data
-          keep_files: true
+          git add data/raw_rausgegangen_daily.json
+          git diff --staged --quiet || git commit -m "Daily rausgegangen scrape: ${{ steps.scrape.outputs.event_count }} events [skip ci]"
+          git push
 
   validate-and-improve:
     needs: scrape-events

@@ -30,12 +30,35 @@ import logging
 import os
 import re
 import sys
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Any, Dict, List, Optional
 from urllib.parse import urljoin
 
 import requests
 from bs4 import BeautifulSoup
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
+from event_utils import (  # noqa: E402
+    DATE_DE_RE,
+    DATE_ISO_RE,
+    DATE_TEXT_RE,
+    FREE_RE,
+    PRICE_RE,
+    TIME_RE,
+    DEFAULT_MAX_PRICE,
+    clean_text,
+    clean_url,
+    dedupe_events,
+    normalize_date,
+    parse_date,
+    parse_price,
+    parse_time,
+    scrape_window,
+    title_from_slug,
+    title_looks_noisy,
+    validate_events,
+)
 
 logging.basicConfig(
     level=os.environ.get("LOG_LEVEL", "INFO"),
@@ -56,138 +79,52 @@ BOT_CHALLENGE_MARKERS = (
     "access denied",
 )
 
+# Upper bound on rows taken from one source. Generous rather than tight: it
+# exists to stop a pathological page from ballooning a run, not to trim
+# results, and the date window plus validation do the real filtering.
+MAX_EVENTS_PER_SOURCE = 400
+
 EVENT_CLASS_HINTS = (
     "event", "teaser", "views-row", "card", "listing", "termin",
     "veranstaltung", "programme-item", "program-item", "spielplan",
     "show-item",
 )
 
-PRICE_RE = re.compile(
-    r'(?:€\s*(\d+[.,]?\d*)|(\d+[.,]?\d*)\s*€|(\d+[.,]?\d*)\s*EUR)',
+# Hrefs that lead to a real event page rather than back into site navigation.
+DETAIL_HREF_HINTS = (
+    "/event", "/events/", "/veranstaltung", "/termin", "/programm/", "/show/",
+    "/produktion", "/stueck", "/konzert", "/spielplan/event", "/e/", "/tickets",
+)
+
+# Navigation and utility links that must never be mistaken for an event link.
+NON_DETAIL_HREF_RE = re.compile(
+    r'(?:^#|^mailto:|^tel:|/(?:impressum|datenschutz|kontakt|newsletter|login|'
+    r'anmelden|search|suche|cart|warenkorb|agb|privacy|cookie)\b)',
     re.IGNORECASE,
 )
-FREE_RE = re.compile(r'\b(free|gratis|kostenlos|eintritt frei|freier eintritt)\b', re.IGNORECASE)
-DATE_ISO_RE = re.compile(r'\b(\d{4}-\d{2}-\d{2})\b')
-DATE_DE_RE = re.compile(r'\b(\d{1,2}\.\s?\d{1,2}\.\s?\d{2,4})\b')
-DATE_TEXT_RE = re.compile(
-    r'\b(\d{1,2})\.?\s*'
-    r'(Jan(?:uar)?|Feb(?:ruar)?|M(?:ä|ae)r(?:z)?|Apr(?:il)?|Mai|Jun(?:i)?|Jul(?:i)?|'
-    r'Aug(?:ust)?|Sep(?:t(?:ember)?)?|Okt(?:ober)?|Nov(?:ember)?|Dez(?:ember)?|'
-    r'January|February|March|April|May|June|July|August|September|October|November|December)'
-    # Only treat a following number as a year if it's a full 4 digits,
-    # otherwise it's likely a time (e.g. "16. July 19:00").
-    r'\.?\s*(?:(\d{4})(?!\d))?\b',
-    re.IGNORECASE,
-)
-TIME_RE = re.compile(r'\b(\d{1,2}[:.]\d{2})\s*(?:Uhr|h)?\b')
-
-MONTH_NAME_TO_NUM = {
-    "jan": 1, "januar": 1, "january": 1,
-    "feb": 2, "februar": 2, "february": 2,
-    "mar": 3, "mär": 3, "maer": 3, "märz": 3, "maerz": 3, "march": 3,
-    "apr": 4, "april": 4,
-    "mai": 5, "may": 5,
-    "jun": 6, "juni": 6, "june": 6,
-    "jul": 7, "juli": 7, "july": 7,
-    "aug": 8, "august": 8,
-    "sep": 9, "sept": 9, "september": 9,
-    "okt": 10, "oktober": 10, "oct": 10, "october": 10,
-    "nov": 11, "november": 11,
-    "dez": 12, "dezember": 12, "dec": 12, "december": 12,
-}
 
 
-def _month_from_name(name: str) -> Optional[int]:
-    name = name.lower().rstrip(".")
-    for key, num in MONTH_NAME_TO_NUM.items():
-        if name.startswith(key):
-            return num
-    return None
+def _best_detail_url(scopes, source_url: str) -> str:
+    """Pick the most event-like link near a card, falling back to the listing.
 
-
-def parse_price(text: str) -> Optional[float]:
-    """Return price in EUR, 0.0 if explicitly free, or None if unknown."""
-    if FREE_RE.search(text):
-        return 0.0
-    match = PRICE_RE.search(text)
-    if match:
-        raw = next(g for g in match.groups() if g)
-        try:
-            return float(raw.replace(',', '.'))
-        except ValueError:
-            return None
-    return None
-
-
-def title_looks_noisy(title: str) -> bool:
-    """True if a card title looks like concatenated listing text rather than a
-    clean event name (contains a time/date token, a listing badge, or is very
-    long) - a cue to prefer a slug-derived title instead."""
-    if len(title) > 80:
-        return True
-    if TIME_RE.search(title) or DATE_TEXT_RE.search(title) or DATE_ISO_RE.search(title):
-        return True
-    badges = ("pick of the day", "presented", "sponsored", "today,", "tomorrow,")
-    low = title.lower()
-    return any(b in low for b in badges)
-
-
-def title_from_slug(url: str) -> Optional[str]:
-    """Derive a readable title from an event-detail URL slug, e.g.
-    '/events/rising-spaces-the-first-exhibition-11/' -> 'Rising Spaces The
-    First Exhibition'. Returns None if the URL has no slug-like segment."""
-    if not url:
-        return None
-    path = url.split("?")[0].rstrip("/")
-    segment = path.rsplit("/", 1)[-1]
-    if "-" not in segment:
-        return None
-    # Drop a trailing numeric id ("...-11") that many slugs carry.
-    segment = re.sub(r'-\d+$', '', segment)
-    words = [w for w in segment.split("-") if w]
-    if not words:
-        return None
-    return " ".join(w.capitalize() for w in words)
-
-
-def parse_date(text: str) -> str:
-    """Best-effort date extraction; falls back to today's date."""
-    iso = DATE_ISO_RE.search(text)
-    if iso:
-        return iso.group(1)
-    de = DATE_DE_RE.search(text)
-    if de:
-        parts = re.split(r'\.\s?', de.group(1).strip('.'))
-        parts = [p for p in parts if p]
-        try:
-            day, month = int(parts[0]), int(parts[1])
-            year = int(parts[2]) if len(parts) > 2 else datetime.now().year
-            if year < 100:
-                year += 2000
-            return f"{year:04d}-{month:02d}-{day:02d}"
-        except (ValueError, IndexError):
-            pass
-    textual = DATE_TEXT_RE.search(text)
-    if textual:
-        month = _month_from_name(textual.group(2))
-        if month:
-            day = int(textual.group(1))
-            year = int(textual.group(3)) if textual.group(3) else datetime.now().year
-            try:
-                candidate = datetime(year, month, day)
-                # No explicit year and the date is well in the past: it's
-                # almost certainly next year's occurrence.
-                if not textual.group(3) and candidate < datetime.now() - timedelta(days=31):
-                    candidate = datetime(year + 1, month, day)
-                return candidate.strftime("%Y-%m-%d")
-            except ValueError:
-                pass
-    return datetime.now().strftime("%Y-%m-%d")
-
-
-def parse_time(text: str) -> str:
-    match = TIME_RE.search(text)
-    return match.group(1).replace('.', ':') if match else ""
+    Taking the first <a> in scope returned navigation chrome as often as an
+    event page, which is why 36 published rows linked straight back to the
+    listing they came from.
+    """
+    best = ""
+    for scope in scopes:
+        if not scope:
+            continue
+        for anchor in scope.find_all("a", href=True):
+            href = anchor["href"].strip()
+            if not href or NON_DETAIL_HREF_RE.search(href):
+                continue
+            absolute = urljoin(source_url, href)
+            if any(hint in absolute.lower() for hint in DETAIL_HREF_HINTS):
+                return clean_url(absolute)
+            if not best:
+                best = clean_url(absolute)
+    return best or source_url
 
 
 def is_bot_challenge(html: str) -> bool:
@@ -248,23 +185,90 @@ def extract_jsonld_events(html: str, source_url: str) -> List[Dict[str, Any]]:
                     price = None
 
             start_date = node.get("startDate", "") or ""
-            date_part, _, time_part = start_date.partition("T")
+
+            offer_url = offers.get("url") if isinstance(offers, dict) else None
+            event_url = node.get("url") or offer_url or source_url
 
             events.append({
-                "title": node.get("name", "Untitled event"),
-                "date": date_part or datetime.now().strftime("%Y-%m-%d"),
-                "time": time_part[:5],
+                "title": clean_text(node.get("name")),
+                # schema.org dates arrive as "2026-8-29" or with a time and
+                # offset attached; publish a single zero-padded ISO form.
+                "date": normalize_date(start_date) or "",
+                "time": parse_time(start_date),
                 "price": price,
-                "category": "",
-                "description": (node.get("description") or "")[:500],
-                "url": node.get("url") or source_url,
-                "venue": venue or "",
+                "category": clean_text(node.get("eventAttendanceMode") or ""),
+                "description": clean_text(node.get("description"), max_length=400),
+                "url": clean_url(urljoin(source_url, str(event_url))),
+                "venue": clean_text(venue),
                 "source_url": source_url,
             })
     return events
 
 
-def extract_heuristic_events(html: str, source_url: str) -> List[Dict[str, Any]]:
+def extract_time_element_events(
+    html: str, source_url: str, max_events: int = MAX_EVENTS_PER_SOURCE
+) -> List[Dict[str, Any]]:
+    """Build events from ``<time datetime="...">`` markers and their cards.
+
+    ``<time datetime>`` is the standard machine-readable date carrier and is
+    far more reliable than scraping a rendered date string, but nothing in the
+    pipeline looked at it. Several theatre sites publish their whole programme
+    this way and yielded nothing at all: Volksbuehne exposes 168 such markers
+    (and 96 event links) yet the class-hint scan found zero candidates,
+    because its cards carry no event-ish class and no date text inside them.
+    """
+    soup = BeautifulSoup(html, "lxml")
+    events = []
+    for marker in soup.find_all(attrs={"datetime": True}):
+        iso = normalize_date(marker.get("datetime"))
+        if not iso:
+            continue
+
+        # Walk up to the smallest ancestor that also carries a link, which is
+        # the event card; stop before swallowing the whole listing.
+        card, link = marker, None
+        for _ in range(6):
+            card = card.parent
+            if card is None:
+                break
+            link = card.find("a", href=True)
+            if link is not None:
+                break
+        if card is None:
+            continue
+
+        card_text = card.get_text(" ", strip=True)
+        if len(card_text) > 3000:
+            continue
+
+        title = ""
+        heading = card.find(["h1", "h2", "h3", "h4", "h5"])
+        if heading:
+            title = heading.get_text(" ", strip=True)
+        if not title and link is not None:
+            title = link.get_text(" ", strip=True)
+        if not title:
+            title = card_text[:120]
+        if title_looks_noisy(title):
+            title = title_from_slug(urljoin(source_url, link["href"]) if link else "") or title
+
+        events.append({
+            "title": clean_text(title, max_length=200),
+            "date": iso,
+            "time": parse_time(marker.get("datetime")) or parse_time(card_text),
+            "price": parse_price(card_text),
+            "category": "",
+            "description": clean_text(card_text, max_length=400),
+            "url": _best_detail_url([card, card.parent], source_url),
+            "venue": "",
+            "source_url": source_url,
+        })
+        if len(events) >= max_events:
+            break
+    return events
+
+
+def extract_heuristic_events(html: str, source_url: str, max_events: int = MAX_EVENTS_PER_SOURCE) -> List[Dict[str, Any]]:
     soup = BeautifulSoup(html, "lxml")
     candidates = []
     for el in soup.find_all(True):
@@ -279,25 +283,41 @@ def extract_heuristic_events(html: str, source_url: str) -> List[Dict[str, Any]]
             continue
         candidates.append((el, text))
 
-    # Drop candidates that are nested inside another candidate, keeping the
-    # outermost matching element so a whole event card is captured together
-    # rather than a price/date fragment nested within it.
+    # Keep whole event cards, not fragments - but a *list container* usually
+    # carries an event-ish class too, and "outermost wins" then collapsed a
+    # whole listing into one row: stadtmuseum went from 42 candidates to 2 and
+    # Eventbrite from 27 to 3. An element holding two or more other candidates
+    # is a container, so prefer its children; one holding at most a single
+    # candidate is a card, so prefer it over its fragments.
+    candidate_set = {id(el) for el, _ in candidates}
     kept = []
     for el, text in candidates:
-        if any(el is not other and other in el.parents for other, _ in candidates):
-            continue
+        contained = sum(
+            1 for descendant in el.find_all(True)
+            if id(descendant) in candidate_set and descendant is not el
+        )
+        if contained >= 2:
+            continue  # a list of events, not an event
+        if any(
+            el is not other
+            and other in el.parents
+            and sum(1 for d in other.find_all(True) if id(d) in candidate_set and d is not other) < 2
+            for other, _ in candidates
+        ):
+            continue  # a fragment inside a card that was itself kept
         kept.append((el, text))
 
     events = []
     seen_titles = set()
-    for el, text in kept[:60]:
+    # rausgegangen's date view yields 205 valid candidates; a hardcoded [:60]
+    # silently discarded 71% of the biggest source in the matrix.
+    for el, text in kept[:max_events]:
         # Titles and links are often siblings of the matched fragment rather
         # than inside it (e.g. a Drupal "views-row" wrapping separate title,
         # image and price fields) - widen the search to nearby ancestors.
         search_scopes = [el, el.parent, getattr(el.parent, "parent", None)]
 
-        href_link = next((s.find("a", href=True) for s in search_scopes if s and s.find("a", href=True)), None)
-        event_url = urljoin(source_url, href_link["href"]) if href_link else source_url
+        event_url = _best_detail_url(search_scopes, source_url)
 
         title = ""
         for scope in search_scopes:
@@ -331,22 +351,37 @@ def extract_heuristic_events(html: str, source_url: str) -> List[Dict[str, Any]]
         # A date often only appears once, on an ancestor "day group" heading
         # (e.g. a calendar table cell), not repeated on each event fragment -
         # widen the date search to nearby ancestor text as a fallback.
-        date_context = text
-        anc = el
-        for _ in range(5):
-            anc = getattr(anc, "parent", None)
-            if not anc:
-                break
-            date_context = anc.get_text(" ", strip=True)[:60] + " " + date_context
+        # The card's own text wins; ancestor text is appended, not prepended.
+        # parse_date returns the first match it finds, so prepending the
+        # listing's day heading made every card inherit that heading's date -
+        # 67 rows in the last run were stamped with the page date instead of
+        # their own ("So, 30. Aug" published as 27 Aug).
+        # The card's own text is authoritative. Ancestor text is consulted only
+        # when the card states no date at all (a calendar cell whose day
+        # heading sits on a parent), never merged in alongside it.
+        event_date = parse_date(text)
+        if not event_date:
+            anc = el
+            for _ in range(5):
+                anc = getattr(anc, "parent", None)
+                if not anc:
+                    break
+                event_date = parse_date(anc.get_text(" ", strip=True)[:120])
+                if event_date:
+                    break
 
+        description = clean_text(text, max_length=400)
         events.append({
             "title": title[:200],
-            "date": parse_date(date_context),
+            "date": event_date or "",
             "time": parse_time(text),
             "price": parse_price(text),
             "category": "",
-            "description": text[:500],
+            "description": description,
             "url": event_url,
+            # Venue is recovered from the card text by validate_event(); the
+            # extractors used to hardcode "" and leave the Location column
+            # blank on nearly two thirds of published rows.
             "venue": "",
             "source_url": source_url,
         })
@@ -397,7 +432,7 @@ def fetch_jina_content(url: str) -> Optional[str]:
         return None
 
 
-def extract_jina_events(markdown: str, source_url: str) -> List[Dict[str, Any]]:
+def extract_jina_events(markdown: str, source_url: str, max_events: int = MAX_EVENTS_PER_SOURCE) -> List[Dict[str, Any]]:
     events = []
     seen = set()
     for line in markdown.splitlines():
@@ -414,51 +449,84 @@ def extract_jina_events(markdown: str, source_url: str) -> List[Dict[str, Any]]:
             continue
         seen.add(title.lower())
         events.append({
-            "title": title[:200],
-            "date": parse_date(text),
+            "title": clean_text(title, max_length=200),
+            "date": parse_date(text) or "",
             "time": parse_time(text),
             "price": parse_price(text),
             "category": "",
-            "description": text[:500],
-            "url": event_url,
+            "description": clean_text(text, max_length=400),
+            "url": clean_url(event_url),
             "venue": "",
             "source_url": source_url,
         })
-        if len(events) >= 60:
+        if len(events) >= max_events:
             break
     return events
+
+
+def _merge(*batches: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """Combine strategy outputs, preferring the richest row per event URL.
+
+    Strategies see different parts of a page: JSON-LD carries prices and
+    venues, <time datetime> carries exact dates, the class-hint scan carries
+    cards the other two miss. Merging keeps all three contributions instead of
+    discarding two of them.
+    """
+    merged: Dict[str, Dict[str, Any]] = {}
+    order: List[str] = []
+    for batch in batches:
+        for event in batch:
+            key = (event.get("url") or "") + "|" + str(event.get("title", "")).lower()
+            if key not in merged:
+                merged[key] = event
+                order.append(key)
+                continue
+            existing = merged[key]
+            for field, value in event.items():
+                if value not in (None, "") and existing.get(field) in (None, ""):
+                    existing[field] = value
+    return [merged[k] for k in order]
+
+
+def scrape_document(html: str, url: str, label: str) -> List[Dict[str, Any]]:
+    """Run every extraction strategy over one document and merge the results.
+
+    Previously the first strategy that returned anything won outright, so a
+    page whose JSON-LD described four events never had its remaining fifty
+    cards scanned.
+    """
+    jsonld = extract_jsonld_events(html, url)
+    timed = extract_time_element_events(html, url)
+    heuristic = extract_heuristic_events(html, url)
+    logger.info(
+        f"{label}: JSON-LD {len(jsonld)}, <time datetime> {len(timed)}, "
+        f"heuristic scan {len(heuristic)}"
+    )
+    return _merge(jsonld, timed, heuristic)
 
 
 def scrape(url: str) -> List[Dict[str, Any]]:
     html = fetch_plain(url)
     if html and not is_bot_challenge(html):
-        events = extract_jsonld_events(html, url)
+        events = scrape_document(html, url, "plain HTML")
         if events:
-            logger.info(f"Found {len(events)} events via JSON-LD (plain HTML)")
-            return events
-        events = extract_heuristic_events(html, url)
-        if events:
-            logger.info(f"Found {len(events)} events via heuristic scan (plain HTML)")
+            logger.info(f"Found {len(events)} candidate events from plain HTML")
             return events
     else:
         logger.info("Plain GET returned a bot challenge or failed; escalating to CloakBrowser")
 
     rendered = render_with_cloakbrowser(url)
     if rendered:
-        events = extract_jsonld_events(rendered, url)
+        events = scrape_document(rendered, url, "rendered DOM")
         if events:
-            logger.info(f"Found {len(events)} events via JSON-LD (rendered DOM)")
-            return events
-        events = extract_heuristic_events(rendered, url)
-        if events:
-            logger.info(f"Found {len(events)} events via heuristic scan (rendered DOM)")
+            logger.info(f"Found {len(events)} candidate events from the rendered DOM")
             return events
 
     markdown = fetch_jina_content(url)
     if markdown:
         events = extract_jina_events(markdown, url)
         if events:
-            logger.info(f"Found {len(events)} events via Jina Reader fallback")
+            logger.info(f"Found {len(events)} candidate events via Jina Reader fallback")
             return events
 
     logger.warning(f"No events could be extracted from {url}")
@@ -469,8 +537,10 @@ def main():
     parser = argparse.ArgumentParser(description="Generic multi-strategy event scraper")
     parser.add_argument("--url", required=True, help="URL to scrape")
     parser.add_argument("--output", required=True, help="Output JSON file")
-    parser.add_argument("--price-max", type=float, default=15.0, help="Max event price")
-    parser.add_argument("--date-days", type=int, default=14, help="Date range in days (informational)")
+    parser.add_argument("--price-max", type=float, default=DEFAULT_MAX_PRICE,
+                        help=f"Max event price in EUR (default {DEFAULT_MAX_PRICE:g})")
+    parser.add_argument("--date-days", type=int, default=7,
+                        help="Only keep events starting within this many days from today")
     parser.add_argument("--save-html", action="store_true", help="Save a page snapshot for analysis")
     parser.add_argument("--html-output", help="Path where fetched page content should be saved")
 
@@ -482,7 +552,19 @@ def main():
         logger.error(f"Scraping failed: {e}")
         events = []
 
-    filtered = [e for e in events if e.get("price") is None or e["price"] <= args.price_max]
+    window_start, window_end = scrape_window(args.date_days)
+    kept, rejected = validate_events(
+        events,
+        source_url=args.url,
+        window_start=window_start,
+        window_end=window_end,
+        max_price=args.price_max,
+    )
+    filtered = dedupe_events(kept)
+    logger.info(
+        f"{len(filtered)} events kept for {window_start}..{window_end} "
+        f"({rejected} rejected as unusable or out of window)"
+    )
 
     if args.save_html:
         html_output = args.html_output or "data/html/generic.html"
@@ -495,6 +577,8 @@ def main():
         "source": args.url,
         "scraped_at": datetime.now().isoformat(),
         "event_count": len(filtered),
+        "window_start": window_start.isoformat(),
+        "window_end": window_end.isoformat(),
         "events": filtered,
     }
 

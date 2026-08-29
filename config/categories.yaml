@@ -140,7 +140,7 @@ default_category: social
 
 # Price thresholds for classification
 price_filters:
-  max_price: 15  # Maximum price to include
+  max_price: 20  # Maximum price to include
   free_threshold: 0  # Events at or below this are "free"
 
 # Date range

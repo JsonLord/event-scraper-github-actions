@@ -135,7 +135,7 @@ class EventScraper:
         self,
         html: str,
         url: str,
-        price_max: float = 15.0,
+        price_max: float = 20.0,
         date_range_days: int = 14
     ) -> List[Dict[str, Any]]:
         """
@@ -172,7 +172,7 @@ class JulesEventScraper:
         self,
         agent_id: str = "jules-1",
         source_id: Optional[str] = None,
-        price_max: float = 15.0,
+        price_max: float = 20.0,
         date_range_days: int = 14
     ):
         """
@@ -341,7 +341,7 @@ def main():
     parser.add_argument("--site-name", default="Unknown", help="Site name")
     parser.add_argument("--agent-id", default="jules-1", help="Jules agent ID")
     parser.add_argument("--source-id", help="Jules source ID")
-    parser.add_argument("--price-max", type=float, default=15.0, help="Max event price")
+    parser.add_argument("--price-max", type=float, default=20.0, help="Max event price")
     parser.add_argument("--date-days", type=int, default=14, help="Date range in days")
     parser.add_argument("--output", help="Output JSON file")
     parser.add_argument("--use-jules-scraper", action="store_true", help="Use Jules-generated scraper")

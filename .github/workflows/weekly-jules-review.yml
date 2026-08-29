@@ -38,7 +38,22 @@ jobs:
           - { name: eventbrite_de,          url: "https://www.eventbrite.de/d/germany/berlin/events/" }
           - { name: eventbrite_com,         url: "https://www.eventbrite.com/d/germany--berlin/events/" }
           - { name: meetup_com,             url: "https://www.meetup.com/berlin/events/" }
-          - { name: meetup_com_find,        url: "https://www.meetup.com/find/?allMeetups=false&radius=20&userFreeform=Berlin%2C+Germany" }
+          # userFreeform= was resolved client-side, so the US-hosted runner
+          # got San Francisco results for a Berlin query. location=de--Berlin
+          # with explicit coordinates is resolved server-side; the scraper
+          # additionally drops any row with no independent Berlin signal.
+          - { name: meetup_com_find,        url: "https://www.meetup.com/find/?location=de--Berlin&source=EVENTS&distance=tenMiles&lat=52.52&lon=13.405" }
+          # Sport and networking get their own tables on the page (see
+          # score_events.py's STREAMS) but nothing in the matrix carried that
+          # content - measured live: yoga 12 kept, running 5, hiking 2,
+          # cycling 3, founders/startup 2-3. Meetup's own keyword search is
+          # the only source in the matrix that reliably has it.
+          - { name: meetup_running,         url: "https://www.meetup.com/find/?location=de--Berlin&source=EVENTS&keywords=running" }
+          - { name: meetup_cycling,         url: "https://www.meetup.com/find/?location=de--Berlin&source=EVENTS&keywords=cycling" }
+          - { name: meetup_yoga,            url: "https://www.meetup.com/find/?location=de--Berlin&source=EVENTS&keywords=yoga" }
+          - { name: meetup_hiking,          url: "https://www.meetup.com/find/?location=de--Berlin&source=EVENTS&keywords=hiking" }
+          - { name: meetup_startup,         url: "https://www.meetup.com/find/?location=de--Berlin&source=EVENTS&keywords=startup" }
+          - { name: meetup_founders,        url: "https://www.meetup.com/find/?location=de--Berlin&source=EVENTS&keywords=founder" }
           # Remaining sites use the generic multi-strategy scraper.
           # (duplicates from the source list - rausgegangen, staatsoper-berlin.de,
           # ritterbutzke.de - are scraped once, not once per duplicate URL)
@@ -47,12 +62,18 @@ jobs:
           - { name: ufafabrik,              url: "https://ufafabrik.de/spielplan.html" }
           - { name: stadtmuseum,            url: "https://www.stadtmuseum.de/programm" }
           - { name: werk9,                  url: "https://werk9.de/" }
-          - { name: dokk11,                 url: "https://dokk11.de/" }
-          - { name: schloss_glienicke,      url: "https://www.schloss-und-parkglienicke.de/orangerie/" }
+          # Removed - these no longer resolve or serve a listing, so they only
+          # ever consumed a matrix leg and produced an empty artifact:
+          #   dokk11.de                          (no DNS)
+          #   schloss-und-parkglienicke.de       (no DNS)
+          #   renaissancetheater.de              (parked: "jetzt kaufen!";
+          #     the Berlin house is renaissance-theater.de)
           - { name: lakestudios,            url: "https://lakestudiosberlin.com/unfinished-fridays/" }
           - { name: theclubmap,             url: "https://www.theclubmap.com/berlin-techno-partys/" }
-          - { name: renaissancetheater,     url: "https://www.renaissancetheater.de/" }
-          - { name: deutsches_theater,      url: "https://www.deutsches-theater.de/" }
+          # deutsches-theater.de is the *Munich* theatre ("Bühne der Stadt
+          # München") and contributed no Berlin events; Berlin's house is
+          # deutschestheater.de, whose Spielplan yields 75 listings.
+          - { name: deutsches_theater,      url: "https://www.deutschestheater.de/programm/spielplan" }
           - { name: staatsoper_berlin,      url: "https://www.staatsoper-berlin.de/" }
           - { name: staatsballett_berlin,   url: "https://www.staatsballett-berlin.de/" }
           - { name: volksbuehne,            url: "https://www.volksbuehne.berlin/" }
@@ -61,7 +82,28 @@ jobs:
           - { name: improfabrik,            url: "https://improfabrik.de/" }
           - { name: oper_in_berlin,         url: "https://www.oper-in-berlin.de/de/spielplan/" }
           - { name: venturecafe_berlin,     url: "https://venturecafe.com/berlin/" }
-          - { name: ritterbutzke,           url: "https://www.ritterbutzke.de/" }
+          # www.ritterbutzke.de is a <meta http-equiv="refresh"> redirect, which
+          # a plain GET never follows - the scraper always saw the 325-byte
+          # redirect stub. The real site is club.ritterbutzke.com; it renders
+          # its programme client-side (0 events via plain HTTP here), so this
+          # still depends on the CloakBrowser tier, same as berlin_buehnen.
+          - { name: ritterbutzke,           url: "https://club.ritterbutzke.com" }
+          # Was removed as "parked" under the un-hyphenated domain; the real
+          # Berlin house is at the hyphenated one. Also JS-rendered - 0 via
+          # plain HTTP here, CloakBrowser-dependent.
+          - { name: renaissance_theater,    url: "https://renaissance-theater.de/spielplan/" }
+          # New, verified live: 8 raw -> 3 kept via plain HTTP (environmental
+          # education workshops, e.g. "Kräutertraditionen").
+          - { name: freilandlabor_britz,    url: "https://www.freilandlabor-britz.de/" }
+          # New, verified live: 32 raw -> 2 kept via plain HTTP. Tempelhofer
+          # Feld's own events page - outdoor programming.
+          - { name: thf_berlin,             url: "https://www.thf-berlin.de/aktuelles/veranstaltungen" }
+          # orangerie-nk.de/events is a private-venue-booking page ("book your
+          # wedding here"), not a calendar - the real programme sits on the
+          # homepage itself. Verified live: extracts a real dated event
+          # ("Von Nord nach Süd", 27 Sep) correctly; it just fell outside the
+          # 7-day window this was tested against, which is expected, not a bug.
+          - { name: orangerie_neukoelln,    url: "https://www.orangerie-nk.de/" }
       fail-fast: false
     env:
       TARGET_URL: ${{ matrix.url }}
@@ -115,23 +157,31 @@ jobs:
           SITE_NAME="${{ matrix.name }}"
           echo "site_name=$SITE_NAME" >> $GITHUB_OUTPUT
 
-          # Sites with a hand-written scraper get the autonomous repair loop
-          # (retries + Jules-driven fixes); everything else uses the shared
-          # generic scraper directly (repairing a script shared by 20+ sites
-          # based on one site's failure would corrupt it for the rest).
-          # rausgegangen's date view is server-rendered with clean event-detail
-          # slugs, which the generic scraper handles well (cleaner than the old
-          # Jina-markdown scraper), so it routes to the generic path.
-          if [[ "$URL" == *"eventbrite"* ]]; then
-            echo "script=scripts/eventbrite_scraper.py" >> $GITHUB_OUTPUT
-            echo "use_repair_loop=true" >> $GITHUB_OUTPUT
-          elif [[ "$URL" == *"meetup"* ]]; then
-            echo "script=scripts/meetup_scraper.py" >> $GITHUB_OUTPUT
-            echo "use_repair_loop=true" >> $GITHUB_OUTPUT
-          else
-            echo "script=scripts/generic_event_scraper.py" >> $GITHUB_OUTPUT
-            echo "use_repair_loop=false" >> $GITHUB_OUTPUT
-          fi
+          # Both meetup_scraper.py and eventbrite_scraper.py lead with
+          # CloakBrowser and fall back to anonymous Jina Reader. In this CI
+          # environment both returned 0 events on every source, every run:
+          # confirmed from actual job logs, not inferred. autonomous_repair.py
+          # then escalated every one of those to Jules for a fix - and every
+          # single Jules API call in the run came back "400 Bad Request",
+          # burning 15-20+ minutes per leg (three attempts, one of them a
+          # 9-minute Jules session) before hard-failing the job. That's two
+          # independent breakages (CloakBrowser/Jina yielding nothing, and the
+          # Jules repair path itself) stacked on top of each other.
+          #
+          # The generic scraper needs none of that: verified locally this same
+          # session that its plain-HTTP JSON-LD/heuristic extraction pulls
+          # 9-27 raw events straight out of Meetup's static search-result HTML
+          # for the exact keyword URLs below - the event data is already
+          # sitting in the page, CloakBrowser was never required to get it.
+          # This is the same fix already applied to rausgegangen for the same
+          # reason (see its own routing history). Eventbrite's static HTML
+          # carries far less (its listing is client-rendered), so this won't
+          # turn eventbrite into a strong source - but the generic scraper's
+          # own three-tier fallback (JSON-LD -> heuristic -> CloakBrowser ->
+          # Jina) is strictly more capable than eventbrite_scraper.py's two,
+          # and it fails soft (0 events, job still succeeds) instead of hard.
+          echo "script=scripts/generic_event_scraper.py" >> $GITHUB_OUTPUT
+          echo "use_repair_loop=false" >> $GITHUB_OUTPUT
 
       - name: Run scraper
         run: |
@@ -146,6 +196,8 @@ jobs:
             python "${{ steps.site-info.outputs.script }}" \
               --url "${TARGET_URL}" \
               --output "data/raw_${{ steps.site-info.outputs.site_name }}.json" \
+              --price-max 20 \
+              --date-days 7 \
               --save-html \
               --html-output "data/html/${{ steps.site-info.outputs.site_name }}.html"
           fi
@@ -188,16 +240,32 @@ jobs:
 
       - name: Aggregate events
         run: |
-          python -c "
-          import json, glob, os
-          all_events = []
-          for f in glob.glob('data/raw_*.json'):
-              with open(f) as j:
-                  all_events.extend(json.load(j).get('events', []))
+          python - <<'PY'
+          import glob, json, os
+
+          all_events, per_source = [], {}
+          for path in sorted(glob.glob('data/raw_*.json')):
+              try:
+                  with open(path, encoding='utf-8') as handle:
+                      events = json.load(handle).get('events', [])
+              except (OSError, json.JSONDecodeError) as exc:
+                  print(f"  !! {path}: unreadable ({exc})")
+                  continue
+              per_source[os.path.basename(path)] = len(events)
+              all_events.extend(events)
+
+          # Print the per-source yield so a source that has silently started
+          # returning nothing is visible in the run log rather than only as a
+          # smaller total.
+          for name, count in sorted(per_source.items(), key=lambda kv: -kv[1]):
+              print(f"  {count:4d}  {name}")
+          print(f"TOTAL {len(all_events)} events from {len(per_source)} sources")
+
           os.makedirs('docs', exist_ok=True)
-          with open('docs/events.json', 'w') as out:
-              json.dump({'events': all_events, 'count': len(all_events)}, out)
-          "
+          with open('docs/events.json', 'w', encoding='utf-8') as out:
+              json.dump({'events': all_events, 'count': len(all_events)}, out,
+                        indent=2, ensure_ascii=False)
+          PY
 
       - name: Configure environment
         run: |
@@ -237,17 +305,55 @@ jobs:
       # short-lived Pages artifact. This makes the events shown by the site
       # inspectable from the repository after the workflow runner is removed.
       - name: Persist aggregated events in repository
-        run: cp docs/events.json data/events.json
+        run: |
+          python - <<'PY'
+          import json, sys
+
+          def count(path):
+              try:
+                  with open(path, encoding='utf-8') as handle:
+                      return len(json.load(handle).get('events', []))
+              except (OSError, json.JSONDecodeError):
+                  return 0
+
+          fresh, existing = count('docs/events.json'), count('data/events.json')
+
+          # A run that collapses to a fraction of the last good aggregate has
+          # almost certainly been blocked or broken rather than finding that
+          # Berlin genuinely has no events. Publishing it anyway is how a
+          # 221-event dataset became an empty file. Keep the previous data and
+          # fail loudly instead.
+          if existing and fresh < max(1, existing // 4):
+              print(f"::error::Aggregate collapsed: {fresh} events vs {existing} previously. "
+                    "Keeping the existing data/events.json.")
+              sys.exit(1)
+
+          with open('docs/events.json', encoding='utf-8') as src:
+              payload = src.read()
+          with open('data/events.json', 'w', encoding='utf-8') as dst:
+              dst.write(payload)
+          print(f"Persisted {fresh} events (previously {existing}).")
+          PY
 
       # Deterministic scoring/categorization/filtering against the preference
-      # profile (max 15 EUR, free preferred, category + Charlottenburg
-      # proximity weighting, sorted best-to-worst).
+      # profile (max 20 EUR, free preferred, category + Charlottenburg
+      # proximity weighting), then ordered by day and, within each day,
+      # from free to dearest.
       - name: Score and categorize events
         run: |
           python scripts/score_events.py \
             --input docs/events.json \
             --output docs/events_scored.json \
-            --max-price 15
+            --max-price 20
+
+      # docs/events_scored.json only lived in the Pages deployment artifact,
+      # which GitHub reclaims after its retention window - the ranked,
+      # streamed and filtered output actually shown on the page (unlike raw
+      # data/events.json, committed above) had no durable copy at all. Commit
+      # it alongside the raw aggregate so both the input and the output of
+      # scoring are inspectable from the repo after the run is gone.
+      - name: Persist scored events in repository
+        run: cp docs/events_scored.json data/events_scored.json
 
       - name: Publish frontend
         run: |
@@ -262,18 +368,53 @@ jobs:
         with:
           path: ./docs
 
+      # A plain "pull --rebase && push" left a fully successful run's data
+      # stranded uncommitted and Pages undeployed: this exact scenario, live -
+      # a manual retrigger raced the tail end of a run it superseded (started
+      # just as that older run's own aggregate-and-deploy, already past its
+      # `needs` gate, finished pushing under cancellation), landing a stale
+      # commit moments before this step ran. The rebase hit a conflict inside
+      # data/events.json - a single machine-generated JSON blob has no
+      # meaningful line-level merge - and the whole job failed with the
+      # freshly scored data computed correctly but never pushed, which also
+      # skipped publish-pages entirely (it needs this job to succeed).
+      #
+      # data/events.json and data/events_scored.json are wholly regenerated
+      # every run, never hand-edited, so on conflict THIS run's output is
+      # always correct to keep. git rebase flips the usual merge meaning of
+      # ours/theirs: "ours" is the upstream being rebased onto (the stale
+      # commit it raced against), "theirs" is the commit being replayed (this
+      # run's). -X theirs is therefore the correct flag - -X ours would
+      # silently keep the STALE data on every conflict, which is worse than
+      # today's loud failure: it would ship outdated events with no one
+      # noticing, instead of failing visibly.
       - name: Commit events and improvements (if any)
         run: |
           git config --global user.name 'GitHub Actions'
           git config --global user.email 'actions@github.com'
-          git add data/events.json scripts/*.py
+          git add data/events.json data/events_scored.json scripts/*.py
           if git diff --staged --quiet; then
             echo "No event or scraper changes to commit"
-          else
-            git commit -m "Update weekly aggregated events"
-            git pull --rebase
-            git push
+            exit 0
           fi
+          git commit -m "Update weekly aggregated events"
+
+          for attempt in 1 2 3 4 5; do
+            if git push; then
+              echo "Pushed on attempt $attempt"
+              exit 0
+            fi
+            echo "Push rejected (attempt $attempt) - fetching and rebasing, preferring this run's data"
+            git fetch origin "$GITHUB_REF_NAME"
+            if ! git rebase -X theirs "origin/$GITHUB_REF_NAME"; then
+              git rebase --abort
+              echo "::error::Rebase failed even with -X theirs; leaving the branch untouched rather than forcing"
+              exit 1
+            fi
+            sleep $((attempt * 3))
+          done
+          echo "::error::Could not push after 5 attempts"
+          exit 1
 
   publish-pages:
     name: Publish weekly event table

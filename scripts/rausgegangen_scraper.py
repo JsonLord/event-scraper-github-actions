@@ -20,7 +20,7 @@ def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--url', required=True, help='URL to scrape')
     parser.add_argument('--output', required=True, help='Output JSON file')
-    parser.add_argument('--price-max', type=float, default=15.0)
+    parser.add_argument('--price-max', type=float, default=20.0)
     parser.add_argument('--date-days', type=int, default=14)
     parser.add_argument('--save-html', action='store_true')
     parser.add_argument('--html-output', help='Path where fetched page content should be saved')
