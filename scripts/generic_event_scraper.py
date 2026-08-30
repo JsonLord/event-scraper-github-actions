@@ -84,6 +84,11 @@ BOT_CHALLENGE_MARKERS = (
 # results, and the date window plus validation do the real filtering.
 MAX_EVENTS_PER_SOURCE = 400
 
+# Cap on extra per-event detail-page fetches for price enrichment (see
+# enrich_missing_prices below). Bounds one source's run time; the date window
+# and validation still do the real filtering afterwards.
+MAX_PRICE_ENRICH_FETCHES = 40
+
 EVENT_CLASS_HINTS = (
     "event", "teaser", "views-row", "card", "listing", "termin",
     "veranstaltung", "programme-item", "program-item", "spielplan",
@@ -505,6 +510,95 @@ def scrape_document(html: str, url: str, label: str) -> List[Dict[str, Any]]:
     return _merge(jsonld, timed, heuristic)
 
 
+def _meetup_fee_from_next_data(html: str) -> Optional[float]:
+    """Meetup's server-rendered page embeds the full event record, including
+    ``feeSettings``, in a ``__NEXT_DATA__`` JSON blob that the search/listing
+    page never surfaces at all. ``feeSettings: null`` means no Meetup-managed
+    fee (free to RSVP - the common case); a populated block carries the
+    actual amount, e.g. {"amount": 44, "currency": "EUR", ...}.
+
+    Returns None (not 0.0) when the blob can't be found or parsed at all, so
+    callers can tell "confirmed free" from "couldn't check".
+    """
+    match = re.search(r'__NEXT_DATA__"\s*type="application/json">(.*?)</script>', html, re.S)
+    if not match:
+        return None
+    try:
+        event = json.loads(match.group(1))["props"]["pageProps"]["event"]
+    except (json.JSONDecodeError, KeyError, TypeError):
+        return None
+    fee = event.get("feeSettings")
+    if fee is None:
+        return 0.0
+    try:
+        return float(fee.get("amount"))
+    except (TypeError, ValueError, AttributeError):
+        return None
+
+
+def _visible_text(soup: BeautifulSoup) -> str:
+    """Page text with nav/footer chrome stripped, so a price regex doesn't
+    latch onto an unrelated figure in a cookie banner or sitemap.
+
+    ``<header>`` is deliberately left alone: sites commonly reuse it for an
+    in-page content header (staatsballett-berlin.de's "Eintritt frei" badge
+    lives in ``<header id="info">``, not site navigation), so stripping it
+    discarded the very price/free marker being searched for.
+    """
+    for tag in soup.find_all(["script", "style", "nav", "footer"]):
+        tag.decompose()
+    return soup.get_text(" ", strip=True)
+
+
+def _price_from_detail_page(html: str, url: str) -> Optional[float]:
+    """Best-effort price for one event's own page.
+
+    Listing cards frequently omit price even though the event's own page
+    states it plainly: rausgegangen.de's schema.org "offers" block only
+    exists on the detail page, and sites like staatsoper-berlin.de and
+    thf-berlin.de write it as prose ("Kosten: 15 Euro pro Person") that
+    never appears in the listing feed either.
+    """
+    if "meetup.com" in url:
+        return _meetup_fee_from_next_data(html)
+    for node in extract_jsonld_events(html, url):
+        if node.get("price") is not None:
+            return node["price"]
+    soup = BeautifulSoup(html, "lxml")
+    return parse_price(_visible_text(soup))
+
+
+def enrich_missing_prices(
+    events: List[Dict[str, Any]],
+    max_fetches: int = MAX_PRICE_ENRICH_FETCHES,
+    fetch=fetch_plain,
+) -> List[Dict[str, Any]]:
+    """Fill in price for events whose listing card didn't state one, by
+    fetching each event's own detail page and checking there instead.
+
+    Only events with a detail link distinct from the listing page are worth
+    fetching - a source like berlin-buehnen.de that never links off its own
+    listing has nothing further to fetch.
+    """
+    fetched = 0
+    for event in events:
+        if event.get("price") is not None:
+            continue
+        url = event.get("url") or ""
+        if not url or url == event.get("source_url"):
+            continue
+        if fetched >= max_fetches:
+            break
+        fetched += 1
+        html = fetch(url)
+        if not html or is_bot_challenge(html):
+            continue
+        price = _price_from_detail_page(html, url)
+        if price is not None:
+            event["price"] = price
+    return events
+
+
 def scrape(url: str) -> List[Dict[str, Any]]:
     html = fetch_plain(url)
     if html and not is_bot_challenge(html):
@@ -543,6 +637,11 @@ def main():
                         help="Only keep events starting within this many days from today")
     parser.add_argument("--save-html", action="store_true", help="Save a page snapshot for analysis")
     parser.add_argument("--html-output", help="Path where fetched page content should be saved")
+    parser.add_argument(
+        "--price-enrich-limit", type=int, default=MAX_PRICE_ENRICH_FETCHES,
+        help="Max per-event detail-page fetches for events with no listed price "
+             f"(default {MAX_PRICE_ENRICH_FETCHES}; 0 disables)",
+    )
 
     args = parser.parse_args()
 
@@ -551,6 +650,12 @@ def main():
     except Exception as e:
         logger.error(f"Scraping failed: {e}")
         events = []
+
+    if args.price_enrich_limit > 0 and events:
+        missing = sum(1 for e in events if e.get("price") is None)
+        enrich_missing_prices(events, max_fetches=args.price_enrich_limit)
+        found = missing - sum(1 for e in events if e.get("price") is None)
+        logger.info(f"Price enrichment: found a price for {found}/{missing} previously unpriced events")
 
     window_start, window_end = scrape_window(args.date_days)
     kept, rejected = validate_events(
