@@ -625,17 +625,19 @@ DEFAULT_MAX_PRICE = 20.0
 # "12,90 to 15,03 €" / "von 10 bis 20 EUR" - only the upper bound carries the
 # currency mark, so a plain first-match read reported the dearest ticket.
 PRICE_RANGE_RE = re.compile(
-    r'(\d+(?:[.,]\d{1,2})?)\s*(?:€|EUR)?\s*(?:to|bis|[-\u2013\u2014])\s*'
-    r'(\d+(?:[.,]\d{1,2})?)\s*(?:€|EUR)',
+    r'(\d+(?:[.,]\d{1,2})?)\s*(?:€|EUR|Euros?\b)?\s*(?:to|bis|[-\u2013\u2014])\s*'
+    r'(\d+(?:[.,]\d{1,2})?)\s*(?:€|EUR|Euros?\b)',
     re.IGNORECASE,
 )
 
 PRICE_RE = re.compile(
-    r'(?:€\s*(\d+(?:[.,]\d{1,2})?)|(\d+(?:[.,]\d{1,2})?)\s*€|(\d+(?:[.,]\d{1,2})?)\s*EUR)',
+    r'(?:€\s*(\d+(?:[.,]\d{1,2})?)|(\d+(?:[.,]\d{1,2})?)\s*€|(\d+(?:[.,]\d{1,2})?)\s*EUR'
+    r'|(\d+(?:[.,]\d{1,2})?)\s*Euros?\b)',
     re.IGNORECASE,
 )
 FREE_RE = re.compile(
-    r'\b(?:free\s+(?:admission|entry)|free|gratis|kostenlos|eintritt\s+frei|freier\s+eintritt|umsonst)\b',
+    r'\b(?:free\s+(?:admission|entry)|free|gratis|kostenlos|kostenfrei|eintritt\s+frei'
+    r'|freier\s+eintritt|umsonst)\b',
     re.IGNORECASE,
 )
 

@@ -17,10 +17,15 @@ pytest.importorskip("bs4")
 
 from scripts.event_utils import parse_time  # noqa: E402
 from scripts.generic_event_scraper import (  # noqa: E402
+    _meetup_fee_from_next_data,
+    _price_from_detail_page,
+    _visible_text,
+    enrich_missing_prices,
     extract_heuristic_events,
     extract_time_element_events,
     scrape_document,
 )
+from bs4 import BeautifulSoup  # noqa: E402
 
 SOURCE = "https://example.de/programm"
 
@@ -126,3 +131,110 @@ def test_german_day_month_is_not_read_as_a_start_time():
     assert parse_time("Mo. 10.08. Tagesvorschau") == ""
     assert parse_time("Beginn 19.30 Uhr") == "19:30"
     assert parse_time("20.00") == "20:00"
+
+
+# --------------------------------------------------------------------------
+# Price enrichment: listing cards omit price that the event's own page states
+# --------------------------------------------------------------------------
+
+def _meetup_page(fee_json: str) -> str:
+    return (
+        '<html><body><script id="__NEXT_DATA__" type="application/json">'
+        '{"props":{"pageProps":{"event":{"title":"Hike","feeSettings":'
+        + fee_json + '}}}}</script></body></html>'
+    )
+
+
+def test_meetup_null_fee_settings_means_free_to_rsvp():
+    """meetup.com never puts price in its search/listing feed at all, but the
+    event's own page embeds it in a __NEXT_DATA__ JSON blob. feeSettings:
+    null means no Meetup-managed fee - 40 of 251 published rows showed
+    "Check site" for exactly this reason."""
+    assert _meetup_fee_from_next_data(_meetup_page("null")) == 0.0
+
+
+def test_meetup_populated_fee_settings_reports_the_amount():
+    html = _meetup_page('{"amount": 44, "currency": "EUR"}')
+    assert _meetup_fee_from_next_data(html) == 44.0
+
+
+def test_meetup_page_without_next_data_reports_unknown_not_free():
+    """A parse failure must stay None, not silently become "free" - the same
+    distinction validate_event() already draws elsewhere in the pipeline."""
+    assert _meetup_fee_from_next_data("<html><body>no data here</body></html>") is None
+
+
+def test_detail_page_json_ld_offers_price_is_used():
+    """rausgegangen.de's schema.org "offers" block only exists on the
+    event's own page, never in the listing feed."""
+    html = '''<html><head><script type="application/ld+json">
+      {"@type":"Event","name":"Auf nach Sachsen Anhalt","startDate":"2026-08-29",
+       "offers":{"price":0,"priceCurrency":"EUR"}}
+      </script></head><body></body></html>'''
+    assert _price_from_detail_page(html, "https://rausgegangen.de/en/events/x/") == 0.0
+
+
+def test_detail_page_prose_price_is_used_when_no_json_ld():
+    """staatsoper-berlin.de and thf-berlin.de state price only as prose on
+    the event's own page ("Kosten: 15 Euro pro Person")."""
+    html = "<html><body><p>Kosten: 15 Euro pro Person</p></body></html>"
+    assert _price_from_detail_page(html, "https://example.de/veranstaltungen/x") == 15.0
+
+
+def test_visible_text_keeps_an_in_page_header_but_drops_nav_and_footer():
+    """staatsballett-berlin.de's "Eintritt frei" badge lives inside
+    <header id="info">, an in-page content header, not site navigation -
+    stripping every <header> discarded the very marker being searched for."""
+    html = '''<html><body>
+      <nav>Home | Programm | 99 EUR Gutschein</nav>
+      <header id="info"><span class="badge">Eintritt frei</span></header>
+      <footer>Impressum | 5 EUR Newsletter-Bonus</footer>
+    </body></html>'''
+    text = _visible_text(BeautifulSoup(html, "lxml"))
+    assert "Eintritt frei" in text
+    assert "Gutschein" not in text
+    assert "Newsletter" not in text
+
+
+def test_detail_page_with_no_stated_price_stays_unknown():
+    """theclubmap.com and deutschestheater.de genuinely don't publish price
+    anywhere on the event page (deutschestheater links out to an external
+    ticket shop) - enrichment must not invent a number."""
+    html = "<html><body><p>Karten kaufen im Vorverkauf.</p></body></html>"
+    assert _price_from_detail_page(html, "https://example.de/produktion/x") is None
+
+
+def test_enrich_missing_prices_only_fetches_what_it_needs_to():
+    events = [
+        {"title": "Already priced", "price": 12.0,
+         "url": "https://example.de/a", "source_url": "https://example.de/list"},
+        {"title": "No detail link", "price": None,
+         "url": "https://example.de/list", "source_url": "https://example.de/list"},
+        {"title": "Free on its own page", "price": None,
+         "url": "https://example.de/b", "source_url": "https://example.de/list"},
+    ]
+    fetched_urls = []
+
+    def fake_fetch(url):
+        fetched_urls.append(url)
+        return "<html><body><p>Eintritt frei</p></body></html>"
+
+    enrich_missing_prices(events, fetch=fake_fetch)
+
+    assert fetched_urls == ["https://example.de/b"]
+    assert events[0]["price"] == 12.0
+    assert events[1]["price"] is None
+    assert events[2]["price"] == 0.0
+
+
+def test_enrich_missing_prices_respects_the_fetch_cap():
+    events = [
+        {"title": f"Event {i}", "price": None,
+         "url": f"https://example.de/e{i}", "source_url": "https://example.de/list"}
+        for i in range(5)
+    ]
+    enrich_missing_prices(events, max_fetches=2, fetch=lambda url: "<html></html>")
+    assert sum(1 for e in events if e["price"] is not None) == 0
+    # Only the first two were even attempted; the rest are untouched, not
+    # incorrectly marked as "checked and found nothing".
+    assert all(e["price"] is None for e in events)

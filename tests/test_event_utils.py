@@ -355,6 +355,26 @@ def test_price_range_reports_the_entry_price():
     assert parse_price("from 12,10 €") == 12.10
 
 
+def test_spelled_out_euro_is_recognised_as_a_price():
+    """staatsoper-berlin.de and thf-berlin.de write price as prose ("Kosten:
+    15 Euro pro Person") rather than "15 €" or "15 EUR" - the old regex only
+    matched the symbol or abbreviation and missed these entirely."""
+    assert parse_price("Kosten: 15 Euro pro Person | Kinder: 10 Euro") == 15.0
+    assert parse_price("Regulär: 5 Euro") == 5.0
+    assert parse_price("von 10 bis 20 Euro") == 10.0
+
+
+def test_spelled_out_euro_does_not_match_compound_words():
+    """"Euro" as a whole word must not fire inside "Europäisch" or
+    "Eurovision", which both contain it as a substring."""
+    assert parse_price("Programm für den Europäischen Fonds") is None
+    assert parse_price("Eurovision Song Contest Public Viewing") is None
+
+
+def test_kostenfrei_is_recognised_as_free():
+    assert parse_price("Der Eintritt ist kostenfrei") == 0.0
+
+
 def test_venue_does_not_absorb_a_price_fragment():
     assert extract_venue(
         "Sa | 20:00 New York Comedy Showcase Z-Bar 12,90 to 15,03 €",
