@@ -37,7 +37,10 @@ jobs:
           - { name: rausgegangen_de,        url: "https://rausgegangen.de/en/berlin/eventsbydate/?geospatial_query_type=CITY&lat=52.5&lng=13.405&city=berlin&active_city_name=Berlin&start_date=__START_DATE__&end_date=__END_DATE__" }
           - { name: eventbrite_de,          url: "https://www.eventbrite.de/d/germany/berlin/events/" }
           - { name: eventbrite_com,         url: "https://www.eventbrite.com/d/germany--berlin/events/" }
-          - { name: meetup_com,             url: "https://www.meetup.com/berlin/events/" }
+          # Removed: meetup.com/berlin/events is not a Meetup group at all -
+          # it answers every request with "Group not found. Sorry, the group
+          # you're looking for doesn't exist." The Berlin coverage comes from
+          # the find/ searches below, which are real search endpoints.
           # userFreeform= was resolved client-side, so the US-hosted runner
           # got San Francisco results for a Berlin query. location=de--Berlin
           # with explicit coordinates is resolved server-side; the scraper
@@ -61,7 +64,10 @@ jobs:
           - { name: zku_berlin,             url: "https://www.zku-berlin.org/de/timeline/" }
           - { name: ufafabrik,              url: "https://ufafabrik.de/spielplan.html" }
           - { name: stadtmuseum,            url: "https://www.stadtmuseum.de/programm" }
-          - { name: werk9,                  url: "https://werk9.de/" }
+          # The werk9 homepage is a block-theme shell whose entire body is 275
+          # characters of nav and address - no programme at all. /kalender/ is
+          # where the dates actually are.
+          - { name: werk9,                  url: "https://werk9.de/kalender/" }
           # Removed - these no longer resolve or serve a listing, so they only
           # ever consumed a matrix leg and produced an empty artifact:
           #   dokk11.de                          (no DNS)
@@ -79,9 +85,18 @@ jobs:
           - { name: volksbuehne,            url: "https://www.volksbuehne.berlin/" }
           - { name: reinickendorf_classics, url: "https://www.reinickendorf-classics.de/januar/" }
           - { name: dice_fm_berlin,         url: "https://dice.fm/browse/berlin-5e426dbb749e68e3e923d1e4" }
-          - { name: improfabrik,            url: "https://improfabrik.de/" }
+          # The homepage is a mission statement; /shows/ is the programme page.
+          # The Improfabrik only plays every two to three months, so an empty
+          # week here is the site being between shows, not a broken scrape.
+          - { name: improfabrik,            url: "https://improfabrik.de/shows/" }
           - { name: oper_in_berlin,         url: "https://www.oper-in-berlin.de/de/spielplan/" }
-          - { name: venturecafe_berlin,     url: "https://venturecafe.com/berlin/" }
+          # venturecafe.com is an unrelated parked site ("Cafe Venture. Your
+          # destination for cafe ventures" - an eCorp/VentureOS lander), not
+          # the Berlin innovation-community venue, so it contributed nothing
+          # but nav chrome. The real house is venturecafeberlin.org, which
+          # sits behind a captcha on plain HTTP and so depends on the
+          # CloakBrowser tier, same as berlin_buehnen.
+          - { name: venturecafe_berlin,     url: "https://venturecafeberlin.org/" }
           # www.ritterbutzke.de is a <meta http-equiv="refresh"> redirect, which
           # a plain GET never follows - the scraper always saw the 325-byte
           # redirect stub. The real site is club.ritterbutzke.com; it renders
@@ -98,6 +113,24 @@ jobs:
           # New, verified live: 32 raw -> 2 kept via plain HTTP. Tempelhofer
           # Feld's own events page - outdoor programming.
           - { name: thf_berlin,             url: "https://www.thf-berlin.de/aktuelles/veranstaltungen" }
+          # Independent Berlin art/performance spaces, all verified live from
+          # this workflow's own scraper before being added (counts are kept
+          # rows inside the 30-day window at the time of testing):
+          #   ausland          15 raw -> 9
+          #   HAU              35 raw -> 8 (needed the calendar-heading strategy)
+          #   SAVVY            50 raw -> 5
+          #   silent green     10 raw -> 8
+          - { name: ausland_berlin,         url: "https://ausland.berlin/de/" }
+          # HAU publishes one month per URL; /schedule-tickets with no month
+          # suffix serves the current one, so this does not go stale.
+          - { name: hau_hebbel_am_ufer,     url: "https://www.hebbel-am-ufer.de/en/programme/schedule-tickets" }
+          # /en/events/ (no year) always shows the running programme;
+          # /en/events/2026/ is that year's archive and would freeze.
+          - { name: savvy_contemporary,     url: "https://savvy-contemporary.com/en/events/" }
+          # silent-green.net's own calendar. The third-party ticket pages that
+          # resell its concerts carry one event each and no listing, so they
+          # are not a source.
+          - { name: silent_green,           url: "https://www.silent-green.net/en/events" }
           # orangerie-nk.de/events is a private-venue-booking page ("book your
           # wedding here"), not a calendar - the real programme sits on the
           # homepage itself. Verified live: extracts a real dated event

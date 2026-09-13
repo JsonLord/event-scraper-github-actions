@@ -30,9 +30,10 @@ import logging
 import os
 import re
 import sys
+import time
 from datetime import datetime
 from typing import Any, Dict, List, Optional
-from urllib.parse import urljoin
+from urllib.parse import urljoin, urlparse
 
 import requests
 from bs4 import BeautifulSoup
@@ -43,7 +44,9 @@ from event_utils import (  # noqa: E402
     DATE_DE_RE,
     DATE_ISO_RE,
     DATE_TEXT_RE,
+    DAY_HEADING_RE,
     FREE_RE,
+    MONTH_HEADING_RE,
     PRICE_RE,
     TIME_RE,
     DEFAULT_MAX_PRICE,
@@ -67,9 +70,31 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 USER_AGENT = (
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
-    "(KHTML, like Gecko) Chrome/124.0 Safari/537.36"
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
+    "(KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"
 )
+
+# A bare User-Agent is not enough to look like a browser any more. Several
+# sources answered a UA-only GET with 403 and nothing else - rausgegangen.de,
+# the single biggest source in the matrix, returned a Bunny Shield challenge
+# on every run. Sending the header set a real Chrome navigation sends (Accept,
+# Accept-Language, Sec-Fetch-*) gets the same URL back as a 200 with the full
+# listing. Verified live against rausgegangen.de: 403 -> 200.
+BROWSER_HEADERS = {
+    "User-Agent": USER_AGENT,
+    "Accept": (
+        "text/html,application/xhtml+xml,application/xml;q=0.9,"
+        "image/avif,image/webp,*/*;q=0.8"
+    ),
+    # German first: several Berlin sites serve a different (and richer)
+    # listing to a de-DE client than to an unspecified one.
+    "Accept-Language": "de-DE,de;q=0.9,en-US;q=0.8,en;q=0.7",
+    "Upgrade-Insecure-Requests": "1",
+    "Sec-Fetch-Dest": "document",
+    "Sec-Fetch-Mode": "navigate",
+    "Sec-Fetch-Site": "none",
+    "Sec-Fetch-User": "?1",
+}
 
 BOT_CHALLENGE_MARKERS = (
     "just a moment",
@@ -77,6 +102,10 @@ BOT_CHALLENGE_MARKERS = (
     "cf-browser-verification",
     "checking your browser",
     "access denied",
+    # Bunny Shield's proof-of-work interstitial (rausgegangen.de).
+    "establishing a secure connection",
+    ".bunny-shield",
+    "enable javascript and cookies to continue",
 )
 
 # Upper bound on rows taken from one source. Generous rather than tight: it
@@ -93,12 +122,20 @@ EVENT_CLASS_HINTS = (
     "event", "teaser", "views-row", "card", "listing", "termin",
     "veranstaltung", "programme-item", "program-item", "spielplan",
     "show-item",
+    # Added after measuring live: ZK/U and SAVVY Contemporary both build their
+    # whole programme out of ".list-item" and yielded nothing at all, because
+    # "listing" does not match "list-item".
+    "list-item", "listitem", "agenda", "kalender", "calendar",
+    "vorstellung", "produktion", "spieltag",
 )
 
 # Hrefs that lead to a real event page rather than back into site navigation.
 DETAIL_HREF_HINTS = (
-    "/event", "/events/", "/veranstaltung", "/termin", "/programm/", "/show/",
+    "/event", "/events/", "/veranstaltung", "/termin", "/programm", "/show/",
     "/produktion", "/stueck", "/konzert", "/spielplan/event", "/e/", "/tickets",
+    # "/programm/" missed HAU's English detail links ("/en/programme/pdetail/"),
+    # which is why a page full of events produced no candidates at all.
+    "/programme", "/timeline/", "/detail", "/agenda/", "/vorstellung",
 )
 
 # Navigation and utility links that must never be mistaken for an event link.
@@ -133,18 +170,66 @@ def _best_detail_url(scopes, source_url: str) -> str:
 
 
 def is_bot_challenge(html: str) -> bool:
-    head = html[:2000].lower()
+    head = html[:4000].lower()
     return any(marker in head for marker in BOT_CHALLENGE_MARKERS)
 
 
-def fetch_plain(url: str, timeout: int = 20) -> Optional[str]:
-    try:
-        resp = requests.get(url, headers={"User-Agent": USER_AGENT}, timeout=timeout)
-        resp.raise_for_status()
+# One shared session per process, so the listing fetch and every detail-page
+# fetch that follows it reuse the same cookies and connection. Built on first
+# use rather than at import, so the parsing paths stay importable without the
+# HTTP stack (the extraction tests stub `requests` out entirely).
+_SESSION = None
+
+
+def get_session():
+    """A session that presents itself as a browser and keeps its cookies.
+
+    Cookies matter as much as the headers: sites that set a consent or
+    session cookie on the listing page hand the detail pages fetched during
+    price enrichment a different (often blocked) response without it.
+    """
+    global _SESSION
+    if _SESSION is None:
+        _SESSION = requests.Session()
+        _SESSION.headers.update(BROWSER_HEADERS)
+    return _SESSION
+
+
+def fetch_plain(url: str, timeout: int = 20, retries: int = 2, quiet: bool = False) -> Optional[str]:
+    """GET a page as a browser would, returning the body or None.
+
+    A non-2xx response is not discarded outright: sites behind an anti-bot
+    interstitial answer 403 with a real HTML body, and it is
+    is_bot_challenge() - not the status code - that decides whether the body
+    is usable. Handing the body back also lets the caller escalate to the
+    rendered-DOM tier for the right reason.
+    """
+    last_error = None
+    for attempt in range(1, retries + 1):
+        try:
+            resp = get_session().get(url, timeout=timeout, allow_redirects=True)
+        except requests.exceptions.RequestException as e:
+            # Connection resets are common enough on these hosts that a single
+            # attempt turns a working source into a silent zero.
+            last_error = e
+            if attempt < retries:
+                time.sleep(attempt)
+            continue
+
+        if resp.status_code >= 400:
+            # quiet=True for endpoints we probe speculatively (the WordPress
+            # REST paths), where a 404 just means "this plugin isn't here".
+            (logger.debug if quiet else logger.warning)(
+                f"GET {url} returned HTTP {resp.status_code}"
+            )
+            body = resp.text or ""
+            # A 4xx/5xx body is only worth keeping when it is a challenge page
+            # the caller needs to recognise; an error page has nothing in it.
+            return body if body and is_bot_challenge(body) else None
         return resp.text
-    except requests.exceptions.RequestException as e:
-        logger.warning(f"Plain GET failed for {url}: {e}")
-        return None
+
+    logger.warning(f"Plain GET failed for {url}: {last_error}")
+    return None
 
 
 def _walk_jsonld_nodes(node: Any):
@@ -273,6 +358,261 @@ def extract_time_element_events(
     return events
 
 
+def _has_date_text(text: str) -> bool:
+    return bool(
+        DATE_ISO_RE.search(text) or DATE_DE_RE.search(text) or DATE_TEXT_RE.search(text)
+    )
+
+
+def _subtree_span(element, positions: Dict[int, int]) -> int:
+    """Document position of the last node inside ``element``.
+
+    Used to decide whether a marker sits inside a card (a day number printed
+    on the card itself) rather than before it.
+    """
+    last = positions.get(id(element), -1)
+    for descendant in element.find_all(True):
+        last = max(last, positions.get(id(descendant), last))
+    return last
+
+
+# Elements allowed to act as a calendar heading. Restricting markers to real
+# headings and date-ish containers keeps a stray "12" in a footer from being
+# read as a day of the month.
+MARKER_CLASS_HINTS = (
+    "day", "tag", "date", "datum", "month", "monat", "kalender", "calendar",
+    "week", "woche", "heading", "headline",
+)
+
+
+def _is_marker_element(element) -> bool:
+    if element.name in ("h1", "h2", "h3", "h4", "h5", "h6", "th", "caption", "time"):
+        return True
+    classes = " ".join(element.get("class", [])).lower()
+    return any(hint in classes for hint in MARKER_CLASS_HINTS)
+
+
+def extract_calendar_events(
+    html: str, source_url: str, max_events: int = MAX_EVENTS_PER_SOURCE
+) -> List[Dict[str, Any]]:
+    """Read calendars that print the month once and only a day number per row.
+
+    This is the standard German theatre/venue programme layout and nothing in
+    the pipeline could read it: HAU Hebbel am Ufer publishes 35 events under a
+    single "September 2026" heading with "Sat 12" day headings, and the
+    Renaissance-Theater 137 showtimes the same way. Every card states a time
+    and a title but no date at all, so parse_date found nothing on the card,
+    nothing on its ancestors, and both sites extracted zero events.
+
+    The fix is to carry the heading context down: walk the document in order,
+    remember the most recent month and day heading, and stamp each card with
+    the date they spell out together.
+    """
+    soup = BeautifulSoup(html, "lxml")
+    elements = soup.find_all(True)
+    positions = {id(el): i for i, el in enumerate(elements)}
+
+    month_markers: List[tuple] = []   # (position, month_name, year or None)
+    day_markers: List[tuple] = []     # (position, day number)
+    for element in elements:
+        if not _is_marker_element(element):
+            continue
+        text = element.get_text(" ", strip=True)
+        if not text or len(text) > 30:
+            continue
+        month = MONTH_HEADING_RE.match(text)
+        if month:
+            month_markers.append((positions[id(element)], month.group(1), month.group(2)))
+            continue
+        day = DAY_HEADING_RE.match(text)
+        if day and 1 <= int(day.group(1)) <= 31:
+            day_markers.append((positions[id(element)], int(day.group(1))))
+
+    if not month_markers or not day_markers:
+        return []
+
+    cards = _calendar_cards(soup)
+    events = []
+    for card in cards[:max_events]:
+        text = card.get_text(" ", strip=True)
+        # A card that states its own full date needs no heading context, and
+        # the other strategies already handle it.
+        if parse_date(text):
+            continue
+        span = _subtree_span(card, positions)
+        day_marker = _latest_before(day_markers, span)
+        month_marker = _latest_before(month_markers, span)
+        if not day_marker or not month_marker:
+            continue
+        (day,), (month_name, year) = day_marker, month_marker
+        iso = parse_date(f"{day}. {month_name} {year}" if year else f"{day}. {month_name}")
+        if not iso:
+            continue
+
+        scopes = [card, card.parent]
+        event_url = _best_detail_url(scopes, source_url)
+        title = _title_from_scopes(scopes, text, event_url)
+        events.append({
+            "title": clean_text(title, max_length=200),
+            "date": iso,
+            "time": parse_time(text),
+            "price": parse_price(text),
+            "category": "",
+            "description": clean_text(text, max_length=400),
+            "url": event_url,
+            "venue": "",
+            "source_url": source_url,
+        })
+    return events
+
+
+def _latest_before(markers: List[tuple], position: int) -> Optional[tuple]:
+    """The payload of the last marker at or before ``position``, or None.
+
+    ``markers`` is in document order, so the scan can stop at the first one
+    that sits past the card.
+    """
+    best = None
+    for marker in markers:
+        if marker[0] > position:
+            break
+        best = marker
+    return best[1:] if best else None
+
+
+def _links_to_detail(href: str) -> bool:
+    """True for an href that leads to one event's own page."""
+    href = (href or "").strip().lower()
+    if not href or NON_DETAIL_HREF_RE.search(href):
+        return False
+    return any(hint in href for hint in DETAIL_HREF_HINTS)
+
+
+def _calendar_cards(soup) -> List[Any]:
+    """Innermost elements that look like one row of a calendar.
+
+    A row qualifies on either an event-ish class or a link into the site's own
+    event pages, and must state a time, date or price - which is what keeps
+    navigation menus and footers out.
+    """
+    candidates = []
+    for element in soup.find_all(["li", "div", "article", "tr", "section"]):
+        classes = " ".join(element.get("class", [])).lower()
+        if not any(hint in classes for hint in EVENT_CLASS_HINTS):
+            if not any(_links_to_detail(anchor["href"]) for anchor
+                       in element.find_all("a", href=True)):
+                continue
+        text = element.get_text(" ", strip=True)
+        if not (15 <= len(text) <= 2000):
+            continue
+        if not (TIME_RE.search(text) or PRICE_RE.search(text) or FREE_RE.search(text)
+                or _has_date_text(text)):
+            continue
+        candidates.append(element)
+
+    return _innermost(candidates)
+
+
+def _innermost(candidates: List[Any]) -> List[Any]:
+    """Keep only candidates that wrap no other candidate.
+
+    Stricter than the class-hint scan's "two or more children means a list"
+    rule, and deliberately so: on a calendar a wrapper very often holds
+    exactly one row (HAU's <li class="day"> around a single <li class="item">
+    on a quiet evening), and keeping the wrapper took the day heading -
+    "Sun 13" - as the event's name. The row is always the more specific
+    element, and candidacy here already requires a time, date or price, so a
+    nested candidate is a real row rather than a stray fragment.
+    """
+    candidate_ids = {id(el) for el in candidates}
+    return [
+        element for element in candidates
+        if not any(
+            id(descendant) in candidate_ids and descendant is not element
+            for descendant in element.find_all(True)
+        )
+    ]
+
+
+def _title_from_scopes(scopes, fallback_text: str, event_url: str) -> str:
+    """Best available name for a card: a heading, else a link, else its text."""
+    for scope in scopes:
+        if not scope:
+            continue
+        for heading in scope.find_all(["h1", "h2", "h3", "h4", "h5", "h6"]):
+            text = heading.get_text(" ", strip=True)
+            if text and not title_looks_noisy(text):
+                return text
+    for scope in scopes:
+        if not scope:
+            continue
+        for anchor in scope.find_all("a", href=True):
+            text = anchor.get_text(" ", strip=True)
+            if text and len(text) > 3 and not title_looks_noisy(text):
+                return text
+    slug = title_from_slug(event_url)
+    return slug or fallback_text[:120]
+
+
+def extract_block_events(
+    html: str, source_url: str, max_events: int = MAX_EVENTS_PER_SOURCE
+) -> List[Dict[str, Any]]:
+    """Find dated events in pages whose markup carries no event-ish class.
+
+    Page builders name everything after themselves: every block on
+    reinickendorf-classics.de is an "et_pb_text" (Divi), so a scan keyed on
+    class names saw nothing, even though each event plainly states
+    "Samstag, 19.09.2026 - 20:00 Uhr" right under its title. This strategy
+    ignores classes entirely: it starts from the date text itself and walks
+    out to the smallest block that also carries a title or a link.
+    """
+    soup = BeautifulSoup(html, "lxml")
+    for tag in soup.find_all(["script", "style", "nav", "footer", "head"]):
+        tag.decompose()
+
+    cards, seen = [], set()
+    for text_node in soup.find_all(string=True):
+        raw = str(text_node).strip()
+        if len(raw) < 6 or len(raw) > 200 or not _has_date_text(raw):
+            continue
+        node = text_node.parent
+        for _ in range(6):
+            if node is None or node.name in ("body", "html", "[document]"):
+                break
+            block_text = node.get_text(" ", strip=True)
+            if len(block_text) > 1200:
+                break
+            has_name = node.find(["h1", "h2", "h3", "h4", "h5", "h6"]) or node.find("a", href=True)
+            if has_name and len(block_text) >= 20:
+                if id(node) not in seen:
+                    seen.add(id(node))
+                    cards.append(node)
+                break
+            node = node.parent
+
+    events = []
+    for card in _innermost(cards)[:max_events]:
+        text = card.get_text(" ", strip=True)
+        iso = parse_date(text)
+        if not iso:
+            continue
+        scopes = [card, card.parent, getattr(card.parent, "parent", None)]
+        event_url = _best_detail_url(scopes, source_url)
+        title = _title_from_scopes(scopes, text, event_url)
+        events.append({
+            "title": clean_text(title, max_length=200),
+            "date": iso,
+            "time": parse_time(text),
+            "price": parse_price(text),
+            "category": "",
+            "description": clean_text(text, max_length=400),
+            "url": event_url,
+            "venue": "",
+            "source_url": source_url,
+        })
+    return events
+
+
 def extract_heuristic_events(html: str, source_url: str, max_events: int = MAX_EVENTS_PER_SOURCE) -> List[Dict[str, Any]]:
     soup = BeautifulSoup(html, "lxml")
     candidates = []
@@ -393,6 +733,101 @@ def extract_heuristic_events(html: str, source_url: str, max_events: int = MAX_E
     return events
 
 
+# WordPress event plugins publish the whole programme through the REST API,
+# fully structured, even when the page itself renders its calendar in
+# JavaScript and serves a scraper nothing. theclubmap.com is exactly that
+# case: the listing is an EventON widget loaded over AJAX (0 events from the
+# HTML, every run), while /wp-json/wp/v2/ajde_events returns every event with
+# a Unix start timestamp.
+WORDPRESS_EVENT_ENDPOINTS = (
+    "/wp-json/wp/v2/ajde_events?per_page=100",      # EventON
+    "/wp-json/tribe/events/v1/events?per_page=50",  # The Events Calendar
+)
+
+
+def _from_eventon(records: List[Dict[str, Any]], source_url: str) -> List[Dict[str, Any]]:
+    events = []
+    for record in records:
+        if not isinstance(record, dict):
+            continue
+        meta = record.get("meta") or {}
+        start = meta.get("evcal_srow") or record.get("date")
+        iso, start_time = "", ""
+        try:
+            moment = datetime.fromtimestamp(int(start))
+            iso, start_time = moment.date().isoformat(), moment.strftime("%H:%M")
+        except (TypeError, ValueError, OSError):
+            iso = normalize_date(start) or ""
+            start_time = parse_time(str(start or ""))
+        title = (record.get("title") or {}).get("rendered") or ""
+        body = BeautifulSoup((record.get("content") or {}).get("rendered") or "", "lxml")
+        description = body.get_text(" ", strip=True)
+        events.append({
+            "title": clean_text(title, max_length=200),
+            "date": iso,
+            "time": start_time,
+            "price": parse_price(description),
+            "category": "",
+            "description": clean_text(description, max_length=400),
+            "url": clean_url(record.get("link") or source_url),
+            "venue": clean_text(meta.get("_evcal_location_name") or ""),
+            "source_url": source_url,
+        })
+    return events
+
+
+def _from_tribe(payload: Dict[str, Any], source_url: str) -> List[Dict[str, Any]]:
+    events = []
+    for record in payload.get("events") or []:
+        if not isinstance(record, dict):
+            continue
+        venue = record.get("venue") or {}
+        cost = record.get("cost")
+        events.append({
+            "title": clean_text(record.get("title"), max_length=200),
+            "date": normalize_date(record.get("start_date")) or "",
+            "time": parse_time(str(record.get("start_date") or "")),
+            "price": parse_price(str(cost)) if cost not in (None, "") else None,
+            "category": "",
+            "description": clean_text(
+                BeautifulSoup(record.get("description") or "", "lxml").get_text(" ", strip=True),
+                max_length=400,
+            ),
+            "url": clean_url(record.get("url") or source_url),
+            "venue": clean_text(venue.get("venue") if isinstance(venue, dict) else ""),
+            "source_url": source_url,
+        })
+    return events
+
+
+def fetch_wordpress_events(url: str) -> List[Dict[str, Any]]:
+    """Read a WordPress site's events straight out of its REST API."""
+    parsed = urlparse(url)
+    if not parsed.scheme or not parsed.netloc:
+        return []
+    origin = f"{parsed.scheme}://{parsed.netloc}"
+
+    for endpoint in WORDPRESS_EVENT_ENDPOINTS:
+        body = fetch_plain(origin + endpoint, timeout=25, retries=1, quiet=True)
+        if not body:
+            continue
+        try:
+            payload = json.loads(body)
+        except (json.JSONDecodeError, TypeError):
+            continue
+        if isinstance(payload, list):
+            events = _from_eventon(payload, url)
+        elif isinstance(payload, dict):
+            events = _from_tribe(payload, url)
+        else:
+            continue
+        events = [e for e in events if e.get("title") and e.get("date")]
+        if events:
+            logger.info(f"WordPress REST ({endpoint}) returned {len(events)} events")
+            return events
+    return []
+
+
 def render_with_cloakbrowser(url: str) -> Optional[str]:
     try:
         from cloakbrowser import launch
@@ -409,14 +844,23 @@ def render_with_cloakbrowser(url: str) -> Optional[str]:
         page.goto(url, wait_until="networkidle", timeout=60000)
         page.wait_for_timeout(3000)
         return page.content()
-    except Exception as e:
-        logger.warning(f"CloakBrowser render failed for {url}: {e}")
+    # Not `except Exception`: CloakBrowser's binary bootstrap raises through
+    # native code, and a pyo3 PanicException (seen here verifying this tier)
+    # derives from BaseException, so it sailed straight past the handler and
+    # took the whole source down. A render tier that cannot render is a
+    # missing fallback, never a failed scrape.
+    except (Exception, BaseException) as e:
+        if isinstance(e, (KeyboardInterrupt, SystemExit)):
+            raise
+        logger.warning(f"CloakBrowser render failed for {url}: {type(e).__name__}: {e}")
         return None
     finally:
-        if context:
-            context.close()
-        if browser:
-            browser.close()
+        for resource in (context, browser):
+            try:
+                if resource:
+                    resource.close()
+            except Exception:  # noqa: BLE001 - teardown must never mask the result
+                pass
 
 
 def fetch_jina_content(url: str) -> Optional[str]:
@@ -503,11 +947,16 @@ def scrape_document(html: str, url: str, label: str) -> List[Dict[str, Any]]:
     jsonld = extract_jsonld_events(html, url)
     timed = extract_time_element_events(html, url)
     heuristic = extract_heuristic_events(html, url)
+    calendar = extract_calendar_events(html, url)
+    blocks = extract_block_events(html, url)
     logger.info(
         f"{label}: JSON-LD {len(jsonld)}, <time datetime> {len(timed)}, "
-        f"heuristic scan {len(heuristic)}"
+        f"heuristic scan {len(heuristic)}, calendar headings {len(calendar)}, "
+        f"date blocks {len(blocks)}"
     )
-    return _merge(jsonld, timed, heuristic)
+    # Order matters only for which strategy's value wins a field: the earlier
+    # strategies read structured markup, so they lead.
+    return _merge(jsonld, timed, heuristic, calendar, blocks)
 
 
 def _meetup_fee_from_next_data(html: str) -> Optional[float]:
@@ -599,10 +1048,21 @@ def enrich_missing_prices(
     return events
 
 
+def is_wordpress(html: str) -> bool:
+    return "/wp-content/" in html or "/wp-json/" in html or "wp-includes" in html
+
+
 def scrape(url: str) -> List[Dict[str, Any]]:
     html = fetch_plain(url)
     if html and not is_bot_challenge(html):
         events = scrape_document(html, url, "plain HTML")
+        # A WordPress site's REST API is worth asking even when the page did
+        # parse: plugin calendars render client-side, so the HTML shows a
+        # fraction of what the API lists (theclubmap.com: 0 from the page,
+        # 100 from the API). Merged, not preferred - the page carries prices
+        # and venues the API often leaves empty.
+        if is_wordpress(html):
+            events = _merge(events, fetch_wordpress_events(url))
         if events:
             logger.info(f"Found {len(events)} candidate events from plain HTML")
             return events
