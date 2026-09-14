@@ -24,6 +24,7 @@ import argparse
 import json
 import logging
 import os
+import re
 import sys
 import time
 from typing import Any, Callable, Dict, List, Optional, Tuple
@@ -34,7 +35,17 @@ import requests  # noqa: E402
 
 import generic_event_scraper as g  # noqa: E402
 from event_utils import (  # noqa: E402
+    DATE_DE_RE,
+    DATE_ISO_RE,
+    DATE_TEXT_RE,
+    FREE_RE,
+    PRICE_RE,
+    clean_text,
+    clean_url,
     dedupe_events,
+    parse_date,
+    parse_price,
+    parse_time,
     scrape_window,
     validate_events,
 )
@@ -57,6 +68,40 @@ JINA_VARIANTS: Dict[str, Dict[str, str]] = {
     "jina_html_browser": {"X-Return-Format": "html", "X-Engine": "browser"},
     "jina_html_proxy": {"X-Return-Format": "html", "X-Proxy": "auto"},
 }
+
+
+def extract_markdown_events(markdown: str, source_url: str) -> List[Dict[str, Any]]:
+    """Line scanner for Jina's default markdown rendering.
+
+    This lived in generic_event_scraper.py as the Jina tier's extractor until
+    the probe showed it produced zero usable events from every source tried.
+    It stays here so the comparison that retired it can be re-run.
+    """
+    events, seen = [], set()
+    for line in markdown.splitlines():
+        text = line.strip()
+        if len(text) < 8:
+            continue
+        if not (PRICE_RE.search(text) or FREE_RE.search(text) or DATE_ISO_RE.search(text)
+                or DATE_DE_RE.search(text) or DATE_TEXT_RE.search(text)):
+            continue
+        link = re.search(r'\[([^\]]{5,160})\]\((https?://[^)]+)\)', text)
+        title = link.group(1).strip() if link else re.sub(r'[#*_`>-]', '', text).strip()
+        if len(title) < 5 or title.lower() in seen:
+            continue
+        seen.add(title.lower())
+        events.append({
+            "title": clean_text(title, max_length=200),
+            "date": parse_date(text) or "",
+            "time": parse_time(text),
+            "price": parse_price(text),
+            "category": "",
+            "description": clean_text(text, max_length=400),
+            "url": clean_url(link.group(2) if link else source_url),
+            "venue": "",
+            "source_url": source_url,
+        })
+    return events
 
 
 def fetch_direct(url: str, timeout: int) -> Tuple[Optional[str], bool]:
@@ -104,7 +149,7 @@ def events_from(body: str, url: str, is_html: bool, date_days: int,
                 max_price: float) -> Tuple[int, int, int]:
     """(raw rows, kept in window, kept in 30 days) for one fetched body."""
     rows = (g.scrape_document(body, url, "probe") if is_html
-            else g.extract_jina_events(body, url))
+            else extract_markdown_events(body, url))
 
     def kept(days: int) -> int:
         window_start, window_end = scrape_window(days)

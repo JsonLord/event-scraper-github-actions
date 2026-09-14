@@ -323,3 +323,89 @@ def test_tribe_records_become_events():
 def test_wordpress_detection():
     assert is_wordpress('<link href="/wp-content/themes/x/style.css">')
     assert not is_wordpress('<html><body><h1>Spielplan</h1></body></html>')
+
+
+# --------------------------------------------------------------------------
+# The Jina Reader tier
+# --------------------------------------------------------------------------
+
+def test_jina_tier_asks_for_html_not_markdown(monkeypatch):
+    """Measured with scripts/fetch_strategy_probe.py against a Cloudflare-
+    challenged source: the default markdown rendering came back 9k and
+    yielded 0 events; the same URL as HTML came back 220k and yielded 31.
+    An HTML body goes through all five document extractors; markdown only
+    ever got a line scanner that produced nothing usable from any source."""
+    from scripts import generic_event_scraper as module
+
+    seen = {}
+
+    class Response:
+        status_code, text = 200, "<html><body>ok</body></html>"
+
+        def raise_for_status(self):
+            return None
+
+    def fake_get(url, headers=None, timeout=None, **kwargs):
+        seen["url"] = url
+        seen["headers"] = headers or {}
+        return Response()
+
+    monkeypatch.setenv("JINA_API_KEY", "test-key")
+    monkeypatch.setattr(module.requests, "get", fake_get, raising=False)
+
+    assert module.fetch_jina_html("https://example.de/programm") == Response.text
+    assert seen["url"] == "https://r.jina.ai/https://example.de/programm"
+    assert seen["headers"]["X-Return-Format"] == "html"
+    assert seen["headers"]["Authorization"] == "Bearer test-key"
+
+
+def test_jina_tier_sends_only_the_header_that_earned_its_place(monkeypatch):
+    """The probe measured the alternatives: X-Engine, X-Proxy and X-Locale
+    matched plain HTML exactly, and X-No-Cache matched it everywhere but one
+    site, which it lost, at double the request time. None are sent."""
+    from scripts import generic_event_scraper as module
+
+    seen = {}
+
+    class Response:
+        text = "<html></html>"
+
+        def raise_for_status(self):
+            return None
+
+    monkeypatch.setenv("JINA_API_KEY", "test-key")
+    monkeypatch.setattr(
+        module.requests, "get",
+        lambda url, headers=None, **kw: (seen.update(headers=headers or {}), Response())[1],
+        raising=False,
+    )
+    module.fetch_jina_html("https://example.de/")
+    for header in ("X-No-Cache", "X-Engine", "X-Proxy", "X-Locale"):
+        assert header not in seen["headers"], header
+
+
+def test_jina_tier_is_skipped_without_a_key(monkeypatch):
+    """Anonymous Jina calls are unreliably blocked by IP reputation, so with
+    no key the tier reports that it is skipping rather than trying."""
+    from scripts import generic_event_scraper as module
+
+    monkeypatch.delenv("JINA_API_KEY", raising=False)
+    assert module.fetch_jina_html("https://example.de/") is None
+
+
+def test_a_challenge_returned_through_jina_is_not_treated_as_content(monkeypatch):
+    """Eventbrite serves its "Human Verification" interstitial to Jina too.
+    Extracting from that would publish nothing but produce a misleading
+    "the tier worked" reading."""
+    from scripts import generic_event_scraper as module
+
+    challenge = ('<html><head><title>Human Verification</title></head>'
+                 '<body>verify</body></html>')
+    monkeypatch.setattr(module, "fetch_plain", lambda url, **kw: None)
+    monkeypatch.setattr(module, "render_with_cloakbrowser", lambda url: None)
+    monkeypatch.setattr(module, "fetch_jina_html", lambda url, **kw: challenge)
+    assert module.scrape("https://www.eventbrite.de/d/germany/berlin/events/") == []
+
+
+def test_eventbrite_interstitial_is_recognised():
+    assert is_bot_challenge('<html><head><title>Human Verification</title></head></html>')
