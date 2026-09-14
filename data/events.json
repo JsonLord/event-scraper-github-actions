@@ -37,54 +37,6 @@
       "has_detail_link": true
     },
     {
-      "title": "Roter Roller",
-      "date": "2026-09-14",
-      "time": "10:00",
-      "price": null,
-      "category": "",
-      "description": "MO 14.09.2026 10:00 Kinder & Jugendliche Musiktheater Tickets © Kiran Harpain Robbe & Die Heuler Kinder & Jugendliche Musiktheater 14.09.2026, 10:00 | Morgenstern – Theater im Rathaus Friedenau Roter Roller Morgenstern – Theater im Rathaus Friedenau Roter Roller Da wird gerappt, gesungen und erzählt: vom bunten Hund Strolchi, der dem Jäger die Wurst stibitzt („...und der Jäger ist am Ende mit...",
-      "url": "https://www.berlin-buehnen.de/de/spielplan",
-      "venue": "Morgenstern – Theater im Rathaus Friedenau",
-      "source_url": "https://www.berlin-buehnen.de/de/spielplan",
-      "has_detail_link": false
-    },
-    {
-      "title": "Laura war hier",
-      "date": "2026-09-14",
-      "time": "10:00",
-      "price": null,
-      "category": "",
-      "description": "MO 14.09.2026 10:00 Theater Tickets © Bela Sobottke Laura war hier Theater 14.09.2026, 10:00 | GRIPS Theater Laura war hier GRIPS Theater | GRIPS Hansaplatz Laura war hier Von Milena Baisch Mit Liedtexten von Volker Ludwig Neuinszenierung | Eine abenteuerliche Reise durch ein Berliner Mietshaus",
-      "url": "https://www.berlin-buehnen.de/de/spielplan",
-      "venue": "GRIPS Theater",
-      "source_url": "https://www.berlin-buehnen.de/de/spielplan",
-      "has_detail_link": false
-    },
-    {
-      "title": "Tanz Konzert",
-      "date": "2026-09-14",
-      "time": "11:00",
-      "price": null,
-      "category": "",
-      "description": "MO 14.09.2026 11:00 Tanz Konzert Tickets © Bart Grietens Tanz Konzert 14.09.2026, 11:00 | Theater Strahl Berlin Shake Theater Strahl Berlin | De Dansers Shake",
-      "url": "https://www.berlin-buehnen.de/de/spielplan",
-      "venue": "Theater Strahl Berlin",
-      "source_url": "https://www.berlin-buehnen.de/de/spielplan",
-      "has_detail_link": false
-    },
-    {
-      "title": "Das Herz eines Boxers",
-      "date": "2026-09-14",
-      "time": "11:00",
-      "price": null,
-      "category": "",
-      "description": "MO 14.09.2026 11:00 Theater Tickets © Illustration: Bela Sobottke Das Herz eines Boxers Theater 14.09.2026, 11:00 | GRIPS Theater Das Herz eines Boxers GRIPS Theater | GRIPS Podewil Das Herz eines Boxers Von Lutz Hübner Generationendialog über Einsamkeit, Wut und den Mut, das eigene Leben zu ändern",
-      "url": "https://www.berlin-buehnen.de/de/spielplan",
-      "venue": "GRIPS Theater",
-      "source_url": "https://www.berlin-buehnen.de/de/spielplan",
-      "has_detail_link": false
-    },
-    {
       "title": "Open Air Kinder & Jugendliche Musiktheater",
       "date": "2026-09-14",
       "time": "14:00",
@@ -277,14 +229,38 @@
       "has_detail_link": false
     },
     {
-      "title": "Shake",
-      "date": "2026-09-14",
-      "time": "11:00",
+      "title": "Kinder & Jugendliche Figuren & Objekttheater",
+      "date": "2026-09-15",
+      "time": "10:00",
       "price": null,
       "category": "",
-      "description": "Tanz Konzert 14.09.2026, 11:00 | Theater Strahl Berlin Shake",
+      "description": "DI 15.09.2026 10:00 Kinder & Jugendliche Figuren & Objekttheater Tickets © Teresa Rinn Kinder & Jugendliche Figuren & Objekttheater 15.09.2026, 10:00 | Schlossplatztheater Orpheus Abenteuer-Theater für Kinder unter freiem Himmel",
       "url": "https://www.berlin-buehnen.de/de/spielplan",
-      "venue": "",
+      "venue": "Schlossplatztheater",
+      "source_url": "https://www.berlin-buehnen.de/de/spielplan",
+      "has_detail_link": false
+    },
+    {
+      "title": "Dino oder Ei, was war zuerst?",
+      "date": "2026-09-15",
+      "time": "10:00",
+      "price": null,
+      "category": "",
+      "description": "DI 15.09.2026 10:00 Ausverkauft Kinder & Jugendliche Tickets © Manaf Azzam Ausverkauft Kinder & Jugendliche 15.09.2026, 10:00 | ufaFabrik Dino oder Ei, was war zuerst? ufaFabrik | Wolfgang Neuss Salon Dino oder Ei, was war zuerst?",
+      "url": "https://www.berlin-buehnen.de/de/spielplan",
+      "venue": "ufaFabrik",
+      "source_url": "https://www.berlin-buehnen.de/de/spielplan",
+      "has_detail_link": false
+    },
+    {
+      "title": "Laura war hier",
+      "date": "2026-09-15",
+      "time": "10:00",
+      "price": null,
+      "category": "",
+      "description": "DI 15.09.2026 10:00 Abgesagt Tickets © Bela Sobottke Laura war hier Abgesagt 15.09.2026, 10:00 | GRIPS Theater Laura war hier GRIPS Theater | GRIPS Hansaplatz Laura war hier Von Milena Baisch Mit Liedtexten von Volker Ludwig Neuinszenierung | Eine abenteuerliche Reise durch ein Berliner Mietshaus",
+      "url": "https://www.berlin-buehnen.de/de/spielplan",
+      "venue": "GRIPS Theater",
       "source_url": "https://www.berlin-buehnen.de/de/spielplan",
       "has_detail_link": false
     },
@@ -397,16 +373,28 @@
       "has_detail_link": false
     },
     {
-      "title": "Die Räuber",
-      "date": "2026-09-14",
-      "time": "19:30",
+      "title": "Orpheus",
+      "date": "2026-09-15",
+      "time": "10:00",
       "price": null,
       "category": "",
-      "description": "ein Schauspiel von Friedrich Schiller REGIE Claudia Bossard 19 Uhr Einführung im Rangfoyer ab Klasse 11 DT Bühne 14.09.2026 19:30 → 21:30 Uhr Jetzt Karten kaufen",
-      "url": "https://www.deutschestheater.de/programm/produktionen/die-raeuber",
+      "description": "Kinder & Jugendliche Figuren & Objekttheater 15.09.2026, 10:00 | Schlossplatztheater Orpheus",
+      "url": "https://www.berlin-buehnen.de/de/spielplan",
       "venue": "",
-      "source_url": "https://www.deutschestheater.de/programm/spielplan",
-      "has_detail_link": true
+      "source_url": "https://www.berlin-buehnen.de/de/spielplan",
+      "has_detail_link": false
+    },
+    {
+      "title": "Mäuseken Wackelohr",
+      "date": "2026-09-15",
+      "time": "10:00",
+      "price": null,
+      "category": "",
+      "description": "Kinder & Jugendliche Figuren & Objekttheater 15.09.2026, 10:00 | Figurentheater Grashüpfer Mäuseken Wackelohr",
+      "url": "https://www.berlin-buehnen.de/de/spielplan",
+      "venue": "",
+      "source_url": "https://www.berlin-buehnen.de/de/spielplan",
+      "has_detail_link": false
     },
     {
       "title": "Liebe, einfach außerirdisch",
@@ -613,18 +601,6 @@
       "has_detail_link": true
     },
     {
-      "title": "Black Market Karma, Sacred Buzz, Miss Mellow Fr., 18. Sept. Neue Zukunft 19,99 €",
-      "date": "2026-09-18",
-      "time": "",
-      "price": 19.99,
-      "category": "",
-      "description": "Black Market Karma, Sacred Buzz, Miss Mellow Fr., 18. Sept. Neue Zukunft 19,99 €",
-      "url": "https://dice.fm/event/g53qg2-black-market-karma-sacred-buzz-miss-mellow-18th-sep-neue-zukunft-berlin-tickets",
-      "venue": "",
-      "source_url": "https://dice.fm/browse/berlin-5e426dbb749e68e3e923d1e4",
-      "has_detail_link": true
-    },
-    {
       "title": "Zoon Phonanta, Cobra Killer So., 20. Sept. Neue Zukunft 14,99 €",
       "date": "2026-09-20",
       "time": "",
@@ -632,6 +608,18 @@
       "category": "",
       "description": "Zoon Phonanta, Cobra Killer So., 20. Sept. Neue Zukunft 14,99 €",
       "url": "https://dice.fm/event/xe377l-zoon-phonanta-cobra-killer-20th-sep-neue-zukunft-berlin-tickets",
+      "venue": "",
+      "source_url": "https://dice.fm/browse/berlin-5e426dbb749e68e3e923d1e4",
+      "has_detail_link": true
+    },
+    {
+      "title": "Black Market Karma, Sacred Buzz, Miss Mellow Fr., 18. Sept. Neue Zukunft 19,99 €",
+      "date": "2026-09-18",
+      "time": "",
+      "price": 19.99,
+      "category": "",
+      "description": "Black Market Karma, Sacred Buzz, Miss Mellow Fr., 18. Sept. Neue Zukunft 19,99 €",
+      "url": "https://dice.fm/event/g53qg2-black-market-karma-sacred-buzz-miss-mellow-18th-sep-neue-zukunft-berlin-tickets",
       "venue": "",
       "source_url": "https://dice.fm/browse/berlin-5e426dbb749e68e3e923d1e4",
       "has_detail_link": true
@@ -1045,18 +1033,6 @@
       "has_detail_link": true
     },
     {
-      "title": "Fireside Chat with Marty Cagan and Elias Lieberich",
-      "date": "2026-09-18",
-      "time": "16:00",
-      "price": 0.0,
-      "category": "https://schema.org/OfflineEventAttendanceMode",
-      "description": "So much is changing in the product world. Obviously Generative AI is already having a profound impact. But also several roles and methods of the past are no longer as relevant as they once were, with Agile being a prime example. Increasingly, companies are moving to the Product Operating Model to leverage AI's benefits, which also highlights the need for much stronger product leadership. During...",
-      "url": "https://www.meetup.com/producttank-berlin/events/316369938/",
-      "venue": "Delivery Hero office",
-      "source_url": "https://www.meetup.com/find/?location=de--Berlin&source=EVENTS&keywords=founder",
-      "has_detail_link": true
-    },
-    {
       "title": "🍷 Founders & Wine: Friday Night Networking",
       "date": "2026-09-18",
       "time": "17:00",
@@ -1153,18 +1129,6 @@
       "has_detail_link": true
     },
     {
-      "title": "FLINTA* Track Session Rehberge",
-      "date": "2026-09-15",
-      "time": "16:30",
-      "price": 0.0,
-      "category": "https://schema.org/OfflineEventAttendanceMode",
-      "description": "Join our track sessions in Rehberge! Twice a month on Tuesdays, we’ll meet at the Track of Volkspark Rehberge at 18:30 for a group training. Meeting point - the Track of Volkspark Rehberge https://maps.app.goo.gl/ryhaXFxb3v9JJzyr8?g_st=ic Afterwards we‘ll have drinks or dinner if we feel like it. Don’t worry if you are new! Joining track sessions is a great chance to start 😉 Take care and see…",
-      "url": "https://www.meetup.com/flinta-running/events/316143348/",
-      "venue": "Volkspark Rehberge",
-      "source_url": "https://www.meetup.com/find/?location=de--Berlin&source=EVENTS&keywords=hiking",
-      "has_detail_link": true
-    },
-    {
       "title": "Tiergarten Picnic to celebrate 100 events and trips 🎉🥳🥙🥤",
       "date": "2026-09-20",
       "time": "11:00",
@@ -1174,30 +1138,6 @@
       "url": "https://www.meetup.com/berlin-walking-biking-meetup-group/events/316335452/",
       "venue": "Im Großen Tiergarten Berlin",
       "source_url": "https://www.meetup.com/find/?location=de--Berlin&source=EVENTS&keywords=hiking",
-      "has_detail_link": true
-    },
-    {
-      "title": "Bicycle tour to Belrin's Oldest Steam Engine* + Pumpstation.",
-      "date": "2026-09-18",
-      "time": "14:00",
-      "price": 0.0,
-      "category": "https://schema.org/OfflineEventAttendanceMode",
-      "description": "#### **The waterworks tour !** #### **Guided bike tour of the water story of Belrin - with a exclusive access to the Ökowerk Nature Conservation Centre Pump Station.** **Time:** 16:00 - depending on start point **Theme:** Cycle Tour + Water Infrastructure + Industrial Heritage + Nature **Distance:** 13 km (with optional loop back to Berlin = 35km). Dear Bike and Hike Group As part of the…",
-      "url": "https://www.meetup.com/berlin-ausflug/events/316381842/",
-      "venue": "S Heerstraße Bahnhof",
-      "source_url": "https://www.meetup.com/find/?location=de--Berlin&source=EVENTS&keywords=hiking",
-      "has_detail_link": true
-    },
-    {
-      "title": "Founders Running Club :: Berlin",
-      "date": "2026-09-19",
-      "time": "07:00",
-      "price": 0.0,
-      "category": "https://schema.org/OfflineEventAttendanceMode",
-      "description": "**Founders Running Club** (FRC) brings founders, investors, tech, creative people and startup enthusiasts together for weekly easy runs and networking. Every Saturday morning we gather together and run through Tiergarten. Join us in one of these 3 routes: \\* **5K** – for new & beginner runners \\* **7K** – for regular runners \\* **11K** – for more experienced runners **OBS**: We are usually…",
-      "url": "https://www.meetup.com/founders-running-club-berlin/events/315987257/",
-      "venue": "Berlin City Center, Dorothea-Schlegel-Platz Next to Bahnhof Friedrichstraße, 101",
-      "source_url": "https://www.meetup.com/find/?location=de--Berlin&source=EVENTS&keywords=running",
       "has_detail_link": true
     },
     {
@@ -1261,30 +1201,6 @@
       "has_detail_link": true
     },
     {
-      "title": "FLINTA* Track Session Rehberge",
-      "date": "2026-09-15",
-      "time": "16:30",
-      "price": 0.0,
-      "category": "https://schema.org/OfflineEventAttendanceMode",
-      "description": "Join our track sessions in Rehberge! Twice a month on Tuesdays, we’ll meet at the Track of Volkspark Rehberge at 18:30 for a group training. Meeting point - the Track of Volkspark Rehberge https://maps.app.goo.gl/ryhaXFxb3v9JJzyr8?g_st=ic Afterwards we‘ll have drinks or dinner if we feel like it. Don’t worry if you are new! Joining track sessions is a great chance to start 😉 Take care and see…",
-      "url": "https://www.meetup.com/flinta-running/events/316143348/",
-      "venue": "Volkspark Rehberge",
-      "source_url": "https://www.meetup.com/find/?location=de--Berlin&source=EVENTS&keywords=running",
-      "has_detail_link": true
-    },
-    {
-      "title": "Coffee Run Club Lichtenberg",
-      "date": "2026-09-19",
-      "time": "07:20",
-      "price": 0.0,
-      "category": "https://schema.org/OfflineEventAttendanceMode",
-      "description": "Fuelled by our pre-workout Espresso we go on a scenic run to Treptower Park. Whether you're training for a marathon or just decided to give running a shot: with us, you are welcome. We offer 5k or 10k routes, both with plenty of talk and good vibes all the way. > Meet us @ 9:20 AM @ Green Wall Coffee Lichtenberg > Get your pre-workout Espresso for only €1",
-      "url": "https://www.meetup.com/crc-lichtenberg/events/316335358/",
-      "venue": "Green Wall Coffee & Coworking",
-      "source_url": "https://www.meetup.com/find/?location=de--Berlin&source=EVENTS&keywords=running",
-      "has_detail_link": true
-    },
-    {
       "title": "Running Club am Weißen See",
       "date": "2026-09-17",
       "time": "16:30",
@@ -1309,27 +1225,15 @@
       "has_detail_link": true
     },
     {
-      "title": "Break Dance Workout - Evening Class in PBERG",
-      "date": "2026-09-15",
-      "time": "17:00",
+      "title": "Moderate to high intensity football",
+      "date": "2026-09-19",
+      "time": "05:00",
       "price": 0.0,
       "category": "https://schema.org/OfflineEventAttendanceMode",
-      "description": "**Combining a variety of TopRock break dance moves in a HIIT format, this class is specifically created with non-break dancers in mind.** **Feedback from our attendees is that the class is fun, engaging and totally beginner friendly!** (Check our reviews)🤸‍♀️ Created and taught by 3x Breakdance World Champion in Breaking and Choreographer of Flying Dreams show at Wintergarten, Bboy Lou.Ease of...",
-      "url": "https://www.meetup.com/hiitmeister/events/316284144/",
-      "venue": "The Limelight Collective – Die Heilsarmee",
+      "description": "Welcome! This football session is for individuals who like playing on moderate to high intensity (run a lot and change position to give player with the ball option to pass). Usually play on a pretty competitive level. Our football skills are average to good. To keep things fair and enjoyable for all, we follow a few simple rules: ***Show up at 07:15 **so that you can get checked by the…",
+      "url": "https://www.meetup.com/lazy-football-on-the-grass/events/316474839/",
+      "venue": "SportPark Poststadion Moabit",
       "source_url": "https://www.meetup.com/find/?location=de--Berlin&source=EVENTS&keywords=running",
-      "has_detail_link": true
-    },
-    {
-      "title": "Building What’s Next: AI Workflows, Agent Show & Tell & the Future of Software",
-      "date": "2026-09-15",
-      "time": "15:00",
-      "price": 0.0,
-      "category": "https://schema.org/OfflineEventAttendanceMode",
-      "description": "We’re relaunching our innovation meetup with an evening of frontier tech, AI, disruption, impact, and wealth creation. by Leferrando, the event will feature fast, practical show-and-tells of AI workflows, tools, and favorite agent systems—with food, drinks There are limited seats 30, so please RSVP Want to share your own frontier workflow? Contact me to speak at the event.",
-      "url": "https://www.meetup.com/biahubs/events/316178933/",
-      "venue": "Lieferando",
-      "source_url": "https://www.meetup.com/find/?location=de--Berlin&source=EVENTS&keywords=startup",
       "has_detail_link": true
     },
     {
@@ -1341,54 +1245,6 @@
       "description": "**By joining the Investor Readiness Session, you will:** * Learn where to find investors * Find out at which key moments you should pitch and how * Practice your company intro & get personalized feedback This online workshop, rated **4,6/5 ⭐** , is designed to help you prepare for investor meetings. **Register here:**...",
       "url": "https://www.meetup.com/berlinstartups/events/315672726/",
       "venue": "",
-      "source_url": "https://www.meetup.com/find/?location=de--Berlin&source=EVENTS&keywords=startup",
-      "has_detail_link": true
-    },
-    {
-      "title": "Angels & Beers - Investors only",
-      "date": "2026-09-16",
-      "time": "17:00",
-      "price": 0.0,
-      "category": "https://schema.org/OfflineEventAttendanceMode",
-      "description": "**Are you an angel investor or an institutional investor?** Join us for **Angels & Beers** — a relaxed, no-pitch evening dedicated to connecting current and future angel investors in the Berlin community. This edition is organised together with Start-Up investment Accelerator, Leapfunder, and Startups. Berlin. **RSVP on** - [https://luma.com/hytotuyz](https://luma.com/hytotuyz) **Flock and...",
-      "url": "https://www.meetup.com/berlinstartups/events/316398424/",
-      "venue": "Secret",
-      "source_url": "https://www.meetup.com/find/?location=de--Berlin&source=EVENTS&keywords=startup",
-      "has_detail_link": true
-    },
-    {
-      "title": "🚀 FOUNDER JOURNEY: FROM PRE-SEED TO EXIT",
-      "date": "2026-09-17",
-      "time": "16:00",
-      "price": 0.0,
-      "category": "https://schema.org/OfflineEventAttendanceMode",
-      "description": "What does it really take to build a company from the ground up and eventually exit? Join us in Berlin for an meaningful conversation with Dilip Maurya from Rocket Internet SE, as he takes us through the realities of the founder journey from the early pre-seed days to building, scaling, and ultimately navigating an exit. We’ll go beyond the success story…",
-      "url": "https://www.meetup.com/growfirma_community/events/316489447/",
-      "venue": "The Social Hub Berlin",
-      "source_url": "https://www.meetup.com/find/?location=de--Berlin&source=EVENTS&keywords=startup",
-      "has_detail_link": true
-    },
-    {
-      "title": "🍷 Founders & Wine: Friday Night Networking",
-      "date": "2026-09-18",
-      "time": "17:00",
-      "price": 0.0,
-      "category": "https://schema.org/OfflineEventAttendanceMode",
-      "description": "It’s time to unwind, sip some wine, and connect with fellow founders in Berlin! Our next event is all about **casual conversations and meaningful connections** in a relaxed atmosphere. Whether you’re a seasoned entrepreneur or just getting started, this is your chance to meet like-minded people and share ideas over a glass (or two) of wine. **What to Expect:** • **Meet & Greet**: Chat with…",
-      "url": "https://www.meetup.com/berlinstartups/events/316295122/",
-      "venue": "Leierkasten Vinothek und Bar, Weinbar",
-      "source_url": "https://www.meetup.com/find/?location=de--Berlin&source=EVENTS&keywords=startup",
-      "has_detail_link": true
-    },
-    {
-      "title": "Asian Builders in Berlin — From 0 to 1",
-      "date": "2026-09-17",
-      "time": "16:00",
-      "price": 0.0,
-      "category": "https://schema.org/OfflineEventAttendanceMode",
-      "description": "**Starting up in Berlin as an Asian builder brings unique challenges: navigating an unfamiliar landscape, finding early adopters, and building a local network from scratch.** **From 0 to 1** is an evening for Asian founders, builders, and aspiring entrepreneurs who are figuring out those questions. We'll hear from Asian founders at very different stages of their journey to unpack what it really...",
-      "url": "https://www.meetup.com/asian-builders-in-berlin/events/316385183/",
-      "venue": "w3.hub",
       "source_url": "https://www.meetup.com/find/?location=de--Berlin&source=EVENTS&keywords=startup",
       "has_detail_link": true
     },
@@ -1513,18 +1369,6 @@
       "has_detail_link": true
     },
     {
-      "title": "Meditations Kurs Sahaja Yoga ( Polnisch/Deutsch )",
-      "date": "2026-09-17",
-      "time": "17:00",
-      "price": 0.0,
-      "category": "https://schema.org/OfflineEventAttendanceMode",
-      "description": "Zapraszamy wszystkich na bezpłatne zajęcia medytacji w Berlinie dla Polaków. Po całym dniu pracy,zajęć w szkole, czy też dodatkowych aktywności. W stanie medytacji możemy zaznać chwili relaksu oraz wyciszenia. To wspaniała metoda, na pozbycie się wszelkich emocjonalno- mentalnych napięć powstałych w ciągu dnia,zniwelowanie stresu, czy też zmęczenia naszego organizmu. Co tygodniowe zajęcia...",
-      "url": "https://www.meetup.com/meditation-yoga-stressmanagement-berlin-kostenfrei/events/316516987/",
-      "venue": "Sahaja Yoga Zentrum",
-      "source_url": "https://www.meetup.com/find/?location=de--Berlin&source=EVENTS&keywords=yoga",
-      "has_detail_link": true
-    },
-    {
       "title": "EXHALE - CALMING BREATHWORK",
       "date": "2026-09-14",
       "time": "17:00",
@@ -1533,6 +1377,18 @@
       "description": "Slow Down. Reset. Return. Life in Berlin can feel like twenty browser tabs open at once. This guided breathwork session is an invitation to close a few of them. Through gentle breathing techniques, body awareness, and guided relaxation, you'll create space for your nervous system to shift from doing into being. Expect a calming blend of breath, presence, and stillness designed to help reduce...",
       "url": "https://www.meetup.com/berlin-well-exhale/events/316537954/",
       "venue": "",
+      "source_url": "https://www.meetup.com/find/?location=de--Berlin&source=EVENTS&keywords=yoga",
+      "has_detail_link": true
+    },
+    {
+      "title": "Meditations Kurs Sahaja Yoga ( Polnisch/Deutsch )",
+      "date": "2026-09-17",
+      "time": "17:00",
+      "price": 0.0,
+      "category": "https://schema.org/OfflineEventAttendanceMode",
+      "description": "Zapraszamy wszystkich na bezpłatne zajęcia medytacji w Berlinie dla Polaków. Po całym dniu pracy,zajęć w szkole, czy też dodatkowych aktywności. W stanie medytacji możemy zaznać chwili relaksu oraz wyciszenia. To wspaniała metoda, na pozbycie się wszelkich emocjonalno- mentalnych napięć powstałych w ciągu dnia,zniwelowanie stresu, czy też zmęczenia naszego organizmu. Co tygodniowe zajęcia...",
+      "url": "https://www.meetup.com/meditation-yoga-stressmanagement-berlin-kostenfrei/events/316516987/",
+      "venue": "Sahaja Yoga Zentrum",
       "source_url": "https://www.meetup.com/find/?location=de--Berlin&source=EVENTS&keywords=yoga",
       "has_detail_link": true
     },
@@ -1582,18 +1438,6 @@
       "url": "https://www.meetup.com/pranic-healing/events/316283454/",
       "venue": "Ergotherapie Praxis Winkelmann",
       "source_url": "https://www.meetup.com/find/?location=de--Berlin&source=EVENTS&keywords=yoga",
-      "has_detail_link": true
-    },
-    {
-      "title": "Werkstatt: Mittwoch aus Licht",
-      "date": "2026-09-14",
-      "time": "19:00",
-      "price": null,
-      "category": "",
-      "description": "14 Sep Werkstatt: Mittwoch aus Licht Deutsche Oper Berlin Mo, 14. Sep 2026, 19:00",
-      "url": "https://www.oper-in-berlin.de/de/spielplan/event/14-09-2026-werkstatt-mittwoch-aus-licht/",
-      "venue": "Deutsche Oper Berlin",
-      "source_url": "https://www.oper-in-berlin.de/de/spielplan/",
       "has_detail_link": true
     },
     {
@@ -1777,6 +1621,18 @@
       "has_detail_link": false
     },
     {
+      "title": "MigaMiga",
+      "date": "2026-09-20",
+      "time": "17:00",
+      "price": 0.0,
+      "category": "",
+      "description": "We're migamiga. A gastronomy studio creating thoughtful sandwiches for lunch boxes, events and pop-ups. Our recipes are inspired by our roots and everything we've learned along the way. We love bold flavours, good food and the little details that make people remember a meal. Everything is freshly made, carefully wrapped and ready to enjoy, wherever you are. Whether you're planning an event...",
+      "url": "https://www.orangerie-nk.de/",
+      "venue": "",
+      "source_url": "https://www.orangerie-nk.de/",
+      "has_detail_link": false
+    },
+    {
       "title": "Co Working Sonnenallee",
       "date": "2026-09-14",
       "time": "10:00",
@@ -1789,6 +1645,30 @@
       "has_detail_link": true
     },
     {
+      "title": "Kreative Druckwerkstatt",
+      "date": "2026-09-14",
+      "time": "15:00",
+      "price": 0.0,
+      "category": "",
+      "description": "Today, 14. Sep | 15:00 Kreative Druckwerkstatt MeKo Neukölln Free admission Aktiv & Kreativ",
+      "url": "https://rausgegangen.de/en/events/kreative-druckwerkstatt-14/",
+      "venue": "MeKo Neukölln",
+      "source_url": "https://rausgegangen.de/en/berlin/eventsbydate/?geospatial_query_type=CITY&lat=52.5&lng=13.405&city=berlin&active_city_name=Berlin&start_date=2026-09-14&end_date=2026-09-21",
+      "has_detail_link": true
+    },
+    {
+      "title": "Kitkatclub Kinks Of Berlin",
+      "date": "2026-09-14",
+      "time": "18:00",
+      "price": 0.0,
+      "category": "",
+      "description": "Today, 14. Sep | 18:00 KitKatClub - Kinks of Berlin Kino Zukunft keine Preisangabe Film",
+      "url": "https://rausgegangen.de/en/events/kitkatclub-kinks-of-berlin-24/",
+      "venue": "",
+      "source_url": "https://rausgegangen.de/en/berlin/eventsbydate/?geospatial_query_type=CITY&lat=52.5&lng=13.405&city=berlin&active_city_name=Berlin&start_date=2026-09-14&end_date=2026-09-21",
+      "has_detail_link": true
+    },
+    {
       "title": "Beats Spritzer Austrian Comedy Mit Julia Brandner Freddy Eku",
       "date": "2026-09-14",
       "time": "18:30",
@@ -1796,6 +1676,66 @@
       "category": "",
       "description": "Today, 14. Sep | 18:30 Beats & Spritzer – Der Comedy-Sundowner zur FeelAustria Week FluxBau 9,00 € Gesprochenes",
       "url": "https://rausgegangen.de/en/events/beats-spritzer-austrian-comedy-mit-julia-brandner-freddy-eku-0/",
+      "venue": "",
+      "source_url": "https://rausgegangen.de/en/berlin/eventsbydate/?geospatial_query_type=CITY&lat=52.5&lng=13.405&city=berlin&active_city_name=Berlin&start_date=2026-09-14&end_date=2026-09-21",
+      "has_detail_link": true
+    },
+    {
+      "title": "Notes Of Berlin De",
+      "date": "2026-09-14",
+      "time": "20:00",
+      "price": 13.0,
+      "category": "",
+      "description": "Today, 14. Sep | 20:00 Notes of Berlin (DE) Forest Cinema 13,00 € Film",
+      "url": "https://rausgegangen.de/en/events/notes-of-berlin-de-2/",
+      "venue": "",
+      "source_url": "https://rausgegangen.de/en/berlin/eventsbydate/?geospatial_query_type=CITY&lat=52.5&lng=13.405&city=berlin&active_city_name=Berlin&start_date=2026-09-14&end_date=2026-09-21",
+      "has_detail_link": true
+    },
+    {
+      "title": "Seriesly Berlin City Of Blood",
+      "date": "2026-09-15",
+      "time": "18:30",
+      "price": 9.0,
+      "category": "",
+      "description": "Tomorrow, 15. Sep | 18:30 Seriesly Berlin - CITY OF BLOOD Fotografiska Museum Berlin 9 Euro-11 Euro Film",
+      "url": "https://rausgegangen.de/en/events/seriesly-berlin-city-of-blood-0/",
+      "venue": "",
+      "source_url": "https://rausgegangen.de/en/berlin/eventsbydate/?geospatial_query_type=CITY&lat=52.5&lng=13.405&city=berlin&active_city_name=Berlin&start_date=2026-09-14&end_date=2026-09-21",
+      "has_detail_link": true
+    },
+    {
+      "title": "Teenage Sex And Death At Camp Miasma",
+      "date": "2026-09-15",
+      "time": "18:50",
+      "price": 0.0,
+      "category": "",
+      "description": "Tomorrow, 15. Sep | 18:50 Teenage Sex and Death at Camp Miasma Babylon Kreuzberg keine Preisangabe Film",
+      "url": "https://rausgegangen.de/en/events/teenage-sex-and-death-at-camp-miasma-213/",
+      "venue": "Babylon Kreuzberg",
+      "source_url": "https://rausgegangen.de/en/berlin/eventsbydate/?geospatial_query_type=CITY&lat=52.5&lng=13.405&city=berlin&active_city_name=Berlin&start_date=2026-09-14&end_date=2026-09-21",
+      "has_detail_link": true
+    },
+    {
+      "title": "Musikfest Berlin",
+      "date": "2026-09-15",
+      "time": "20:00",
+      "price": 0.0,
+      "category": "",
+      "description": "Tomorrow, 15. Sep | 20:00 Musikfest Berlin Philharmonie Berlin & Kammermusiksaal keine Preisangabe Theater",
+      "url": "https://rausgegangen.de/en/events/musikfest-berlin-50/",
+      "venue": "Philharmonie Berlin & Kammermusiksaal",
+      "source_url": "https://rausgegangen.de/en/berlin/eventsbydate/?geospatial_query_type=CITY&lat=52.5&lng=13.405&city=berlin&active_city_name=Berlin&start_date=2026-09-14&end_date=2026-09-21",
+      "has_detail_link": true
+    },
+    {
+      "title": "Chineke Orchestra Cape Town Opera Vocal Ensemble",
+      "date": "2026-09-15",
+      "time": "20:00",
+      "price": 20.0,
+      "category": "",
+      "description": "Tomorrow, 15. Sep | 20:00 Chineke! Orchestra / Cape Town Opera Vocal Ensemble Berliner Festspiele 20,00 to 105,00 € Theater",
+      "url": "https://rausgegangen.de/en/events/chineke-orchestra-cape-town-opera-vocal-ensemble-0/",
       "venue": "",
       "source_url": "https://rausgegangen.de/en/berlin/eventsbydate/?geospatial_query_type=CITY&lat=52.5&lng=13.405&city=berlin&active_city_name=Berlin&start_date=2026-09-14&end_date=2026-09-21",
       "has_detail_link": true
@@ -1813,13 +1753,13 @@
       "has_detail_link": true
     },
     {
-      "title": "Chineke Orchestra Cape Town Opera Vocal Ensemble",
-      "date": "2026-09-15",
-      "time": "20:00",
-      "price": 20.0,
+      "title": "Berlin Art Week Amnon David Ar Vom Alltagszauber",
+      "date": "2026-09-16",
+      "time": "14:00",
+      "price": 0.0,
       "category": "",
-      "description": "Tomorrow, 15. Sep | 20:00 Chineke! Orchestra / Cape Town Opera Vocal Ensemble Berliner Festspiele 20,00 to 105,00 € Theater",
-      "url": "https://rausgegangen.de/en/events/chineke-orchestra-cape-town-opera-vocal-ensemble-0/",
+      "description": "Mi, 16. Sep | 14:00 Berlin Art Week | AMNON DAVID AR »Vom Alltagszauber« Kurt Mühlenhaupt Museum Free admission Ausstellung",
+      "url": "https://rausgegangen.de/en/events/berlin-art-week-amnon-david-ar-vom-alltagszauber-3/",
       "venue": "",
       "source_url": "https://rausgegangen.de/en/berlin/eventsbydate/?geospatial_query_type=CITY&lat=52.5&lng=13.405&city=berlin&active_city_name=Berlin&start_date=2026-09-14&end_date=2026-09-21",
       "has_detail_link": true
@@ -1849,6 +1789,30 @@
       "has_detail_link": true
     },
     {
+      "title": "Drag Bingo With Harpy Bella",
+      "date": "2026-09-16",
+      "time": "20:00",
+      "price": 0.0,
+      "category": "",
+      "description": "Mi, 16. Sep | 20:00 Drag Bingo with Harpy & Bella The Social Hub Berlin 0,00 to 6,96 € WIN Lottery Shows & Performances",
+      "url": "https://rausgegangen.de/en/events/drag-bingo-with-harpy-bella-2/",
+      "venue": "",
+      "source_url": "https://rausgegangen.de/en/berlin/eventsbydate/?geospatial_query_type=CITY&lat=52.5&lng=13.405&city=berlin&active_city_name=Berlin&start_date=2026-09-14&end_date=2026-09-21",
+      "has_detail_link": true
+    },
+    {
+      "title": "Queerfilmnacht Skinny Love Kino Union",
+      "date": "2026-09-16",
+      "time": "20:15",
+      "price": 7.0,
+      "category": "",
+      "description": "Mi, 16. Sep | 20:15 Queerfilmnacht: Maspalomas Kino UNION 7,00 to 9,00 € Film",
+      "url": "https://rausgegangen.de/en/events/queerfilmnacht-skinny-love-kino-union-0/",
+      "venue": "",
+      "source_url": "https://rausgegangen.de/en/berlin/eventsbydate/?geospatial_query_type=CITY&lat=52.5&lng=13.405&city=berlin&active_city_name=Berlin&start_date=2026-09-14&end_date=2026-09-21",
+      "has_detail_link": true
+    },
+    {
       "title": "Staatsschutz Prosecution",
       "date": "2026-09-16",
       "time": "21:00",
@@ -1857,6 +1821,18 @@
       "description": "Mi, 16. Sep | 21:00 STAATSSCHUTZ PROSECUTION SİNEMA TRANSTOPIA 10,00 € WIN Lottery Film",
       "url": "https://rausgegangen.de/en/events/staatsschutz-prosecution-7/",
       "venue": "SİNEMA TRANSTOPIA",
+      "source_url": "https://rausgegangen.de/en/berlin/eventsbydate/?geospatial_query_type=CITY&lat=52.5&lng=13.405&city=berlin&active_city_name=Berlin&start_date=2026-09-14&end_date=2026-09-21",
+      "has_detail_link": true
+    },
+    {
+      "title": "Street Food Thursday",
+      "date": "2026-09-17",
+      "time": "17:00",
+      "price": 0.0,
+      "category": "",
+      "description": "Do, 17. Sep | 17:00 Street Food Thursday Markthalle Neun Free admission Essen & Trinken",
+      "url": "https://rausgegangen.de/en/events/street-food-thursday-13/",
+      "venue": "Markthalle Neun",
       "source_url": "https://rausgegangen.de/en/berlin/eventsbydate/?geospatial_query_type=CITY&lat=52.5&lng=13.405&city=berlin&active_city_name=Berlin&start_date=2026-09-14&end_date=2026-09-21",
       "has_detail_link": true
     },
@@ -2017,18 +1993,6 @@
       "has_detail_link": true
     },
     {
-      "title": "Maria Iskariot",
-      "date": "2026-09-19",
-      "time": "20:00",
-      "price": 17.0,
-      "category": "",
-      "description": "Sa, 19. Sep | 20:00 MARIA ISKARIOT Urban Spree 17,00 € WIN Lottery Konzerte & Musik",
-      "url": "https://rausgegangen.de/en/events/maria-iskariot-23/",
-      "venue": "Urban Spree",
-      "source_url": "https://rausgegangen.de/en/berlin/eventsbydate/?geospatial_query_type=CITY&lat=52.5&lng=13.405&city=berlin&active_city_name=Berlin&start_date=2026-09-14&end_date=2026-09-21",
-      "has_detail_link": true
-    },
-    {
       "title": "Civan Live Im Fluxbau Feelaustria Week",
       "date": "2026-09-19",
       "time": "20:00",
@@ -2037,6 +2001,18 @@
       "description": "Sa, 19. Sep | 20:00 CIVAN live im FluxBau – FeelAustria Week 2026 FluxBau 9,00 € Konzerte & Musik",
       "url": "https://rausgegangen.de/en/events/civan-live-im-fluxbau-feelaustria-week-2026-0/",
       "venue": "",
+      "source_url": "https://rausgegangen.de/en/berlin/eventsbydate/?geospatial_query_type=CITY&lat=52.5&lng=13.405&city=berlin&active_city_name=Berlin&start_date=2026-09-14&end_date=2026-09-21",
+      "has_detail_link": true
+    },
+    {
+      "title": "Maria Iskariot",
+      "date": "2026-09-19",
+      "time": "20:00",
+      "price": 17.0,
+      "category": "",
+      "description": "Sa, 19. Sep | 20:00 MARIA ISKARIOT Urban Spree 17,00 € WIN Lottery Konzerte & Musik",
+      "url": "https://rausgegangen.de/en/events/maria-iskariot-23/",
+      "venue": "Urban Spree",
       "source_url": "https://rausgegangen.de/en/berlin/eventsbydate/?geospatial_query_type=CITY&lat=52.5&lng=13.405&city=berlin&active_city_name=Berlin&start_date=2026-09-14&end_date=2026-09-21",
       "has_detail_link": true
     },
@@ -2144,18 +2120,6 @@
       "category": "",
       "description": "Mi, 16. Sep | 20:00 Die Ades Zabel Company: Drei Drachen vom Grill BKA Theater 17,00 to 38,00 € WIN Lottery",
       "url": "https://rausgegangen.de/en/events/die-ades-zabel-company-drei-drachen-vom-grill-28/",
-      "venue": "",
-      "source_url": "https://rausgegangen.de/en/berlin/eventsbydate/?geospatial_query_type=CITY&lat=52.5&lng=13.405&city=berlin&active_city_name=Berlin&start_date=2026-09-14&end_date=2026-09-21",
-      "has_detail_link": true
-    },
-    {
-      "title": "Drag Bingo With Harpy Bella",
-      "date": "2026-09-16",
-      "time": "20:00",
-      "price": 0.0,
-      "category": "",
-      "description": "Mi, 16. Sep | 20:00 Drag Bingo with Harpy & Bella The Social Hub Berlin 0,00 to 6,96 € WIN Lottery",
-      "url": "https://rausgegangen.de/en/events/drag-bingo-with-harpy-bella-2/",
       "venue": "",
       "source_url": "https://rausgegangen.de/en/berlin/eventsbydate/?geospatial_query_type=CITY&lat=52.5&lng=13.405&city=berlin&active_city_name=Berlin&start_date=2026-09-14&end_date=2026-09-21",
       "has_detail_link": true
@@ -2485,18 +2449,6 @@
       "has_detail_link": true
     },
     {
-      "title": "Bollywood Hip Hop Dance Fitness",
-      "date": "2026-09-14",
-      "time": "19:00",
-      "price": 17.2,
-      "category": "",
-      "description": "Today, 14. Sep | 19:00 BOLLYWOOD HIP-HOP & DANCE FITNESS DNA. HOUSE 17,20 €",
-      "url": "https://rausgegangen.de/en/events/bollywood-hip-hop-dance-fitness-36/",
-      "venue": "",
-      "source_url": "https://rausgegangen.de/en/berlin/eventsbydate/?geospatial_query_type=CITY&lat=52.5&lng=13.405&city=berlin&active_city_name=Berlin&start_date=2026-09-14&end_date=2026-09-21",
-      "has_detail_link": true
-    },
-    {
       "title": "Improv Playground",
       "date": "2026-09-14",
       "time": "19:00",
@@ -2540,30 +2492,6 @@
       "category": "",
       "description": "Today, 14. Sep | 19:30 JAM SESSION & ARTISTS MEET UP DNA. HOUSE 2,90 to 8,40 €",
       "url": "https://rausgegangen.de/en/events/jam-session-artists-meet-up-10/",
-      "venue": "",
-      "source_url": "https://rausgegangen.de/en/berlin/eventsbydate/?geospatial_query_type=CITY&lat=52.5&lng=13.405&city=berlin&active_city_name=Berlin&start_date=2026-09-14&end_date=2026-09-21",
-      "has_detail_link": true
-    },
-    {
-      "title": "Chaos Royal The Voice Of Kreuzberg",
-      "date": "2026-09-14",
-      "time": "20:00",
-      "price": 16.0,
-      "category": "",
-      "description": "Today, 14. Sep | 20:00 Chaos Royal: The Voice of Kreuzberg BKA Theater 16,00 €",
-      "url": "https://rausgegangen.de/en/events/chaos-royal-the-voice-of-kreuzberg-9/",
-      "venue": "",
-      "source_url": "https://rausgegangen.de/en/berlin/eventsbydate/?geospatial_query_type=CITY&lat=52.5&lng=13.405&city=berlin&active_city_name=Berlin&start_date=2026-09-14&end_date=2026-09-21",
-      "has_detail_link": true
-    },
-    {
-      "title": "Notes Of Berlin De",
-      "date": "2026-09-14",
-      "time": "20:00",
-      "price": 13.0,
-      "category": "",
-      "description": "Today, 14. Sep | 20:00 Notes of Berlin (DE) Forest Cinema 13,00 €",
-      "url": "https://rausgegangen.de/en/events/notes-of-berlin-de-2/",
       "venue": "",
       "source_url": "https://rausgegangen.de/en/berlin/eventsbydate/?geospatial_query_type=CITY&lat=52.5&lng=13.405&city=berlin&active_city_name=Berlin&start_date=2026-09-14&end_date=2026-09-21",
       "has_detail_link": true
@@ -2869,6 +2797,18 @@
       "has_detail_link": true
     },
     {
+      "title": "Quizlabor Im Fluxbau Das Osterreich Special Zur Feelaustr",
+      "date": "2026-09-15",
+      "time": "19:30",
+      "price": 11.22,
+      "category": "",
+      "description": "Tomorrow, 15. Sep | 19:30 QUIZLABOR #44 im FluxBau – das Österreich Special zur FeelAustria Week 2026 FluxBau 11,22 to 101,61 €",
+      "url": "https://rausgegangen.de/en/events/quizlabor-44-im-fluxbau-das-osterreich-special-zur-feelaustr-0/",
+      "venue": "",
+      "source_url": "https://rausgegangen.de/en/berlin/eventsbydate/?geospatial_query_type=CITY&lat=52.5&lng=13.405&city=berlin&active_city_name=Berlin&start_date=2026-09-14&end_date=2026-09-21",
+      "has_detail_link": true
+    },
+    {
       "title": "Encoreunefois Tuesday Techno Rave",
       "date": "2026-09-15",
       "time": "23:00",
@@ -3001,30 +2941,6 @@
       "has_detail_link": true
     },
     {
-      "title": "After Work Im Peter Edel Prasentiert Video Dome",
-      "date": "2026-09-17",
-      "time": "18:00",
-      "price": 11.34,
-      "category": "",
-      "description": "Do, 17. Sep | 18:00 AFTER WORK im PETER EDEL präsentiert VIDEODOME PETER EDEL 11,34 €",
-      "url": "https://rausgegangen.de/en/events/after-work-im-peter-edel-prasentiert-video-dome-0/",
-      "venue": "",
-      "source_url": "https://rausgegangen.de/en/berlin/eventsbydate/?geospatial_query_type=CITY&lat=52.5&lng=13.405&city=berlin&active_city_name=Berlin&start_date=2026-09-14&end_date=2026-09-21",
-      "has_detail_link": true
-    },
-    {
-      "title": "Robin Hood",
-      "date": "2026-09-14",
-      "time": "14:00",
-      "price": 0.0,
-      "category": "",
-      "description": "Today, 14. Sep | 14:00 Robin Hood Luftschloss Tempelhofer Feld keine Preisangabe",
-      "url": "https://rausgegangen.de/en/events/robin-hood-319/",
-      "venue": "Luftschloss Tempelhofer Feld",
-      "source_url": "https://rausgegangen.de/en/berlin/eventsbydate/?geospatial_query_type=CITY&lat=52.5&lng=13.405&city=berlin&active_city_name=Berlin&start_date=2026-09-14&end_date=2026-09-21",
-      "has_detail_link": true
-    },
-    {
       "title": "COVERED Uferstudios",
       "date": "2026-09-14",
       "time": "17:00",
@@ -3037,30 +2953,6 @@
       "has_detail_link": true
     },
     {
-      "title": "Tanztanz Spezial",
-      "date": "2026-09-14",
-      "time": "18:00",
-      "price": 0.0,
-      "category": "",
-      "description": "Today, 14. Sep | 18:00 TanzTanz Spezial Staatsballett Berlin keine Preisangabe",
-      "url": "https://rausgegangen.de/en/events/tanztanz-spezial-8/",
-      "venue": "Staatsballett Berlin",
-      "source_url": "https://rausgegangen.de/en/berlin/eventsbydate/?geospatial_query_type=CITY&lat=52.5&lng=13.405&city=berlin&active_city_name=Berlin&start_date=2026-09-14&end_date=2026-09-21",
-      "has_detail_link": true
-    },
-    {
-      "title": "This Cave Is A Tunnel",
-      "date": "2026-09-14",
-      "time": "18:00",
-      "price": 0.0,
-      "category": "",
-      "description": "Today, 14. Sep | 18:00 This cave is a tunnel Uferstudios keine Preisangabe",
-      "url": "https://rausgegangen.de/en/events/this-cave-is-a-tunnel-1/",
-      "venue": "Uferstudios",
-      "source_url": "https://rausgegangen.de/en/berlin/eventsbydate/?geospatial_query_type=CITY&lat=52.5&lng=13.405&city=berlin&active_city_name=Berlin&start_date=2026-09-14&end_date=2026-09-21",
-      "has_detail_link": true
-    },
-    {
       "title": "Die Rauber",
       "date": "2026-09-14",
       "time": "19:30",
@@ -3068,42 +2960,6 @@
       "category": "",
       "description": "Today, 14. Sep | 19:30 Die Räuber Deutsches Theater Berlin 7,00 to 50,00 €",
       "url": "https://rausgegangen.de/en/events/die-rauber-205/",
-      "venue": "",
-      "source_url": "https://rausgegangen.de/en/berlin/eventsbydate/?geospatial_query_type=CITY&lat=52.5&lng=13.405&city=berlin&active_city_name=Berlin&start_date=2026-09-14&end_date=2026-09-21",
-      "has_detail_link": true
-    },
-    {
-      "title": "Theatersport Berlin Das Match",
-      "date": "2026-09-14",
-      "time": "19:30",
-      "price": 15.0,
-      "category": "",
-      "description": "Today, 14. Sep | 19:30 Theatersport Berlin - Das Match Monbijou Theater 15,00 to 19,00 €",
-      "url": "https://rausgegangen.de/en/events/theatersport-berlin-das-match-142/",
-      "venue": "",
-      "source_url": "https://rausgegangen.de/en/berlin/eventsbydate/?geospatial_query_type=CITY&lat=52.5&lng=13.405&city=berlin&active_city_name=Berlin&start_date=2026-09-14&end_date=2026-09-21",
-      "has_detail_link": true
-    },
-    {
-      "title": "Bad Kingdom",
-      "date": "2026-09-14",
-      "time": "20:00",
-      "price": 0.0,
-      "category": "",
-      "description": "Today, 14. Sep | 20:00 Bad Kingdom Schaubühne am Lehniner Platz - €",
-      "url": "https://rausgegangen.de/en/events/bad-kingdom-37/",
-      "venue": "",
-      "source_url": "https://rausgegangen.de/en/berlin/eventsbydate/?geospatial_query_type=CITY&lat=52.5&lng=13.405&city=berlin&active_city_name=Berlin&start_date=2026-09-14&end_date=2026-09-21",
-      "has_detail_link": true
-    },
-    {
-      "title": "Dino Oder Ei Was War Zuerst",
-      "date": "2026-09-15",
-      "time": "10:00",
-      "price": 5.0,
-      "category": "",
-      "description": "Tomorrow, 15. Sep | 10:00 Dino oder Ei, was war zuerst? ufaFabrik_Internationales Kulturcentrum Sold out",
-      "url": "https://rausgegangen.de/en/events/dino-oder-ei-was-war-zuerst-3/",
       "venue": "",
       "source_url": "https://rausgegangen.de/en/berlin/eventsbydate/?geospatial_query_type=CITY&lat=52.5&lng=13.405&city=berlin&active_city_name=Berlin&start_date=2026-09-14&end_date=2026-09-21",
       "has_detail_link": true
@@ -3193,18 +3049,6 @@
       "has_detail_link": true
     },
     {
-      "title": "Der Liebling",
-      "date": "2026-09-15",
-      "time": "20:00",
-      "price": 0.0,
-      "category": "",
-      "description": "Tomorrow, 15. Sep | 20:00 Der Liebling Deutsches Theater Berlin keine Preisangabe",
-      "url": "https://rausgegangen.de/en/events/der-liebling-34/",
-      "venue": "Deutsches Theater Berlin",
-      "source_url": "https://rausgegangen.de/en/berlin/eventsbydate/?geospatial_query_type=CITY&lat=52.5&lng=13.405&city=berlin&active_city_name=Berlin&start_date=2026-09-14&end_date=2026-09-21",
-      "has_detail_link": true
-    },
-    {
       "title": "Die Gorillas Ick Berlin",
       "date": "2026-09-15",
       "time": "20:00",
@@ -3225,18 +3069,6 @@
       "description": "Tomorrow, 15. Sep | 20:00 Glücklich die Glücklichen Berliner Ensemble Sold out",
       "url": "https://rausgegangen.de/en/events/glucklich-die-glucklichen-4/",
       "venue": "",
-      "source_url": "https://rausgegangen.de/en/berlin/eventsbydate/?geospatial_query_type=CITY&lat=52.5&lng=13.405&city=berlin&active_city_name=Berlin&start_date=2026-09-14&end_date=2026-09-21",
-      "has_detail_link": true
-    },
-    {
-      "title": "Musikfest Berlin",
-      "date": "2026-09-15",
-      "time": "20:00",
-      "price": 0.0,
-      "category": "",
-      "description": "Tomorrow, 15. Sep | 20:00 Musikfest Berlin Philharmonie Berlin & Kammermusiksaal keine Preisangabe",
-      "url": "https://rausgegangen.de/en/events/musikfest-berlin-50/",
-      "venue": "Philharmonie Berlin & Kammermusiksaal",
       "source_url": "https://rausgegangen.de/en/berlin/eventsbydate/?geospatial_query_type=CITY&lat=52.5&lng=13.405&city=berlin&active_city_name=Berlin&start_date=2026-09-14&end_date=2026-09-21",
       "has_detail_link": true
     },
@@ -3469,18 +3301,6 @@
       "has_detail_link": true
     },
     {
-      "title": "Kitkatclub Kinks Of Berlin",
-      "date": "2026-09-14",
-      "time": "16:00",
-      "price": 0.0,
-      "category": "",
-      "description": "Today, 14. Sep | 16:00 KitKatClub – Kinks of Berlin Babylon Kreuzberg keine Preisangabe",
-      "url": "https://rausgegangen.de/en/events/kitkatclub-kinks-of-berlin-15/",
-      "venue": "",
-      "source_url": "https://rausgegangen.de/en/berlin/eventsbydate/?geospatial_query_type=CITY&lat=52.5&lng=13.405&city=berlin&active_city_name=Berlin&start_date=2026-09-14&end_date=2026-09-21",
-      "has_detail_link": true
-    },
-    {
       "title": "Lebensansichten Eines Huhns",
       "date": "2026-09-14",
       "time": "16:00",
@@ -3513,18 +3333,6 @@
       "description": "Today, 14. Sep | 16:15 Vaterland Kino Intimes keine Preisangabe",
       "url": "https://rausgegangen.de/en/events/vaterland-386/",
       "venue": "",
-      "source_url": "https://rausgegangen.de/en/berlin/eventsbydate/?geospatial_query_type=CITY&lat=52.5&lng=13.405&city=berlin&active_city_name=Berlin&start_date=2026-09-14&end_date=2026-09-21",
-      "has_detail_link": true
-    },
-    {
-      "title": "Teenage Sex And Death At Camp Miasma",
-      "date": "2026-09-14",
-      "time": "16:20",
-      "price": 0.0,
-      "category": "",
-      "description": "Today, 14. Sep | 16:20 Teenage Sex and Death at Camp Miasma Babylon Kreuzberg keine Preisangabe",
-      "url": "https://rausgegangen.de/en/events/teenage-sex-and-death-at-camp-miasma-218/",
-      "venue": "Babylon Kreuzberg",
       "source_url": "https://rausgegangen.de/en/berlin/eventsbydate/?geospatial_query_type=CITY&lat=52.5&lng=13.405&city=berlin&active_city_name=Berlin&start_date=2026-09-14&end_date=2026-09-21",
       "has_detail_link": true
     },
@@ -3637,18 +3445,6 @@
       "has_detail_link": true
     },
     {
-      "title": "Nebenan",
-      "date": "2026-09-14",
-      "time": "20:00",
-      "price": null,
-      "category": "",
-      "description": "20.00 Nebenan von Daniel Kehlmann Nächster Termin",
-      "url": "https://renaissance-theater.de/produktion/nebenan-vor-daniel-kehlmann/",
-      "venue": "",
-      "source_url": "https://renaissance-theater.de/spielplan/",
-      "has_detail_link": true
-    },
-    {
       "title": "BERLINER WERDEN IN 60 MINUTEN ...",
       "date": "2026-09-19",
       "time": "15:00",
@@ -3670,6 +3466,18 @@
       "url": "https://renaissance-theater.de/produktion/cesar-klein-preis-fuer-szenografie/",
       "venue": "",
       "source_url": "https://renaissance-theater.de/spielplan/",
+      "has_detail_link": true
+    },
+    {
+      "title": "Giddy Club - free entry until 7pm",
+      "date": "2026-09-18",
+      "time": "19:00",
+      "price": 0.0,
+      "category": "",
+      "description": "18.09.26 Giddy Club - free entry until 7pm 19.09.26 Solee 26.09.26 SommerSafari 02.10.26 Keep My Letters w/ Guy J 03.10.26 Conrad Taylor 03.10.26 Yubik 09.10.26 Electric Animals 10.10.26 Ritter Butzke Jubiläum w/ NTO 16.10.26 Community Rave 17.10.26 Giolì & Assia (live) 17.10.26 Amber Broos, DJ Sexstasy, Sektor69 23.10.26 Deeportament Community 24.10.26 Kollektiv Turmstrasse 30.10.26 The Dark...",
+      "url": "https://club.ritterbutzke.com/event/180926-GiddyClub-freeentryuntil7pm",
+      "venue": "",
+      "source_url": "https://club.ritterbutzke.com/events",
       "has_detail_link": true
     },
     {
@@ -3709,42 +3517,6 @@
       "has_detail_link": true
     },
     {
-      "title": "Giselle",
-      "date": "2026-09-18",
-      "time": "19:30",
-      "price": 9.5,
-      "category": "https://schema.org/OfflineEventAttendanceMode",
-      "description": "Liebe, Verrat und die Sehnsucht nach Vergebung prägen eines der bewegendsten Werke des Romantischen Balletts. Giselle, ou les Wilis wurde am 28. Juni 1841 an der Pariser Oper uraufgeführt und gilt als Höhepunkt jener Epoche, in der Tanz zur Verkörperung des Übernatürlichen wurde. Im Mittelpunkt steht ein junges Bauernmädchen, das das Tanzen liebt und sich in den adligen Albrecht verliebt. Als...",
-      "url": "https://www.staatsballett-berlin.de/spielplan/stueck-detail/stid/giselle/42.html#a_822",
-      "venue": "Staatsoper Unter den Linden",
-      "source_url": "https://www.staatsballett-berlin.de/",
-      "has_detail_link": true
-    },
-    {
-      "title": "Forum",
-      "date": "2026-09-16",
-      "time": "19:00",
-      "price": 0.0,
-      "category": "",
-      "description": "16.9. Forum House of New Energy 19.00 Uhr",
-      "url": "https://www.staatsballett-berlin.de/spielplan/stueck-detail/stid/forum0/385.html#a_1046",
-      "venue": "",
-      "source_url": "https://www.staatsballett-berlin.de/",
-      "has_detail_link": true
-    },
-    {
-      "title": "Tanzworkshop für Kurzentschlossene",
-      "date": "2026-09-20",
-      "time": "12:00",
-      "price": 0.0,
-      "category": "",
-      "description": "20.9. Tanzworkshop für Kurzentschlossene Staatsoper Unter den Linden | Apollosaal 12.00 Uhr",
-      "url": "https://www.staatsballett-berlin.de/spielplan/stueck-detail/stid/tanzworkshop/323.html#a_994",
-      "venue": "",
-      "source_url": "https://www.staatsballett-berlin.de/",
-      "has_detail_link": true
-    },
-    {
       "title": "Rigoletto",
       "date": "2026-09-14",
       "time": "00:00",
@@ -3769,30 +3541,6 @@
       "has_detail_link": true
     },
     {
-      "title": "Giselle",
-      "date": "2026-09-18",
-      "time": "19:30",
-      "price": null,
-      "category": "",
-      "description": "19.30 Giselle Tickets",
-      "url": "https://www.staatsoper-berlin.de/de/veranstaltungen/giselle.13681/#event-155212",
-      "venue": "",
-      "source_url": "https://www.staatsoper-berlin.de/",
-      "has_detail_link": true
-    },
-    {
-      "title": "Führung",
-      "date": "2026-09-19",
-      "time": "00:00",
-      "price": 15.0,
-      "category": "",
-      "description": "Sa. 19.09. Tagesvorschau schliessen 14.00 Führung Tickets 16.00 Führung Tickets 19.30 Rigoletto Tickets",
-      "url": "https://www.staatsoper-berlin.de/de/veranstaltungen/fuehrung.3686/#event-170605",
-      "venue": "",
-      "source_url": "https://www.staatsoper-berlin.de/",
-      "has_detail_link": true
-    },
-    {
       "title": "Rigoletto",
       "date": "2026-09-19",
       "time": "19:30",
@@ -3800,18 +3548,6 @@
       "category": "",
       "description": "19.30 Rigoletto Tickets",
       "url": "https://www.staatsoper-berlin.de/de/veranstaltungen/rigoletto.2774/#event-153967",
-      "venue": "",
-      "source_url": "https://www.staatsoper-berlin.de/",
-      "has_detail_link": true
-    },
-    {
-      "title": "Tanzworkshop für Kurzentschlossene",
-      "date": "2026-09-20",
-      "time": "00:00",
-      "price": 0.0,
-      "category": "",
-      "description": "So. 20.09. Tagesvorschau schliessen 12.00 Tanzworkshop für Kurzentschlossene 12.00 Führung Tickets 13.45 Vor-Führung 15.00 Giselle Tickets 19.30 Giselle Tickets",
-      "url": "https://www.staatsoper-berlin.de/de/veranstaltungen/tanzworkshop-fuer-kurzentschlossene.22574/#event-155221",
       "venue": "",
       "source_url": "https://www.staatsoper-berlin.de/",
       "has_detail_link": true
@@ -3848,18 +3584,6 @@
       "category": "",
       "description": "15.00 Giselle Tickets",
       "url": "https://www.staatsoper-berlin.de/de/veranstaltungen/giselle.13681/#event-155213",
-      "venue": "",
-      "source_url": "https://www.staatsoper-berlin.de/",
-      "has_detail_link": true
-    },
-    {
-      "title": "Einblick La Vestale",
-      "date": "2026-09-21",
-      "time": "00:00",
-      "price": null,
-      "category": "",
-      "description": "Mo. 21.09. Tagesvorschau schliessen 18.30 Einblick La Vestale ausverkauft",
-      "url": "https://www.staatsoper-berlin.de/de/veranstaltungen/einblick-la-vestale.27849/#event-154888",
       "venue": "",
       "source_url": "https://www.staatsoper-berlin.de/",
       "has_detail_link": true
@@ -4004,6 +3728,18 @@
       "category": "",
       "description": "TBA",
       "url": "https://www.theclubmap.com/events/garden-eden-pres-face2face/",
+      "venue": "",
+      "source_url": "https://www.theclubmap.com/berlin-techno-partys/",
+      "has_detail_link": true
+    },
+    {
+      "title": "Saisonabschluss",
+      "date": "2026-09-19",
+      "time": "19:00",
+      "price": null,
+      "category": "",
+      "description": "K1:Project ( Permissive Faces ) = Clemse b2b K.Dubz Christa K ( khisdapaze | NOT IN MY HOUSE ) die Berts Doudou MD HABIRI Jesse G ( Hard Wax ) kiesel lindos xp ( objekt klein a ) Lucie Leh ( Tarmac | Sleeve | Slot Fighter ) makahaun ( Tresor West | schick.standort | quotenchaya* ) malte-s ( objekt klein a ) Yowlandi",
+      "url": "https://www.theclubmap.com/events/saisonabschluss/",
       "venue": "",
       "source_url": "https://www.theclubmap.com/berlin-techno-partys/",
       "has_detail_link": true
@@ -4184,6 +3920,18 @@
       "category": "",
       "description": "isoSportler x HERZSPORT SCHLAAKIII x Tecaay Mariposa x Lyra Intoxikate",
       "url": "https://www.theclubmap.com/events/double-error-b2b-night/",
+      "venue": "",
+      "source_url": "https://www.theclubmap.com/berlin-techno-partys/",
+      "has_detail_link": true
+    },
+    {
+      "title": "Sachsentrance",
+      "date": "2026-09-18",
+      "time": "23:00",
+      "price": null,
+      "category": "",
+      "description": "GI.O The Jakob Sister RaverPik Sabu! Maryline K :MUMM STRIKT MINIMUM Live",
+      "url": "https://www.theclubmap.com/events/sachsentrance/",
       "venue": "",
       "source_url": "https://www.theclubmap.com/berlin-techno-partys/",
       "has_detail_link": true
@@ -5178,7 +4926,7 @@
       "time": "",
       "price": null,
       "category": "",
-      "description": "Kongress 16.09. – 17.09. VKU-Stadtwerkekongress 2026 Der VKU-Stadtwerkekongress bringt die Entscheider:innen der Kommunalwirtschaft... Flughafen Tempelhof, Hangar 7 Ticket erforderlich",
+      "description": "Kongress 16.09. – 17.09. VKU-Stadtwerkekongress 2026",
       "url": "https://www.thf-berlin.de/aktuelles/veranstaltungen/veranstaltung/vku-stadtwerkekongress-2026",
       "venue": "",
       "source_url": "https://www.thf-berlin.de/aktuelles/veranstaltungen",
@@ -5242,18 +4990,6 @@
       "url": "https://www.thf-berlin.de/aktuelles/veranstaltungen/veranstaltung/battle-cancer-hybrid-320",
       "venue": "",
       "source_url": "https://www.thf-berlin.de/aktuelles/veranstaltungen",
-      "has_detail_link": true
-    },
-    {
-      "title": "Dino oder Ei, was war zuerst?",
-      "date": "2026-09-15",
-      "time": "00:00",
-      "price": 8.0,
-      "category": "",
-      "description": "Dienstag 15. September 10:00 Wolfgang Neuss Salon Kinder €8,00 Erwachsene €12,00 Kitagruppen: Kinder €5,00 Kitagruppen: Erzieher*innen Frei Kinder Dino oder Ei, was war zuerst? Ausverkauft",
-      "url": "https://ufafabrik.de/veranstaltung/40282/dino-oder-ei-was-war-zuerst",
-      "venue": "",
-      "source_url": "https://ufafabrik.de/spielplan.html",
       "has_detail_link": true
     },
     {
@@ -5370,7 +5106,7 @@
       "time": "06:00",
       "price": null,
       "category": "",
-      "description": "Next gathering THURSDAY 17 SEP [No-Event in Berlin]Join us at Thursday Gathering #265 The Polish-German Innovation Runway in Warsaw 6:00 – 9:00 PM Doors open in 03 Days 08 Hrs 57 Min 52 Sec",
+      "description": "Next gathering THURSDAY 17 SEP [No-Event in Berlin]Join us at Thursday Gathering #265 The Polish-German Innovation Runway in Warsaw 6:00 – 9:00 PM Doors open in 00 Days 00 Hrs 00 Min 00 Sec",
       "url": "https://community.venturecafeberlin.org/events/74",
       "venue": "",
       "source_url": "https://venturecafeberlin.org/",
@@ -5389,6 +5125,6 @@
       "has_detail_link": true
     }
   ],
-  "count": 449,
-  "recovered_count": 0
+  "count": 427,
+  "recovered_count": -31
 }

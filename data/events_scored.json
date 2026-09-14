@@ -1,8 +1,8 @@
 {
-  "count": 389,
+  "count": 390,
   "generated_at": "2026-09-14",
   "stream_counts": {
-    "sport": 21,
+    "sport": 22,
     "network": 8,
     "main": 360
   },
@@ -91,6 +91,22 @@
       "score": 65
     },
     {
+      "title": "Kreative Druckwerkstatt",
+      "date": "2026-09-14",
+      "time": "15:00",
+      "price": 0.0,
+      "category": "general",
+      "description": "Today, 14. Sep | 15:00 Kreative Druckwerkstatt MeKo Neukölln Free admission Aktiv & Kreativ",
+      "url": "https://rausgegangen.de/en/events/kreative-druckwerkstatt-14/",
+      "venue": "MeKo Neukölln",
+      "source_url": "https://rausgegangen.de/en/berlin/eventsbydate/?geospatial_query_type=CITY&lat=52.5&lng=13.405&city=berlin&active_city_name=Berlin&start_date=2026-09-14&end_date=2026-09-21",
+      "has_detail_link": true,
+      "stream": "main",
+      "price_label": "Free",
+      "matched_categories": [],
+      "score": 58
+    },
+    {
       "title": "Staatsschutz delphi LUX",
       "date": "2026-09-14",
       "time": "15:00",
@@ -139,22 +155,6 @@
       "score": 58
     },
     {
-      "title": "Kitkatclub Kinks Of Berlin",
-      "date": "2026-09-14",
-      "time": "16:00",
-      "price": 0.0,
-      "category": "general",
-      "description": "Today, 14. Sep | 16:00 KitKatClub – Kinks of Berlin Babylon Kreuzberg keine Preisangabe",
-      "url": "https://rausgegangen.de/en/events/kitkatclub-kinks-of-berlin-15/",
-      "venue": "",
-      "source_url": "https://rausgegangen.de/en/berlin/eventsbydate/?geospatial_query_type=CITY&lat=52.5&lng=13.405&city=berlin&active_city_name=Berlin&start_date=2026-09-14&end_date=2026-09-21",
-      "has_detail_link": true,
-      "stream": "main",
-      "price_label": "Free",
-      "matched_categories": [],
-      "score": 52
-    },
-    {
       "title": "Lebensansichten Eines Huhns",
       "date": "2026-09-14",
       "time": "16:00",
@@ -179,22 +179,6 @@
       "description": "Today, 14. Sep | 16:00 The Piano Tuner delphi LUX keine Preisangabe",
       "url": "https://rausgegangen.de/en/events/the-piano-tuner-545/",
       "venue": "delphi LUX",
-      "source_url": "https://rausgegangen.de/en/berlin/eventsbydate/?geospatial_query_type=CITY&lat=52.5&lng=13.405&city=berlin&active_city_name=Berlin&start_date=2026-09-14&end_date=2026-09-21",
-      "has_detail_link": true,
-      "stream": "main",
-      "price_label": "Free",
-      "matched_categories": [],
-      "score": 58
-    },
-    {
-      "title": "Teenage Sex And Death At Camp Miasma",
-      "date": "2026-09-14",
-      "time": "16:20",
-      "price": 0.0,
-      "category": "general",
-      "description": "Today, 14. Sep | 16:20 Teenage Sex and Death at Camp Miasma Babylon Kreuzberg keine Preisangabe",
-      "url": "https://rausgegangen.de/en/events/teenage-sex-and-death-at-camp-miasma-218/",
-      "venue": "Babylon Kreuzberg",
       "source_url": "https://rausgegangen.de/en/berlin/eventsbydate/?geospatial_query_type=CITY&lat=52.5&lng=13.405&city=berlin&active_city_name=Berlin&start_date=2026-09-14&end_date=2026-09-21",
       "has_detail_link": true,
       "stream": "main",
@@ -817,82 +801,6 @@
         "guided tours"
       ],
       "score": 21
-    },
-    {
-      "title": "Laura war hier",
-      "date": "2026-09-14",
-      "time": "10:00",
-      "price": null,
-      "category": "theater",
-      "description": "MO 14.09.2026 10:00 Theater Tickets © Bela Sobottke Laura war hier Theater 14.09.2026, 10:00 | GRIPS Theater Laura war hier GRIPS Theater | GRIPS Hansaplatz Laura war hier Von Milena Baisch Mit Liedtexten von Volker Ludwig Neuinszenierung | Eine abenteuerliche Reise durch ein Berliner Mietshaus",
-      "url": "https://www.berlin-buehnen.de/de/spielplan",
-      "venue": "GRIPS Theater",
-      "source_url": "https://www.berlin-buehnen.de/de/spielplan",
-      "has_detail_link": false,
-      "stream": "main",
-      "price_label": "Check site",
-      "matched_categories": [
-        "theater"
-      ],
-      "score": 52
-    },
-    {
-      "title": "Das Herz eines Boxers",
-      "date": "2026-09-14",
-      "time": "11:00",
-      "price": null,
-      "category": "theater",
-      "description": "MO 14.09.2026 11:00 Theater Tickets © Illustration: Bela Sobottke Das Herz eines Boxers Theater 14.09.2026, 11:00 | GRIPS Theater Das Herz eines Boxers GRIPS Theater | GRIPS Podewil Das Herz eines Boxers Von Lutz Hübner Generationendialog über Einsamkeit, Wut und den Mut, das eigene Leben zu ändern",
-      "url": "https://www.berlin-buehnen.de/de/spielplan",
-      "venue": "GRIPS Theater",
-      "source_url": "https://www.berlin-buehnen.de/de/spielplan",
-      "has_detail_link": false,
-      "stream": "main",
-      "price_label": "Check site",
-      "matched_categories": [
-        "theater"
-      ],
-      "score": 52
-    },
-    {
-      "title": "Shake",
-      "date": "2026-09-14",
-      "time": "11:00",
-      "price": null,
-      "category": "dancing, music, theater",
-      "description": "Tanz Konzert 14.09.2026, 11:00 | Theater Strahl Berlin Shake",
-      "url": "https://www.berlin-buehnen.de/de/spielplan",
-      "venue": "",
-      "source_url": "https://www.berlin-buehnen.de/de/spielplan",
-      "has_detail_link": false,
-      "stream": "main",
-      "price_label": "Check site",
-      "matched_categories": [
-        "dancing",
-        "music",
-        "theater"
-      ],
-      "score": 42
-    },
-    {
-      "title": "Tanz Konzert",
-      "date": "2026-09-14",
-      "time": "11:00",
-      "price": null,
-      "category": "dancing, music, theater",
-      "description": "MO 14.09.2026 11:00 Tanz Konzert Tickets © Bart Grietens Tanz Konzert 14.09.2026, 11:00 | Theater Strahl Berlin Shake Theater Strahl Berlin | De Dansers Shake",
-      "url": "https://www.berlin-buehnen.de/de/spielplan",
-      "venue": "Theater Strahl Berlin",
-      "source_url": "https://www.berlin-buehnen.de/de/spielplan",
-      "has_detail_link": false,
-      "stream": "main",
-      "price_label": "Check site",
-      "matched_categories": [
-        "dancing",
-        "music",
-        "theater"
-      ],
-      "score": 67
     },
     {
       "title": "What If Berlin",
@@ -1547,26 +1455,6 @@
       "score": 77
     },
     {
-      "title": "Break Dance Workout - Evening Class in PBERG",
-      "date": "2026-09-15",
-      "time": "17:00",
-      "price": 0.0,
-      "category": "dancing, participating workshops, sport",
-      "description": "**Combining a variety of TopRock break dance moves in a HIIT format, this class is specifically created with non-break dancers in mind.** **Feedback from our attendees is that the class is fun, engaging and totally beginner friendly!** (Check our reviews)🤸‍♀️ Created and taught by 3x Breakdance World Champion in Breaking and Choreographer of Flying Dreams show at Wintergarten, Bboy Lou.Ease of...",
-      "url": "https://www.meetup.com/hiitmeister/events/316284144/",
-      "venue": "The Limelight Collective – Die Heilsarmee",
-      "source_url": "https://www.meetup.com/find/?location=de--Berlin&source=EVENTS&keywords=running",
-      "has_detail_link": true,
-      "stream": "main",
-      "price_label": "Free",
-      "matched_categories": [
-        "dancing",
-        "participating workshops",
-        "sport"
-      ],
-      "score": 60
-    },
-    {
       "title": "La Isla Maaya",
       "date": "2026-09-15",
       "time": "17:00",
@@ -1759,8 +1647,8 @@
       "date": "2026-09-15",
       "time": "20:00",
       "price": 0.0,
-      "category": "music",
-      "description": "Tomorrow, 15. Sep | 20:00 Musikfest Berlin Philharmonie Berlin & Kammermusiksaal keine Preisangabe",
+      "category": "music, theater",
+      "description": "Tomorrow, 15. Sep | 20:00 Musikfest Berlin Philharmonie Berlin & Kammermusiksaal keine Preisangabe Theater",
       "url": "https://rausgegangen.de/en/events/musikfest-berlin-50/",
       "venue": "Philharmonie Berlin & Kammermusiksaal",
       "source_url": "https://rausgegangen.de/en/berlin/eventsbydate/?geospatial_query_type=CITY&lat=52.5&lng=13.405&city=berlin&active_city_name=Berlin&start_date=2026-09-14&end_date=2026-09-21",
@@ -1768,9 +1656,10 @@
       "stream": "main",
       "price_label": "Free",
       "matched_categories": [
-        "music"
+        "music",
+        "theater"
       ],
-      "score": 88
+      "score": 93
     },
     {
       "title": "Éclat Crew - Push Workshop for FLINTA music producers",
@@ -1790,24 +1679,6 @@
         "participating workshops"
       ],
       "score": 78
-    },
-    {
-      "title": "Dino Oder Ei Was War Zuerst",
-      "date": "2026-09-15",
-      "time": "10:00",
-      "price": 5.0,
-      "category": "culture",
-      "description": "Tomorrow, 15. Sep | 10:00 Dino oder Ei, was war zuerst? ufaFabrik_Internationales Kulturcentrum Sold out",
-      "url": "https://rausgegangen.de/en/events/dino-oder-ei-was-war-zuerst-3/",
-      "venue": "",
-      "source_url": "https://rausgegangen.de/en/berlin/eventsbydate/?geospatial_query_type=CITY&lat=52.5&lng=13.405&city=berlin&active_city_name=Berlin&start_date=2026-09-14&end_date=2026-09-21",
-      "has_detail_link": true,
-      "stream": "main",
-      "price_label": "€5",
-      "matched_categories": [
-        "culture"
-      ],
-      "score": 38
     },
     {
       "title": "Super Tuesday 80s Disco Hits Hip Hop Party",
@@ -1940,6 +1811,22 @@
         "music"
       ],
       "score": 60
+    },
+    {
+      "title": "Quizlabor Im Fluxbau Das Osterreich Special Zur Feelaustr",
+      "date": "2026-09-15",
+      "time": "19:30",
+      "price": 11.22,
+      "category": "general",
+      "description": "Tomorrow, 15. Sep | 19:30 QUIZLABOR #44 im FluxBau – das Österreich Special zur FeelAustria Week 2026 FluxBau 11,22 to 101,61 €",
+      "url": "https://rausgegangen.de/en/events/quizlabor-44-im-fluxbau-das-osterreich-special-zur-feelaustr-0/",
+      "venue": "",
+      "source_url": "https://rausgegangen.de/en/berlin/eventsbydate/?geospatial_query_type=CITY&lat=52.5&lng=13.405&city=berlin&active_city_name=Berlin&start_date=2026-09-14&end_date=2026-09-21",
+      "has_detail_link": true,
+      "stream": "main",
+      "price_label": "€11.22",
+      "matched_categories": [],
+      "score": 54
     },
     {
       "title": "Die Gorillas Ick Berlin",
@@ -2101,6 +1988,24 @@
       "score": 41
     },
     {
+      "title": "Laura war hier",
+      "date": "2026-09-15",
+      "time": "10:00",
+      "price": null,
+      "category": "theater",
+      "description": "DI 15.09.2026 10:00 Abgesagt Tickets © Bela Sobottke Laura war hier Abgesagt 15.09.2026, 10:00 | GRIPS Theater Laura war hier GRIPS Theater | GRIPS Hansaplatz Laura war hier Von Milena Baisch Mit Liedtexten von Volker Ludwig Neuinszenierung | Eine abenteuerliche Reise durch ein Berliner Mietshaus",
+      "url": "https://www.berlin-buehnen.de/de/spielplan",
+      "venue": "GRIPS Theater",
+      "source_url": "https://www.berlin-buehnen.de/de/spielplan",
+      "has_detail_link": false,
+      "stream": "main",
+      "price_label": "Check site",
+      "matched_categories": [
+        "theater"
+      ],
+      "score": 52
+    },
+    {
       "title": "Liebe, einfach außerirdisch",
       "date": "2026-09-15",
       "time": "19:30",
@@ -2151,6 +2056,24 @@
         "music"
       ],
       "score": 39
+    },
+    {
+      "title": "Berlin Art Week Amnon David Ar Vom Alltagszauber",
+      "date": "2026-09-16",
+      "time": "14:00",
+      "price": 0.0,
+      "category": "culture",
+      "description": "Mi, 16. Sep | 14:00 Berlin Art Week | AMNON DAVID AR »Vom Alltagszauber« Kurt Mühlenhaupt Museum Free admission Ausstellung",
+      "url": "https://rausgegangen.de/en/events/berlin-art-week-amnon-david-ar-vom-alltagszauber-3/",
+      "venue": "",
+      "source_url": "https://rausgegangen.de/en/berlin/eventsbydate/?geospatial_query_type=CITY&lat=52.5&lng=13.405&city=berlin&active_city_name=Berlin&start_date=2026-09-14&end_date=2026-09-21",
+      "has_detail_link": true,
+      "stream": "main",
+      "price_label": "Free",
+      "matched_categories": [
+        "culture"
+      ],
+      "score": 48
     },
     {
       "title": "Ultimate Frisbee in the Park - late summer edition",
@@ -2408,7 +2331,7 @@
       "time": "20:00",
       "price": 0.0,
       "category": "social gatherings",
-      "description": "Mi, 16. Sep | 20:00 Drag Bingo with Harpy & Bella The Social Hub Berlin 0,00 to 6,96 € WIN Lottery",
+      "description": "Mi, 16. Sep | 20:00 Drag Bingo with Harpy & Bella The Social Hub Berlin 0,00 to 6,96 € WIN Lottery Shows & Performances",
       "url": "https://rausgegangen.de/en/events/drag-bingo-with-harpy-bella-2/",
       "venue": "",
       "source_url": "https://rausgegangen.de/en/berlin/eventsbydate/?geospatial_query_type=CITY&lat=52.5&lng=13.405&city=berlin&active_city_name=Berlin&start_date=2026-09-14&end_date=2026-09-21",
@@ -2418,7 +2341,7 @@
       "matched_categories": [
         "social gatherings"
       ],
-      "score": 65
+      "score": 39
     },
     {
       "title": "Strange Songs For Strange People",
@@ -2974,6 +2897,22 @@
       "score": 75
     },
     {
+      "title": "Street Food Thursday",
+      "date": "2026-09-17",
+      "time": "17:00",
+      "price": 0.0,
+      "category": "general",
+      "description": "Do, 17. Sep | 17:00 Street Food Thursday Markthalle Neun Free admission Essen & Trinken",
+      "url": "https://rausgegangen.de/en/events/street-food-thursday-13/",
+      "venue": "Markthalle Neun",
+      "source_url": "https://rausgegangen.de/en/berlin/eventsbydate/?geospatial_query_type=CITY&lat=52.5&lng=13.405&city=berlin&active_city_name=Berlin&start_date=2026-09-14&end_date=2026-09-21",
+      "has_detail_link": true,
+      "stream": "main",
+      "price_label": "Free",
+      "matched_categories": [],
+      "score": 54
+    },
+    {
       "title": "Feminist Imaginaries Festival",
       "date": "2026-09-17",
       "time": "18:30",
@@ -3190,22 +3129,6 @@
       "score": 14
     },
     {
-      "title": "After Work Im Peter Edel Prasentiert Video Dome",
-      "date": "2026-09-17",
-      "time": "18:00",
-      "price": 11.34,
-      "category": "general",
-      "description": "Do, 17. Sep | 18:00 AFTER WORK im PETER EDEL präsentiert VIDEODOME PETER EDEL 11,34 €",
-      "url": "https://rausgegangen.de/en/events/after-work-im-peter-edel-prasentiert-video-dome-0/",
-      "venue": "",
-      "source_url": "https://rausgegangen.de/en/berlin/eventsbydate/?geospatial_query_type=CITY&lat=52.5&lng=13.405&city=berlin&active_city_name=Berlin&start_date=2026-09-14&end_date=2026-09-21",
-      "has_detail_link": true,
-      "stream": "main",
-      "price_label": "€11.34",
-      "matched_categories": [],
-      "score": 38
-    },
-    {
       "title": "Geteiltes Leben und Tapetenwechsel",
       "date": "2026-09-17",
       "time": "16:30",
@@ -3312,7 +3235,7 @@
       "time": "06:00",
       "price": null,
       "category": "social gatherings",
-      "description": "Next gathering THURSDAY 17 SEP [No-Event in Berlin]Join us at Thursday Gathering #265 The Polish-German Innovation Runway in Warsaw 6:00 – 9:00 PM Doors open in 03 Days 08 Hrs 57 Min 52 Sec",
+      "description": "Next gathering THURSDAY 17 SEP [No-Event in Berlin]Join us at Thursday Gathering #265 The Polish-German Innovation Runway in Warsaw 6:00 – 9:00 PM Doors open in 00 Days 00 Hrs 00 Min 00 Sec",
       "url": "https://community.venturecafeberlin.org/events/74",
       "venue": "",
       "source_url": "https://venturecafeberlin.org/",
@@ -3380,7 +3303,7 @@
       "time": "",
       "price": null,
       "category": "general",
-      "description": "Kongress 16.09. – 17.09. VKU-Stadtwerkekongress 2026 Der VKU-Stadtwerkekongress bringt die Entscheider:innen der Kommunalwirtschaft... Flughafen Tempelhof, Hangar 7 Ticket erforderlich",
+      "description": "Kongress 16.09. – 17.09. VKU-Stadtwerkekongress 2026",
       "url": "https://www.thf-berlin.de/aktuelles/veranstaltungen/veranstaltung/vku-stadtwerkekongress-2026",
       "venue": "",
       "source_url": "https://www.thf-berlin.de/aktuelles/veranstaltungen",
@@ -3475,6 +3398,25 @@
         "entrepreneurial events"
       ],
       "score": 68
+    },
+    {
+      "title": "Giddy Club - free entry until 7pm",
+      "date": "2026-09-18",
+      "time": "19:00",
+      "price": 0.0,
+      "category": "music, social gatherings",
+      "description": "18.09.26 Giddy Club - free entry until 7pm 19.09.26 Solee 26.09.26 SommerSafari 02.10.26 Keep My Letters w/ Guy J 03.10.26 Conrad Taylor 03.10.26 Yubik 09.10.26 Electric Animals 10.10.26 Ritter Butzke Jubiläum w/ NTO 16.10.26 Community Rave 17.10.26 Giolì & Assia (live) 17.10.26 Amber Broos, DJ Sexstasy, Sektor69 23.10.26 Deeportament Community 24.10.26 Kollektiv Turmstrasse 30.10.26 The Dark...",
+      "url": "https://club.ritterbutzke.com/event/180926-GiddyClub-freeentryuntil7pm",
+      "venue": "",
+      "source_url": "https://club.ritterbutzke.com/events",
+      "has_detail_link": true,
+      "stream": "main",
+      "price_label": "Free",
+      "matched_categories": [
+        "music",
+        "social gatherings"
+      ],
+      "score": 72
     },
     {
       "title": "Sound Canteen w/ Bijon",
@@ -4253,6 +4195,24 @@
       "score": 71
     },
     {
+      "title": "Sachsentrance",
+      "date": "2026-09-18",
+      "time": "23:00",
+      "price": null,
+      "category": "music",
+      "description": "GI.O The Jakob Sister RaverPik Sabu! Maryline K :MUMM STRIKT MINIMUM Live",
+      "url": "https://www.theclubmap.com/events/sachsentrance/",
+      "venue": "",
+      "source_url": "https://www.theclubmap.com/berlin-techno-partys/",
+      "has_detail_link": true,
+      "stream": "main",
+      "price_label": "Check site",
+      "matched_categories": [
+        "music"
+      ],
+      "score": 54
+    },
+    {
       "title": "Schuettel",
       "date": "2026-09-18",
       "time": "23:00",
@@ -4347,6 +4307,24 @@
       "price_label": "Check site",
       "matched_categories": [],
       "score": 48
+    },
+    {
+      "title": "Moderate to high intensity football",
+      "date": "2026-09-19",
+      "time": "05:00",
+      "price": 0.0,
+      "category": "sport",
+      "description": "Welcome! This football session is for individuals who like playing on moderate to high intensity (run a lot and change position to give player with the ball option to pass). Usually play on a pretty competitive level. Our football skills are average to good. To keep things fair and enjoyable for all, we follow a few simple rules: ***Show up at 07:15 **so that you can get checked by the…",
+      "url": "https://www.meetup.com/lazy-football-on-the-grass/events/316474839/",
+      "venue": "SportPark Poststadion Moabit",
+      "source_url": "https://www.meetup.com/find/?location=de--Berlin&source=EVENTS&keywords=running",
+      "has_detail_link": true,
+      "stream": "sport",
+      "price_label": "Free",
+      "matched_categories": [
+        "sport"
+      ],
+      "score": 38
     },
     {
       "title": "Founders Running Club :: Berlin",
@@ -5120,6 +5098,24 @@
         "culture"
       ],
       "score": 48
+    },
+    {
+      "title": "Saisonabschluss",
+      "date": "2026-09-19",
+      "time": "19:00",
+      "price": null,
+      "category": "music",
+      "description": "K1:Project ( Permissive Faces ) = Clemse b2b K.Dubz Christa K ( khisdapaze | NOT IN MY HOUSE ) die Berts Doudou MD HABIRI Jesse G ( Hard Wax ) kiesel lindos xp ( objekt klein a ) Lucie Leh ( Tarmac | Sleeve | Slot Fighter ) makahaun ( Tresor West | schick.standort | quotenchaya* ) malte-s ( objekt klein a ) Yowlandi",
+      "url": "https://www.theclubmap.com/events/saisonabschluss/",
+      "venue": "",
+      "source_url": "https://www.theclubmap.com/berlin-techno-partys/",
+      "has_detail_link": true,
+      "stream": "main",
+      "price_label": "Check site",
+      "matched_categories": [
+        "music"
+      ],
+      "score": 54
     },
     {
       "title": "SUBMERGE Performance — DOUBLE BILL — Omer Keinan & Koffi-Kégou Afiadegnigban",
@@ -5975,6 +5971,22 @@
         "culture"
       ],
       "score": 72
+    },
+    {
+      "title": "MigaMiga",
+      "date": "2026-09-20",
+      "time": "17:00",
+      "price": 0.0,
+      "category": "general",
+      "description": "We're migamiga. A gastronomy studio creating thoughtful sandwiches for lunch boxes, events and pop-ups. Our recipes are inspired by our roots and everything we've learned along the way. We love bold flavours, good food and the little details that make people remember a meal. Everything is freshly made, carefully wrapped and ready to enjoy, wherever you are. Whether you're planning an event...",
+      "url": "https://www.orangerie-nk.de/",
+      "venue": "",
+      "source_url": "https://www.orangerie-nk.de/",
+      "has_detail_link": false,
+      "stream": "main",
+      "price_label": "Free",
+      "matched_categories": [],
+      "score": 40
     },
     {
       "title": "Vor-Führung",
