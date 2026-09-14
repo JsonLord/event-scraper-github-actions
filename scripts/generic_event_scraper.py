@@ -106,6 +106,9 @@ BOT_CHALLENGE_MARKERS = (
     "establishing a secure connection",
     ".bunny-shield",
     "enable javascript and cookies to continue",
+    # Eventbrite's interstitial, which it serves to datacenter IPs and to
+    # Jina's proxy alike - the page title is the only thing that says so.
+    "human verification",
 )
 
 # Upper bound on rows taken from one source. Generous rather than tight: it
