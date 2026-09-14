@@ -18,49 +18,51 @@ This system scrapes event listings from various Berlin websites, filters for aff
 ```
 ├── .github/
 │   └── workflows/
-│       ├── weekly-scraper.yml      # Main scraping workflow (Mon-Fri 5PM UTC)
-│       ├── validation.yml          # Daily validation workflow (Daily 5PM UTC)
-│       └── improvement-cycle.yml   # Weekly improvement workflow (Sun 6PM UTC)
+│       ├── weekly-jules-review.yml # The scraper. Sundays, 5PM UTC
+│       └── jekyll-gh-pages.yml     # Rebuilds Pages when the data changes
 ├── scripts/
-│   ├── weekly-event-scraper.py     # Main orchestrator
-│   ├── firecrawl_validation.py     # Modified to use Desk Agent 2.0 (placeholder)
-│   ├── scraper_improvement_cycle.py # Self-improvement logic
-│   ├── rausgegangen_scraper.py     # Berlin events scraper
-│   └── eventbrite_scraper.py       # Eventbrite scraper (to be implemented)
+│   ├── generic_event_scraper.py    # The scraper every source runs through
+│   ├── event_utils.py              # Date/price parsing, validation, dedupe
+│   ├── score_events.py             # Ranking, categorisation, price filter
+│   ├── jules_recover_failed.py     # Best-effort recovery for empty sources
+│   └── rausgegangen_scraper.py     # Site-specific scraper (unused by the matrix)
 ├── data/
-│   ├── events.db                   # SQLite database (generated per run)
-│   └── weekly-report.md            # Weekly summary
-├── docs/                           # GitHub Pages content
+│   ├── events.json                 # Raw aggregate from the last run
+│   └── events_scored.json          # Ranked/filtered output the page shows
+├── docs/                           # GitHub Pages content (built each run)
 │   ├── index.html                  # Main events display
-│   ├── events.json                 # Event data for frontend
-│   └── validation/                 # Validation reports
-├── config.yaml                     # URL/script mappings
+│   └── events.json                 # Event data for frontend
 └── requirements.txt                # Python dependencies
 ```
 
 ## Workflows
 
-### Weekly Scraper
-- **Schedule**: Monday-Friday at 5:00 PM UTC (matches original cron: `0 17 * * 0-4`)
-- **Actions**: 
-  - Runs the main event scraper
-  - Generates events.json for GitHub Pages
-  - Deploys updated site to GitHub Pages
-  - Uploads logs as artifacts
+Scraping runs **weekly and only weekly**. There is one scheduled workflow.
 
-### Validation
-- **Schedule**: Daily at 5:00 PM UTC (matches original cron: `0 17 * * *`)
+### Weekly Event Scraper (`weekly-jules-review.yml`)
+- **Schedule**: Sundays at 5:00 PM UTC (`0 17 * * 0`), plus manual dispatch
 - **Actions**:
-  - Runs validation using Desk Agent 2.0 (placeholder)
-  - Saves validation reports
-  - Updates GitHub Pages with validation summary
+  - Scrapes every source in the matrix in parallel, one job each, each
+    writing `data/raw_<source>.json` and an HTML snapshot
+  - Aggregates them, printing a per-source count so a source that has
+    quietly stopped yielding is visible in the log
+  - Attempts best-effort recovery for sources that returned nothing
+  - Scores, categorises and price-filters the result
+  - Commits `data/events.json` + `data/events_scored.json` and deploys Pages
 
-### Improvement Cycle
-- **Schedule**: Sunday at 6:00 PM UTC (matches original cron: `0 18 * * 0`)
-- **Actions**:
-  - Runs scraper improvement analysis
-  - Automatically commits improved scraper scripts
-  - Generates improvement reports
+A run refuses to publish an aggregate that has collapsed to under a quarter
+of the previous one, on the assumption that it was blocked rather than that
+Berlin ran out of events.
+
+### Pages Rebuild (`jekyll-gh-pages.yml`)
+Not scheduled. Runs on push when the event data or the frontend changes.
+
+### Reading a run's per-source counts
+
+A zero is not automatically a bug. Sources legitimately report nothing when
+the venue is between seasons or between shows, or when everything it lists
+is over the price cap. The matrix comments record what is expected per
+source; check those before treating a zero as a regression.
 
 ## Desk Agent 2.0 Integration
 

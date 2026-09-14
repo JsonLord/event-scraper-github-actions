@@ -10,15 +10,17 @@ concurrency:
   cancel-in-progress: false
 
 on:
+  # Weekly only. There was also a Monday-to-Friday "event-scraper-improvement"
+  # workflow scraping rausgegangen on its own; it is gone. The sources are
+  # defined by the matrix below, in one place.
   schedule:
     # Run every Sunday at 5 PM UTC
     - cron: '0 17 * * 0'
+  # No inputs: the `urls` input this used to declare was never read by any
+  # step - the matrix below is the only source list - and its default still
+  # advertised two URLs that cannot work (a Meetup group that does not exist
+  # and an Eventbrite page the runner is blocked from).
   workflow_dispatch:
-    inputs:
-      urls:
-        description: 'Comma-separated URLs to scrape (optional)'
-        required: false
-        default: 'https://rausgegangen.de/en/berlin/tipps-fuer-heute/,https://www.eventbrite.de/d/germany/berlin/events/,https://www.meetup.com/berlin/events/'
 
 jobs:
   autonomous-scrape:
@@ -35,8 +37,16 @@ jobs:
           # and today+7 (see the "Resolve dynamic dates in URL" step), so
           # rausgegangen returns the coming week's events by date.
           - { name: rausgegangen_de,        url: "https://rausgegangen.de/en/berlin/eventsbydate/?geospatial_query_type=CITY&lat=52.5&lng=13.405&city=berlin&active_city_name=Berlin&start_date=__START_DATE__&end_date=__END_DATE__" }
-          - { name: eventbrite_de,          url: "https://www.eventbrite.de/d/germany/berlin/events/" }
-          - { name: eventbrite_com,         url: "https://www.eventbrite.com/d/germany--berlin/events/" }
+          # Removed: Eventbrite blocks this runner at the edge. Both legs
+          # answer every GET with HTTP 405 Not Allowed - measured on the
+          # hosted runner in two consecutive runs, before and after the
+          # scraper rewrite - and the CloakBrowser render gets an empty
+          # document too, so neither has ever contributed a single event
+          # here. The same URLs return 200 with a parseable listing from a
+          # residential IP, so this is an IP reputation block, not a broken
+          # scraper: to bring them back, give the job an HTTPS_PROXY (the
+          # scraper's requests.Session picks it up with no code change) and
+          # restore these two lines.
           # Removed: meetup.com/berlin/events is not a Meetup group at all -
           # it answers every request with "Group not found. Sorry, the group
           # you're looking for doesn't exist." The Berlin coverage comes from
@@ -66,7 +76,8 @@ jobs:
           - { name: stadtmuseum,            url: "https://www.stadtmuseum.de/programm" }
           # The werk9 homepage is a block-theme shell whose entire body is 275
           # characters of nav and address - no programme at all. /kalender/ is
-          # where the dates actually are.
+          # where the dates actually are. It is a small venue and often lists
+          # a single date weeks out, so an empty week here is normal.
           - { name: werk9,                  url: "https://werk9.de/kalender/" }
           # Removed - these no longer resolve or serve a listing, so they only
           # ever consumed a matrix leg and produced an empty artifact:
@@ -82,7 +93,16 @@ jobs:
           - { name: deutsches_theater,      url: "https://www.deutschestheater.de/programm/spielplan" }
           - { name: staatsoper_berlin,      url: "https://www.staatsoper-berlin.de/" }
           - { name: staatsballett_berlin,   url: "https://www.staatsballett-berlin.de/" }
+          # Empty outside the season: the house publishes its whole programme
+          # but the nearest dates can be weeks out (21 events within 30 days,
+          # none within 7, when this was last measured in mid-September).
           - { name: volksbuehne,            url: "https://www.volksbuehne.berlin/" }
+          # The "/januar/" slug is not a stale month page - it is what the
+          # site's own "Spielplan / Uebersicht" nav points at, and it serves
+          # the current programme. Expect few or no rows: extraction finds
+          # the full season (38 dated entries), but these are ticketed
+          # classical concerts, mostly well above the 20 EUR cap - the one
+          # event in range last run was a 49 EUR ticket, correctly dropped.
           - { name: reinickendorf_classics, url: "https://www.reinickendorf-classics.de/januar/" }
           - { name: dice_fm_berlin,         url: "https://dice.fm/browse/berlin-5e426dbb749e68e3e923d1e4" }
           # The homepage is a mission statement; /shows/ is the programme page.
@@ -102,6 +122,11 @@ jobs:
           # redirect stub. The real site is club.ritterbutzke.com; it renders
           # its programme client-side (0 events via plain HTTP here), so this
           # still depends on the CloakBrowser tier, same as berlin_buehnen.
+          # Still yields nothing: CloakBrowser does render the page on the
+          # runner, but the programme is fetched by the app after render and
+          # the served DOM carries no event markup at all (627 characters of
+          # body text). Kept because the render tier is the only thing that
+          # could ever reach it.
           - { name: ritterbutzke,           url: "https://club.ritterbutzke.com" }
           # Was removed as "parked" under the un-hyphenated domain; the real
           # Berlin house is at the hyphenated one. Also JS-rendered - 0 via
@@ -328,10 +353,16 @@ jobs:
       # unavailable.
       - name: Recover failed scrapes via Jules
         run: |
+          # --timeout: the default is 900s and the session has hit it in
+          # every run on record, recovering nothing ("Jules recovery session
+          # failed: Session timeout after 900 seconds") - a quarter hour of
+          # runner time per week for zero events. Recovery is still attempted;
+          # it just stops costing 15 minutes to find that out.
           python scripts/jules_recover_failed.py \
             --aggregated docs/events.json \
             --raw-dir data \
             --html-dir data/html \
+            --timeout 240 \
             --output docs/events.json
 
       # Keep the aggregated, recovered source data in Git as well as in the
