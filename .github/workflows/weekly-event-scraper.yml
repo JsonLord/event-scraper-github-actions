@@ -1,4 +1,4 @@
-name: Weekly Event Scraper with Autonomous Repair
+name: Weekly Event Scraper
 
 permissions:
   contents: write
@@ -23,7 +23,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  autonomous-scrape:
+  scrape:
     runs-on: ubuntu-latest
     timeout-minutes: 180
     strategy:
@@ -32,7 +32,7 @@ jobs:
       max-parallel: 4
       matrix:
         include:
-          # Sites with a hand-written scraper (run via autonomous_repair.py)
+          # Every source runs through scripts/generic_event_scraper.py.
           # __START_DATE__/__END_DATE__ are substituted at runtime with today
           # and today+7 (see the "Resolve dynamic dates in URL" step), so
           # rausgegangen returns the coming week's events by date.
@@ -67,9 +67,9 @@ jobs:
           - { name: meetup_hiking,          url: "https://www.meetup.com/find/?location=de--Berlin&source=EVENTS&keywords=hiking" }
           - { name: meetup_startup,         url: "https://www.meetup.com/find/?location=de--Berlin&source=EVENTS&keywords=startup" }
           - { name: meetup_founders,        url: "https://www.meetup.com/find/?location=de--Berlin&source=EVENTS&keywords=founder" }
-          # Remaining sites use the generic multi-strategy scraper.
-          # (duplicates from the source list - rausgegangen, staatsoper-berlin.de,
-          # ritterbutzke.de - are scraped once, not once per duplicate URL)
+          # Venue and listing sites. Duplicates from the original source list
+          # (rausgegangen, staatsoper-berlin.de, ritterbutzke.de) are scraped
+          # once, not once per duplicate URL.
           - { name: berlin_buehnen,         url: "https://www.berlin-buehnen.de/de/spielplan" }
           - { name: zku_berlin,             url: "https://www.zku-berlin.org/de/timeline/" }
           - { name: ufafabrik,              url: "https://ufafabrik.de/spielplan.html" }
@@ -117,17 +117,15 @@ jobs:
           # sits behind a captcha on plain HTTP and so depends on the
           # CloakBrowser tier, same as berlin_buehnen.
           - { name: venturecafe_berlin,     url: "https://venturecafeberlin.org/" }
-          # www.ritterbutzke.de is a <meta http-equiv="refresh"> redirect, which
-          # a plain GET never follows - the scraper always saw the 325-byte
-          # redirect stub. The real site is club.ritterbutzke.com; it renders
-          # its programme client-side (0 events via plain HTTP here), so this
-          # still depends on the CloakBrowser tier, same as berlin_buehnen.
-          # Still yields nothing: CloakBrowser does render the page on the
-          # runner, but the programme is fetched by the app after render and
-          # the served DOM carries no event markup at all (627 characters of
-          # body text). Kept because the render tier is the only thing that
-          # could ever reach it.
-          - { name: ritterbutzke,           url: "https://club.ritterbutzke.com" }
+          # www.ritterbutzke.de is a <meta http-equiv="refresh"> redirect a plain
+          # GET never follows, and club.ritterbutzke.com's *homepage* renders
+          # its programme client-side - 627 characters of body text, which is
+          # why this yielded nothing even with CloakBrowser. /events is the
+          # real listing and it is server-rendered: dates in plain text
+          # ("18.09.26 Giddy Club"), 25 candidates, verified live. Each event
+          # also has its own page carrying a full schema.org MusicEvent, so
+          # recover_failed.py can reach it from either direction.
+          - { name: ritterbutzke,           url: "https://club.ritterbutzke.com/events" }
           # Was removed as "parked" under the un-hyphenated domain; the real
           # Berlin house is at the hyphenated one. Also JS-rendered - 0 via
           # plain HTTP here, CloakBrowser-dependent.
@@ -190,11 +188,6 @@ jobs:
         continue-on-error: true
         run: python -m cloakbrowser install
 
-      - name: Configure environment
-        run: |
-          echo "JULES_API_KEY=${{ secrets.JULES_API_KEY }}" >> $GITHUB_ENV
-          echo "GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}" >> $GITHUB_ENV
-
       # Substitute date placeholders in the target URL so date-parameterised
       # sources (e.g. rausgegangen's "by date" view) fetch the coming 7 days.
       # Sites without placeholders are unaffected.
@@ -211,54 +204,18 @@ jobs:
       - name: Extract site info
         id: site-info
         run: |
-          URL="${TARGET_URL}"
-          SITE_NAME="${{ matrix.name }}"
-          echo "site_name=$SITE_NAME" >> $GITHUB_OUTPUT
-
-          # Both meetup_scraper.py and eventbrite_scraper.py lead with
-          # CloakBrowser and fall back to anonymous Jina Reader. In this CI
-          # environment both returned 0 events on every source, every run:
-          # confirmed from actual job logs, not inferred. autonomous_repair.py
-          # then escalated every one of those to Jules for a fix - and every
-          # single Jules API call in the run came back "400 Bad Request",
-          # burning 15-20+ minutes per leg (three attempts, one of them a
-          # 9-minute Jules session) before hard-failing the job. That's two
-          # independent breakages (CloakBrowser/Jina yielding nothing, and the
-          # Jules repair path itself) stacked on top of each other.
-          #
-          # The generic scraper needs none of that: verified locally this same
-          # session that its plain-HTTP JSON-LD/heuristic extraction pulls
-          # 9-27 raw events straight out of Meetup's static search-result HTML
-          # for the exact keyword URLs below - the event data is already
-          # sitting in the page, CloakBrowser was never required to get it.
-          # This is the same fix already applied to rausgegangen for the same
-          # reason (see its own routing history). Eventbrite's static HTML
-          # carries far less (its listing is client-rendered), so this won't
-          # turn eventbrite into a strong source - but the generic scraper's
-          # own three-tier fallback (JSON-LD -> heuristic -> CloakBrowser ->
-          # Jina) is strictly more capable than eventbrite_scraper.py's two,
-          # and it fails soft (0 events, job still succeeds) instead of hard.
-          echo "script=scripts/generic_event_scraper.py" >> $GITHUB_OUTPUT
-          echo "use_repair_loop=false" >> $GITHUB_OUTPUT
+          echo "site_name=${{ matrix.name }}" >> $GITHUB_OUTPUT
 
       - name: Run scraper
         run: |
-          if [ "${{ steps.site-info.outputs.use_repair_loop }}" = "true" ]; then
-            python scripts/autonomous_repair.py \
-              --script "${{ steps.site-info.outputs.script }}" \
-              --url "${TARGET_URL}" \
-              --site-name "${{ steps.site-info.outputs.site_name }}" \
-              --retries 3
-          else
-            mkdir -p data/html
-            python "${{ steps.site-info.outputs.script }}" \
-              --url "${TARGET_URL}" \
-              --output "data/raw_${{ steps.site-info.outputs.site_name }}.json" \
-              --price-max 20 \
-              --date-days 7 \
-              --save-html \
-              --html-output "data/html/${{ steps.site-info.outputs.site_name }}.html"
-          fi
+          mkdir -p data/html
+          python scripts/generic_event_scraper.py \
+            --url "${TARGET_URL}" \
+            --output "data/raw_${{ steps.site-info.outputs.site_name }}.json" \
+            --price-max 20 \
+            --date-days 7 \
+            --save-html \
+            --html-output "data/html/${{ steps.site-info.outputs.site_name }}.html"
 
       - name: Upload results
         if: always()
@@ -272,7 +229,7 @@ jobs:
           if-no-files-found: warn
 
   aggregate-and-deploy:
-    needs: autonomous-scrape
+    needs: scrape
     # Run even if some scrape legs failed (fail-fast is off) so the pipeline
     # still aggregates, scores and deploys whatever events were collected.
     if: ${{ always() }}
@@ -286,8 +243,12 @@ jobs:
         with:
           python-version: '3.11'
 
+      # beautifulsoup4/lxml are needed here too, not just in the scrape legs:
+      # the recovery step parses the saved snapshots and the event pages they
+      # link to. The Jules step this replaced only ever made HTTP calls, so
+      # "pip install requests" was enough for it and would not be now.
       - name: Install dependencies
-        run: pip install requests
+        run: pip install requests beautifulsoup4 lxml
 
       - name: Download all results
         uses: actions/download-artifact@v4
@@ -325,44 +286,24 @@ jobs:
                         indent=2, ensure_ascii=False)
           PY
 
-      - name: Configure environment
+      # Second pass over the sources that came back empty: walk from each
+      # listing to the individual event pages it links to and read those
+      # instead. An event's own page is almost always better marked up than
+      # the listing - Ritter Butzke's listing renders client-side and serves
+      # a scraper 627 characters of chrome, while every event page it links
+      # carries a full schema.org MusicEvent block.
+      #
+      # This replaced a Jules API session that never once worked: it timed
+      # out at its 900s limit in every run on record and recovered nothing.
+      # The replacement needs no API key and finishes in seconds.
+      - name: Recover sources that returned nothing
         run: |
-          echo "JULES_API_KEY=${{ secrets.JULES_API_KEY }}" >> $GITHUB_ENV
-          echo "JULES_SOURCE_ID=${{ secrets.JULES_SOURCE_ID }}" >> $GITHUB_ENV
-
-      # Resolve the Jules source id for this repo at runtime so it doesn't have
-      # to be maintained as a separate secret. Only runs if a JULES_SOURCE_ID
-      # secret wasn't already provided (that takes precedence). Needs the
-      # JULES_API_KEY set above; non-fatal if it can't resolve.
-      - name: Resolve Jules source ID
-        run: |
-          if [ -z "$JULES_SOURCE_ID" ] && [ -n "$JULES_API_KEY" ]; then
-            SOURCE_ID="$(python scripts/jules_client.py find-source "$GITHUB_REPOSITORY" 2>/dev/null || true)"
-            if [ -n "$SOURCE_ID" ]; then
-              echo "JULES_SOURCE_ID=$SOURCE_ID" >> $GITHUB_ENV
-              echo "Resolved Jules source: $SOURCE_ID"
-            else
-              echo "Could not resolve a Jules source for $GITHUB_REPOSITORY; recovery runs without repo context"
-            fi
-          fi
-
-      # The one Jules session in the chain: recover events from sites whose
-      # scrape returned nothing (the hard Cloudflare/JS-heavy pages), using
-      # the saved HTML snapshots. Best-effort - merges whatever it recovers
-      # back into docs/events.json, or leaves it unchanged if Jules is
-      # unavailable.
-      - name: Recover failed scrapes via Jules
-        run: |
-          # --timeout: the default is 900s and the session has hit it in
-          # every run on record, recovering nothing ("Jules recovery session
-          # failed: Session timeout after 900 seconds") - a quarter hour of
-          # runner time per week for zero events. Recovery is still attempted;
-          # it just stops costing 15 minutes to find that out.
-          python scripts/jules_recover_failed.py \
+          python scripts/recover_failed.py \
             --aggregated docs/events.json \
             --raw-dir data \
             --html-dir data/html \
-            --timeout 240 \
+            --date-days 7 \
+            --price-max 20 \
             --output docs/events.json
 
       # Keep the aggregated, recovered source data in Git as well as in the
@@ -456,7 +397,11 @@ jobs:
         run: |
           git config --global user.name 'GitHub Actions'
           git config --global user.email 'actions@github.com'
-          git add data/events.json data/events_scored.json scripts/*.py
+          # Only data is generated during a run now. scripts/*.py used to be
+          # staged here because the Jules repair loop wrote scraper files
+          # mid-run; nothing does that any more, and staging them risked
+          # committing whatever a half-finished edit had left behind.
+          git add data/events.json data/events_scored.json
           if git diff --staged --quiet; then
             echo "No event or scraper changes to commit"
             exit 0

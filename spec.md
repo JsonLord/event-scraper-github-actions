@@ -1,5 +1,14 @@
 # Event Scraper System Specification
 
+> **Superseded.** This is the original design record, kept for history.
+> Jules AI has been removed from this project entirely: the API client, the
+> repair loop, the scraper generator and the recovery session are gone, along
+> with every `JULES_*` secret. Sources that come back empty are now recovered
+> deterministically by `scripts/recover_failed.py`, which reads the individual
+> event pages a listing links to. See `README.md` and `WORKFLOW_CONFIG.md` for
+> how the system actually works.
+
+
 ## Objective
 Create a GitHub repository for the event scraper system, investigate Jules API endpoints used by `/home/leon/development/desk_agent_2.0` project, replicate those endpoints in the new repo, integrate CloakBrowser (https://github.com/CloakHQ/cloakbrowser) for site navigation, and set up the system to use user-provided .env file for Jules API authentication.
 

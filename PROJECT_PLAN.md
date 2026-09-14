@@ -1,5 +1,14 @@
 # Project Plan: Self-Healing Event Scraper Hub
 
+> **Superseded.** This is the original design record, kept for history.
+> Jules AI has been removed from this project entirely: the API client, the
+> repair loop, the scraper generator and the recovery session are gone, along
+> with every `JULES_*` secret. Sources that come back empty are now recovered
+> deterministically by `scripts/recover_failed.py`, which reads the individual
+> event pages a listing links to. See `README.md` and `WORKFLOW_CONFIG.md` for
+> how the system actually works.
+
+
 ## 1. Project Description
 **Vision and Goals**
 The Self-Healing Event Scraper Hub is a zero-maintenance event aggregation platform. It leverages Jules AI to autonomously repair broken scrapers in a CI/CD environment, ensuring that affordable Berlin events (≤15€) are always up-to-date.
