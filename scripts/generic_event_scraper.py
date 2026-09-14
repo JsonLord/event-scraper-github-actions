@@ -15,8 +15,10 @@ strategies and keeps the first one that finds anything:
      an event/listing row, containing a date or price pattern).
   3. CloakBrowser (stealth headless Chromium) render, then re-run 1 and 2
      against the rendered DOM - needed for Cloudflare challenges and JS SPAs.
-  4. Jina Reader markdown fallback (only attempted if JINA_API_KEY is set;
-     anonymous Jina requests are unreliably blocked by IP reputation).
+  4. Jina Reader, asked for HTML and re-run through 1-3 (only attempted if
+     JINA_API_KEY is set; anonymous Jina requests are unreliably blocked by
+     IP reputation). This is what gets past an anti-bot interstitial that
+     refuses this network but not Jina's.
 
 Real-world extraction quality will vary a lot by site. Sites that still come
 back empty are picked up afterwards by scripts/recover_failed.py, which walks
@@ -866,54 +868,43 @@ def render_with_cloakbrowser(url: str) -> Optional[str]:
                 pass
 
 
-def fetch_jina_content(url: str) -> Optional[str]:
+# Ask Jina Reader for the page's HTML, not its default markdown rendering.
+# Measured with scripts/fetch_strategy_probe.py against a Cloudflare-challenged
+# source (berlin-buehnen.de) from a blocked network: the markdown rendering
+# came back 9k and yielded 0 events, the same URL as HTML came back 220k and
+# yielded 31. The difference is not the fetch - it is that an HTML body goes
+# through all five document extractors, while markdown only ever got a
+# line scanner that no source ever produced a usable event from.
+#
+# The probe also measured the alternatives and none of them earn their cost:
+# X-Engine: browser, X-Proxy: auto and X-Locale all matched plain HTML
+# exactly, and X-No-Cache matched it on every site but one, which it lost,
+# while doubling the request time. So this sends the one header that matters.
+JINA_ENDPOINT = "https://r.jina.ai/"
+JINA_HEADERS = {"X-Return-Format": "html", "Accept": "text/plain"}
+
+
+def fetch_jina_html(url: str, timeout: int = 60) -> Optional[str]:
+    """Fetch a page through Jina Reader, as HTML. None if unavailable.
+
+    This is the last tier, reached only when a direct GET and the rendered-DOM
+    tier have both produced nothing - typically an anti-bot interstitial that
+    Jina's own infrastructure is not subject to.
+    """
     api_key = os.environ.get("JINA_API_KEY")
     if not api_key:
-        logger.info("No JINA_API_KEY set; skipping Jina fallback (anonymous calls are unreliable)")
+        logger.info("No JINA_API_KEY set; skipping the Jina tier "
+                    "(anonymous calls are unreliably blocked by IP reputation)")
         return None
+    headers = dict(JINA_HEADERS)
+    headers["Authorization"] = f"Bearer {api_key}"
     try:
-        resp = requests.get(
-            f"https://r.jina.ai/{url}",
-            headers={"Authorization": f"Bearer {api_key}"},
-            timeout=30,
-        )
-        resp.raise_for_status()
-        return resp.text
+        response = requests.get(JINA_ENDPOINT + url, headers=headers, timeout=timeout)
+        response.raise_for_status()
+        return response.text
     except requests.exceptions.RequestException as e:
         logger.warning(f"Jina Reader fetch failed for {url}: {e}")
         return None
-
-
-def extract_jina_events(markdown: str, source_url: str, max_events: int = MAX_EVENTS_PER_SOURCE) -> List[Dict[str, Any]]:
-    events = []
-    seen = set()
-    for line in markdown.splitlines():
-        text = line.strip()
-        if len(text) < 8:
-            continue
-        if not (PRICE_RE.search(text) or FREE_RE.search(text) or DATE_ISO_RE.search(text)
-                or DATE_DE_RE.search(text) or DATE_TEXT_RE.search(text)):
-            continue
-        link_match = re.search(r'\[([^\]]{5,160})\]\((https?://[^)]+)\)', text)
-        title = link_match.group(1).strip() if link_match else re.sub(r'[#*_`>-]', '', text).strip()
-        event_url = link_match.group(2) if link_match else source_url
-        if len(title) < 5 or title.lower() in seen:
-            continue
-        seen.add(title.lower())
-        events.append({
-            "title": clean_text(title, max_length=200),
-            "date": parse_date(text) or "",
-            "time": parse_time(text),
-            "price": parse_price(text),
-            "category": "",
-            "description": clean_text(text, max_length=400),
-            "url": clean_url(event_url),
-            "venue": "",
-            "source_url": source_url,
-        })
-        if len(events) >= max_events:
-            break
-    return events
 
 
 def _merge(*batches: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
@@ -1079,11 +1070,11 @@ def scrape(url: str) -> List[Dict[str, Any]]:
             logger.info(f"Found {len(events)} candidate events from the rendered DOM")
             return events
 
-    markdown = fetch_jina_content(url)
-    if markdown:
-        events = extract_jina_events(markdown, url)
+    via_jina = fetch_jina_html(url)
+    if via_jina and not is_bot_challenge(via_jina):
+        events = scrape_document(via_jina, url, "Jina Reader HTML")
         if events:
-            logger.info(f"Found {len(events)} candidate events via Jina Reader fallback")
+            logger.info(f"Found {len(events)} candidate events via the Jina Reader tier")
             return events
 
     logger.warning(f"No events could be extracted from {url}")

@@ -185,6 +185,14 @@ jobs:
         # (it's only the 3rd-tier fallback) and CloakBrowser re-downloads the
         # binary on first launch() anyway, so a failed pre-install must not
         # take down the whole matrix leg.
+        #
+        # Worth knowing, from a fetch-strategy-probe run on this runner: the
+        # render tier currently earns nothing. It matched the plain GET
+        # event-for-event on every site probed (33 kept either way) while
+        # costing 7-26s per site, because the sites it was added for -
+        # berlin-buehnen.de, venturecafeberlin.org - do not challenge this
+        # runner's IP at all, only other networks. It is kept as insurance
+        # against that changing, not for measured value.
         continue-on-error: true
         run: python -m cloakbrowser install
 
@@ -207,6 +215,14 @@ jobs:
           echo "site_name=${{ matrix.name }}" >> $GITHUB_OUTPUT
 
       - name: Run scraper
+        env:
+          # Last-tier fallback, used only when a direct GET and the
+          # rendered-DOM tier have both produced nothing - typically an
+          # anti-bot interstitial that Jina's infrastructure is not subject
+          # to. Optional: without the secret the tier logs that it is being
+          # skipped and the run continues. Add it under Settings -> Secrets
+          # and variables -> Actions.
+          JINA_API_KEY: ${{ secrets.JINA_API_KEY }}
         run: |
           mkdir -p data/html
           python scripts/generic_event_scraper.py \

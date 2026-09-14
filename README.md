@@ -161,9 +161,21 @@ page and merging the results rather than stopping at the first that hits:
 | WordPress REST | EventON / The Events Calendar plugin data, for calendars rendered client-side |
 
 If none of those find anything, it escalates: CloakBrowser (a stealth headless
-Chromium, for Cloudflare challenges and JS single-page apps) and then Jina
-Reader. Requests are sent with a full browser header set - several Berlin sites
-answer a bare `User-Agent` with 403.
+Chromium, for JS single-page apps) and then Jina Reader, asked for **HTML** so
+the same six extractors run again over a copy of the page fetched from
+somewhere this network is not blocked. That last tier is what gets past an
+anti-bot interstitial: measured against a Cloudflare-challenged source from a
+blocked network, a direct GET yielded 0 events and the Jina HTML tier yielded
+31. It needs a `JINA_API_KEY` secret; without one it logs that it is skipping
+and the run continues.
+
+Requests are sent with a full browser header set - several Berlin sites answer
+a bare `User-Agent` with 403.
+
+`scripts/fetch_strategy_probe.py` (and the **Fetch Strategy Probe** workflow)
+compares all of these per site and reports events kept per strategy, which is
+how the tiers above were chosen. Run it in CI rather than locally: the answer
+is IP-dependent.
 
 Before adding a site, check it actually serves its programme: point the scraper
 at it and see what comes back.
