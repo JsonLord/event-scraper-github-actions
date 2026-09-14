@@ -13,12 +13,15 @@ strategies and keeps the first one that finds anything:
   1. Plain HTTP GET + schema.org JSON-LD ("@type": "Event") extraction.
   2. Plain HTTP GET + generic heuristic scan (elements whose class hints at
      an event/listing row, containing a date or price pattern).
-  3. CloakBrowser (stealth headless Chromium) render, then re-run 1 and 2
-     against the rendered DOM - needed for Cloudflare challenges and JS SPAs.
-  4. Jina Reader, asked for HTML and re-run through 1-3 (only attempted if
-     JINA_API_KEY is set; anonymous Jina requests are unreliably blocked by
-     IP reputation). This is what gets past an anti-bot interstitial that
-     refuses this network but not Jina's.
+  3. Jina Reader, asked for HTML and re-run through 1 and 2 (only attempted
+     if JINA_API_KEY is set; anonymous Jina requests are unreliably blocked
+     by IP reputation). This is what gets past an anti-bot interstitial that
+     refuses this network but not Jina's, and it is measurably the better of
+     the two fallbacks - see scripts/fetch_strategy_probe.py.
+  4. CloakBrowser (stealth headless Chromium) render, then re-run 1 and 2
+     against the rendered DOM. Last because it is slower and has not
+     uniquely rescued a site in any probe run; kept because it is the only
+     fallback that needs no third-party service.
 
 Real-world extraction quality will vary a lot by site. Sites that still come
 back empty are picked up afterwards by scripts/recover_failed.py, which walks
@@ -1061,20 +1064,33 @@ def scrape(url: str) -> List[Dict[str, Any]]:
             logger.info(f"Found {len(events)} candidate events from plain HTML")
             return events
     else:
-        logger.info("Plain GET returned a bot challenge or failed; escalating to CloakBrowser")
+        logger.info("Plain GET returned a bot challenge or failed; escalating")
 
-    rendered = render_with_cloakbrowser(url)
-    if rendered:
-        events = scrape_document(rendered, url, "rendered DOM")
-        if events:
-            logger.info(f"Found {len(events)} candidate events from the rendered DOM")
-            return events
-
+    # Jina before CloakBrowser, on measurement rather than taste. Probe run
+    # 34825099038 on a hosted runner: venturecafeberlin.org refused the
+    # runner that day (169 bytes) and CloakBrowser got its challenge page
+    # (11.8k, 0 events), while this tier came back with the real page and the
+    # event. Across the probe set it kept 33 events to CloakBrowser's 32,
+    # won two sites to CloakBrowser's none, and took 0.5-1.7s per site
+    # against 5-24s. Note the same site answered the *previous* runner
+    # normally - the block is intermittent, which is precisely what makes a
+    # second route worth having rather than a nice-to-have.
     via_jina = fetch_jina_html(url)
     if via_jina and not is_bot_challenge(via_jina):
         events = scrape_document(via_jina, url, "Jina Reader HTML")
         if events:
             logger.info(f"Found {len(events)} candidate events via the Jina Reader tier")
+            return events
+
+    # Last resort, and the only one that needs no third party. It has not
+    # uniquely rescued a single site in any probe run so far, but it is what
+    # remains if the Jina key is missing, out of quota, or the service is
+    # down, so it stays.
+    rendered = render_with_cloakbrowser(url)
+    if rendered:
+        events = scrape_document(rendered, url, "rendered DOM")
+        if events:
+            logger.info(f"Found {len(events)} candidate events from the rendered DOM")
             return events
 
     logger.warning(f"No events could be extracted from {url}")

@@ -409,3 +409,49 @@ def test_a_challenge_returned_through_jina_is_not_treated_as_content(monkeypatch
 
 def test_eventbrite_interstitial_is_recognised():
     assert is_bot_challenge('<html><head><title>Human Verification</title></head></html>')
+
+
+def test_jina_is_tried_before_the_render_tier(monkeypatch):
+    """Ordering is a measurement, not a preference. Probe run 34825099038:
+    venturecafeberlin.org refused the runner, CloakBrowser got its challenge
+    page and 0 events, the Jina tier got the real page and the event. Across
+    the probe set Jina kept 33 to CloakBrowser's 32 at a twentieth of the
+    time, so a site that fails a plain GET must reach Jina first."""
+    from scripts import generic_event_scraper as module
+
+    order = []
+
+    def jina(url, **kwargs):
+        order.append("jina")
+        return ('<html><body><div class="event-card"><h3>Recovered Show</h3>'
+                '<a href="/event/x">Details</a><span>05.10.2026 20:00</span>'
+                '</div></body></html>')
+
+    def render(url):
+        order.append("cloakbrowser")
+        return "<html></html>"
+
+    monkeypatch.setattr(module, "fetch_plain", lambda url, **kw: None)
+    monkeypatch.setattr(module, "fetch_jina_html", jina)
+    monkeypatch.setattr(module, "render_with_cloakbrowser", render)
+
+    events = module.scrape("https://blocked.example/programm")
+    assert [e["title"] for e in events] == ["Recovered Show"]
+    # Jina answered, so the slow tier is never reached at all.
+    assert order == ["jina"]
+
+
+def test_the_render_tier_still_runs_when_jina_is_unavailable(monkeypatch):
+    """No key, no quota, or the service is down: CloakBrowser is what is
+    left, which is why it is kept rather than deleted."""
+    from scripts import generic_event_scraper as module
+
+    monkeypatch.setattr(module, "fetch_plain", lambda url, **kw: None)
+    monkeypatch.setattr(module, "fetch_jina_html", lambda url, **kw: None)
+    monkeypatch.setattr(
+        module, "render_with_cloakbrowser",
+        lambda url: ('<html><body><div class="event-card"><h3>Rendered Show</h3>'
+                     '<a href="/event/y">Details</a><span>06.10.2026 20:00</span>'
+                     '</div></body></html>'),
+    )
+    assert [e["title"] for e in module.scrape("https://blocked.example/programm")] == ["Rendered Show"]
