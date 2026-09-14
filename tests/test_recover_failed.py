@@ -251,3 +251,54 @@ def test_recovery_needs_no_api_key(monkeypatch, tmp_path):
     recovered = recover_site(_site(tmp_path, listing), 7, 20.0,
                              fetch=lambda url, **kw: page)
     assert [e["title"] for e in recovered] == ["Free Show"]
+
+
+# --------------------------------------------------------------------------
+# Reporting: recovered and deduplicated are different numbers
+# --------------------------------------------------------------------------
+
+def _run_main(tmp_path, scraped, monkeypatch):
+    """Drive main() over an aggregate with no recoverable sources."""
+    import scripts.recover_failed as module
+
+    aggregated = tmp_path / "events.json"
+    aggregated.write_text(json.dumps({"events": scraped, "count": len(scraped)}))
+    out = tmp_path / "out.json"
+    monkeypatch.setattr(sys, "argv", [
+        "recover_failed.py", "--aggregated", str(aggregated),
+        "--raw-dir", str(tmp_path / "empty"), "--html-dir", str(tmp_path / "empty"),
+        "--output", str(out),
+    ])
+    module.main()
+    return json.loads(out.read_text())
+
+
+def test_cross_source_duplicates_are_reported_separately(tmp_path, monkeypatch):
+    """Berlin listing sites carry each other's shows, so the concatenated
+    aggregate holds duplicates. Folding that into the recovered count made a
+    real run print "458 scraped + -31 recovered", which is not a number."""
+    show = {"title": "Die Raeuber", "date": _soon(2), "time": "19:30",
+            "price": 10.0, "url": "https://a.example/event/raeuber",
+            "venue": "", "description": "", "category": "",
+            "source_url": "https://a.example/"}
+    twin = dict(show, source_url="https://b.example/")
+
+    payload = _run_main(tmp_path, [show, twin], monkeypatch)
+    assert payload["duplicates_removed"] == 1
+    assert payload["recovered_count"] == 0
+    assert payload["count"] == 1
+
+
+def test_a_clean_aggregate_reports_no_duplicates(tmp_path, monkeypatch):
+    events = [
+        {"title": "First", "date": _soon(1), "time": "20:00", "price": 0.0,
+         "url": "https://a.example/event/1", "venue": "", "description": "",
+         "category": "", "source_url": "https://a.example/"},
+        {"title": "Second", "date": _soon(2), "time": "21:00", "price": 5.0,
+         "url": "https://a.example/event/2", "venue": "", "description": "",
+         "category": "", "source_url": "https://a.example/"},
+    ]
+    payload = _run_main(tmp_path, events, monkeypatch)
+    assert payload["duplicates_removed"] == 0
+    assert payload["recovered_count"] == 0
+    assert payload["count"] == 2

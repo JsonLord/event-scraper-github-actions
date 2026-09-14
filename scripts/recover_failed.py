@@ -253,20 +253,30 @@ def main():
             except Exception as exc:  # noqa: BLE001 - recovery is never fatal
                 logger.warning(f"  {site.get('name')}: recovery failed ({exc})")
 
-    # Dedupe against what was already scraped, not just within the recovered
-    # set, so a site that partly recovered cannot double-publish an event.
+    # Two separate things happen here, and they used to be reported as one
+    # number that could come out negative ("458 scraped + -31 recovered").
+    #
+    #  1. The aggregate is a plain concatenation of the per-source files, so
+    #     it still holds cross-source duplicates - Berlin listing sites carry
+    #     each other's shows. Deduping is this step's job because it is the
+    #     first point where every source is in one list.
+    #  2. Recovered rows are merged in, deduped against the scraped set too,
+    #     so a partly-recovered site cannot double-publish an event.
+    scraped = dedupe_events(events)
+    duplicates = len(events) - len(scraped)
     merged = dedupe_events(events + recovered)
-    added = len(merged) - len(events)
+    added = len(merged) - len(scraped)
 
     payload = dict(aggregated)
     payload["events"] = merged
     payload["count"] = len(merged)
     payload["recovered_count"] = added
+    payload["duplicates_removed"] = duplicates
     with open(args.output, "w", encoding="utf-8") as handle:
         json.dump(payload, handle, indent=2, ensure_ascii=False)
 
-    print(f"Recovery done: {len(events)} scraped + {added} recovered "
-          f"= {len(merged)} total -> {args.output}")
+    print(f"Recovery done: {len(events)} scraped - {duplicates} duplicates "
+          f"+ {added} recovered = {len(merged)} total -> {args.output}")
     return 0
 
 
