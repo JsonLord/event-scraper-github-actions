@@ -1,128 +1,92 @@
-# Event Scraper - Quick Start Guide
+# Quick Start
 
-## Setup (5 minutes)
+No API keys, no accounts, no services. The scraper is plain Python over HTTP.
 
-### 1. Install Dependencies
+## Setup
+
 ```bash
 pip install -r requirements.txt
-pip install cloakbrowser  # For stealth scraping
 ```
 
-### 2. Configure Environment
-Your `.env` file should contain your Jules API key:
-```bash
-JULES_API_KEY=your_jules_api_key_here
-```
-Copy `.env.example` to `.env` and add your key.
+## Scrape one source
 
-### 3. Test Jules API Connection
-```bash
-python scripts/jules_client.py list-sources
-```
-
-Expected output: A list of GitHub repositories connected to your Jules account.
-
-## Usage
-
-### Option 1: Direct Scraper (No Jules)
-```bash
-python scripts/jules_cloak_scraper.py \
-  --url "https://rausgegangen.de/en/berlin/tipps-fuer-heute/" \
-  --site-name "Rausgegangen Berlin" \
-  --output events.json
-```
-
-### Option 2: With Jules-Generated Scraper
-```bash
-python scripts/jules_cloak_scraper.py \
-  --url "https://example-events.com" \
-  --site-name "Example Events" \
-  --use-jules-scraper \
-  --output events.json
-```
-
-### Options
-- `--url`: Target URL to scrape
-- `--site-name`: Human-readable site name
-- `--agent-id`: Jules agent to use (default: jules-1)
-- `--price-max`: Maximum event price (default: 15.0)
-- `--date-days`: Date range in days (default: 14)
-- `--output`: Output JSON file
-- `--use-jules-scraper`: Generate scraper with Jules AI
-
-## GitHub Actions Deployment
-
-### 1. Push to GitHub
-```bash
-git add .
-git commit -m "Add Jules API integration"
-git push origin main
-```
-
-### 2. Configure Repository Secrets
-Go to Settings > Secrets and add:
-- `JULES_API_KEY`: Your Jules API key
-- `GITHUB_TOKEN`: Auto-provided by GitHub
-
-### 3. Enable GitHub Pages
-Settings > Pages > Source: main branch /docs folder
-
-## Testing Locally
+Any URL, straight from the command line — this is exactly what each job in the
+weekly workflow runs:
 
 ```bash
-# Test Jules client
-python scripts/jules_client.py list-sources
-
-# Test scraper with CloakBrowser
-python scripts/jules_cloak_scraper.py \
-  --url "https://rausgegangen.de/en/berlin/tipps-fuer-heute/" \
-  --site-name "Test" \
-  --output test_events.json
-
-# View results
-cat test_events.json
+python scripts/generic_event_scraper.py \
+  --url "https://ausland.berlin/de/" \
+  --output /tmp/check.json \
+  --price-max 20 \
+  --date-days 7
 ```
 
-## Troubleshooting
+It prints what each extraction strategy found, then how many events survived
+validation:
 
-### Jules API Key Not Found
+```
+plain HTML: JSON-LD 0, <time datetime> 0, heuristic scan 15, calendar headings 0, date blocks 15
+Found 16 candidate events from plain HTML
+Price enrichment: found a price for 6/13 previously unpriced events
+3 events kept for 2026-09-14..2026-09-21 (13 rejected as unusable or out of window)
+```
+
+Useful flags:
+
+| Flag | Meaning |
+| --- | --- |
+| `--date-days N` | Keep events starting within N days (the workflow uses 7) |
+| `--price-max N` | Drop anything dearer than N EUR (the workflow uses 20) |
+| `--save-html --html-output PATH` | Save the fetched page, for working out why a source came back empty |
+| `--price-enrich-limit 0` | Skip per-event detail fetches — much faster when you only care about titles and dates |
+
+## Add a source
+
+Add one line to the matrix in `.github/workflows/weekly-event-scraper.yml`:
+
+```yaml
+- { name: my_venue, url: "https://example.berlin/programm" }
+```
+
+Check it actually yields something first, with the command above. A venue's
+homepage is often the wrong URL — use its programme, Spielplan or calendar
+page. See the README for how the extraction strategies work.
+
+## Recover a source that returned nothing
+
+When a listing page gives up nothing, this walks to the individual event pages
+it links to and reads those instead — an event's own page is usually far
+better marked up than the listing:
+
 ```bash
-# Check .env file exists
-ls -la .env
-
-# Verify key is set
-grep JULES_API_KEY .env
+python scripts/recover_failed.py \
+  --aggregated docs/events.json \
+  --raw-dir data --html-dir data/html \
+  --output docs/events.json
 ```
 
-### CloakBrowser Not Installed
+It reports per site whether there was anything to work from:
+
+```
+ritterbutzke: 12 event pages -> 36 rows -> 1 kept for 2026-09-14..2026-09-21
+werk9: no event pages linked - the source is empty, not blocked
+berlin_buehnen: snapshot is a bot challenge, nothing to harvest
+```
+
+## Score and rank
+
 ```bash
-pip install cloakbrowser
-python -m cloakbrowser info  # Check installation
+python scripts/score_events.py \
+  --input docs/events.json --output docs/events_scored.json --max-price 20
 ```
 
-### Proxy Required for Anti-Bot Sites
-Add to `.env`:
+## Run the tests
+
 ```bash
-CLOAKBROWSER_PROXY=http://residential-proxy:port
+python -m pytest tests/ -q
 ```
 
-## Architecture
+## Trigger the workflow
 
-```
-Jules API (AI coding) → Generates scraper logic
-       ↓
-CloakBrowser (stealth) → Navigates target sites
-       ↓
-Event Extraction → Parses HTML for events
-       ↓
-Filter (≤15€) → Price and date filtering
-       ↓
-JSON Output → GitHub Pages display
-```
-
-## Next Steps
-
-1. ✅ Test local scraping
-2. ⏳ Deploy to GitHub Actions
-3. ⏳ Configure GitHub Pages
-4. ⏳ Add more event sources (Eventbrite, etc.)
+Actions → **Weekly Event Scraper** → Run workflow. It otherwise runs itself
+every Sunday at 17:00 UTC, and only then — there is no daily job.

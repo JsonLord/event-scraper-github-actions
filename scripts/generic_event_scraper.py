@@ -18,10 +18,10 @@ strategies and keeps the first one that finds anything:
   4. Jina Reader markdown fallback (only attempted if JINA_API_KEY is set;
      anonymous Jina requests are unreliably blocked by IP reputation).
 
-Real-world extraction quality will vary a lot by site. Sites that keep
-returning zero events are expected to be picked up by the existing
-autonomous_repair.py + Jules analysis loop, which generates a dedicated
-scraper once this generic one has repeatedly failed.
+Real-world extraction quality will vary a lot by site. Sites that still come
+back empty are picked up afterwards by scripts/recover_failed.py, which walks
+from the listing to the individual event pages it links to and reads those
+instead - an event's own page is usually better marked up than the listing.
 """
 
 import argparse

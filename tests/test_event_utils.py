@@ -420,3 +420,26 @@ def test_fbclid_and_utm_params_are_stripped():
     assert clean_url(dirty) == (
         "https://lakestudiosberlin.com/event/unfinished-fridays-100-festival-edition/"
     )
+
+
+# --------------------------------------------------------------------------
+# Calendar dividers vs. real titles that happen to start like one
+# --------------------------------------------------------------------------
+
+def test_bare_calendar_dividers_are_still_rejected():
+    """Month and weekday headings leak out of theatre calendars as candidate
+    rows; they are furniture, not events."""
+    for divider in ("Mo", "So.", "Di", "Freitag", "Sonntag", "Sat", "Sun",
+                    "Aug.", "Sept.", "September", "März", "May", "Dezember"):
+        assert looks_synthetic_title(divider), divider
+
+
+def test_a_title_that_merely_starts_like_a_divider_survives():
+    """The rule was "(mo|di|...|so)[a-z]*", which matched any all-letters
+    title beginning with a weekday or month abbreviation. The DJ "Solee" read
+    as Sonntag; so did Mozart, Diva, Mirage, Freiheit, Sonne and
+    Doppelgaenger - all silently dropped before they could be published."""
+    for title in ("Solee", "Mozart", "Diva", "Mirage", "Freiheit", "Sonne",
+                  "Doppelgaenger", "Donnerwetter", "Saturnalia", "Marathon",
+                  "August Blues", "December Sessions"):
+        assert not looks_synthetic_title(title), title

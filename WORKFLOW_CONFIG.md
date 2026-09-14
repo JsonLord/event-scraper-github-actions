@@ -1,76 +1,59 @@
-# Weekly Multi-Source Event Scraper Configuration
+# Weekly Event Scraper — configuration
 
-## Overview
-This workflow scrapes multiple event sources in parallel every Sunday at 5 PM UTC.
-Each source runs in its own Jules session with CloakBrowser for stealth scraping.
+One scheduled workflow, `.github/workflows/weekly-event-scraper.yml`, running
+every **Sunday at 17:00 UTC**. There is no daily or weekday job.
 
-## Configuration
+## Sources
 
-### Default URLs (Edit to add/remove sources)
-Edit the workflow file `.github/workflows/weekly-multi-source.yml` and modify:
+The source list is the `matrix.include` block in that file, one line each:
 
 ```yaml
-urls="https://rausgegangen.de/en/berlin/tipps-fuer-heute/
-https://www.eventbrite.de/d/germany/berlin/events/
-https://www.meetup.com/berlin/events/"
+- { name: ausland_berlin, url: "https://ausland.berlin/de/" }
 ```
 
-### Manual Override
-You can trigger a manual run with custom URLs:
-1. Go to Actions → Weekly Multi-Source Event Scraper
-2. Click "Run workflow"
-3. Enter comma-separated URLs in the "urls" field
+Every source runs through `scripts/generic_event_scraper.py` — there is no
+per-source scraper to write. Jobs run 4 at a time (`max-parallel: 4`) and
+`fail-fast` is off, so one bad source cannot take down the run.
 
-## Workflow Steps
+`__START_DATE__` and `__END_DATE__` in a URL are substituted at runtime with
+today and today+7, for sources that take a date range as a query parameter.
 
-### 1. Load Configuration
-- Reads URLs from config or manual input
-- Prepares matrix for parallel execution
+Most matrix lines carry a comment recording what was measured from that
+source and what to expect from it. Keep that up when you change one — it is
+what stops a legitimate empty week being mistaken for a breakage.
 
-### 2. Scrape All Sources (Parallel)
-- Each URL runs in its own job (parallel execution)
-- Uses CloakBrowser for stealth navigation
-- Jules AI generates/optimizes scraper logic per source
-- Results saved as separate artifacts: `events_{sourcename}.json`
+## What a run does
 
-### 3. Aggregate Results
-- Combines all events into single `events.json`
-- Tracks event counts per source
-- Prepares data for GitHub Pages
+1. **Scrape** — one job per source, each writing `data/raw_<name>.json` plus
+   an HTML snapshot at `data/html/<name>.html`, uploaded as artifacts.
+2. **Aggregate** — combines them into `docs/events.json`, printing a
+   per-source count so a source that has quietly stopped yielding shows up in
+   the log rather than only as a smaller total.
+3. **Recover** — `scripts/recover_failed.py` takes every source that returned
+   nothing, harvests the event-page links from its snapshot, and reads those
+   pages directly. Bounded to 12 sites and 24 pages each.
+4. **Guard** — a run that has collapsed to under a quarter of the previous
+   aggregate refuses to publish and fails loudly, on the assumption that it
+   was blocked rather than that Berlin ran out of events.
+5. **Score** — `scripts/score_events.py` ranks, categorises and price-filters
+   into `docs/events_scored.json`.
+6. **Publish** — commits both files and deploys GitHub Pages.
 
-### 4. Check Completeness
-- Validates each source had successful scrape
-- Identifies sources with 0 events (needs improvement)
-- Generates completeness report
+## Filtering
 
-### 5. Auto-Improve Scrapers (Conditional)
-- For sources that failed/returned empty:
-  - Runs Jules AI analysis
-  - Generates improved scraper code
-  - Creates GitHub PR with improvements
-  - Label: `auto-improvement`, `jules-ai`
+- **Price**: 20 EUR cap. Free ranks best, up to 10 EUR is preferred. An event
+  with no stated price is kept and scored neutrally, because most listings
+  never state one; the scraper tries the event's own page before giving up.
+- **Date range**: the next 7 days.
+- **Streams**: the page splits out sport and networking; film and kids' events
+  are excluded. See `scripts/score_events.py`.
 
-### 6. Deploy to GitHub Pages
-- Updates `docs/events.json`
-- Site available at: `https://username.github.io/repo/`
+## Event schema
 
-## Timing
-
-**Every Sunday 5 PM UTC:**
-- 17:00 - All sources start scraping (parallel)
-- 17:00-18:30 - Scraping phase (90 min max per source)
-- 18:30 - Aggregation
-- 18:35 - Completeness check
-- 18:40 - Improvement PRs created (if needed)
-- 18:45 - GitHub Pages deployed
-
-## Event Schema
-
-Each event object contains:
 ```json
 {
   "title": "Event title",
-  "date": "2024-01-15",
+  "date": "2026-09-19",
   "time": "19:00",
   "price": 12.50,
   "category": "music",
@@ -81,24 +64,29 @@ Each event object contains:
 }
 ```
 
-## Filtering
-- **Price**: Events ≤ 15€ only
-- **Date Range**: Next 14 days only
-- **Categories**: music, dance, social, networking
-
 ## Troubleshooting
 
-### Source Returns 0 Events
-- Check the completeness report artifact
-- Review the auto-created improvement PR
-- Manually inspect the source URL for changes
+### A source returns 0 events
 
-### Scraping Timeout
-- Increase `timeout-minutes` in workflow (default: 120)
-- Check if site has new anti-bot measures
-- Consider adding residential proxy
+Not automatically a bug. Check, in order:
 
-### Jules Session Fails
-- Verify JULES_API_KEY secret is set
-- Check Jules dashboard for session status
-- Review workflow logs for error details
+1. **Is the venue simply between seasons or between shows?** The recovery step
+   distinguishes these: `no event pages linked - the source is empty, not
+   blocked` means the site genuinely has nothing on. Sites with a real
+   programme expose 12-193 event links.
+2. **Is everything over the price cap?** Reinickendorf Classics extracts its
+   whole season correctly and still reports zero, because the tickets are
+   45-60 EUR.
+3. **Is it blocked?** `snapshot is a bot challenge` in the recovery log, or an
+   HTTP 403/405 in the scrape log, means the runner's datacenter IP is being
+   refused. Only a residential proxy fixes that: set `HTTPS_PROXY` on the job
+   and the scraper's session picks it up with no code change.
+4. **Is the URL still right?** Download the run's `scrape-<name>` artifact and
+   look at the saved HTML. Venue sites move their programme.
+
+### A run is slower than usual
+
+CloakBrowser (the rendered-DOM tier) is the expensive part and only runs when
+plain HTTP yields nothing. The per-event price enrichment is next; it is
+capped at 40 fetches per source and can be turned off with
+`--price-enrich-limit 0`.

@@ -43,8 +43,8 @@ calls into.
    the Google OAuth credentials would live as encrypted **GitHub Actions
    secrets** in this repo, and the deploy step injects them into the
    endpoint's own secret store at deploy time. They never pass through the
-   browser - only through the deploy pipeline, same trust boundary as the
-   scraper's `JULES_API_KEY` today.
+   browser - only through the deploy pipeline. They would be the only secret
+   the scraper needs: it holds none today.
 5. **Frontend change**: the existing "Add selected to calendar" button would
    get a second option ("Sync to Google Calendar directly") that `POST`s the
    selection to that endpoint's URL instead of building a local `.ics` file.

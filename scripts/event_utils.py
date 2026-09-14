@@ -360,10 +360,15 @@ JUNK_TITLES = {
 
 # A bare month or weekday name is a calendar divider, not an event ("Aug."
 # leaked through from a theatre's month heading).
+#
+# The names are matched in full, never as a prefix. This was written as
+# "(mo|di|...|so)[a-z]*", which drops any title that merely STARTS with a
+# weekday or month abbreviation and is otherwise all letters - so the DJ
+# "Solee" read as Sonntag, and "Mozart", "Diva", "Mirage", "Freiheit",
+# "Sonne" and "Doppelgaenger" were all discarded as calendar furniture
+# before they could ever be published.
 CALENDAR_HEADING_RE = re.compile(
-    r'^(?:mo|di|mi|do|fr|sa|so|mon|tue|wed|thu|fri|sat|sun)[a-z]*\.?$'
-    r'|^(?:jan|feb|m(?:ä|ae)r|apr|mai|jun|jul|aug|sep|okt|nov|dez|march|may|june|july|'
-    r'october|december)[a-z]*\.?$',
+    r'^(?:' + WEEKDAY_NAME_ALT + r'|' + MONTH_NAME_ALT + r')\.?$',
     re.IGNORECASE,
 )
 

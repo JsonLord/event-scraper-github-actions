@@ -18,13 +18,13 @@ This system scrapes event listings from various Berlin websites, filters for aff
 ```
 ├── .github/
 │   └── workflows/
-│       ├── weekly-jules-review.yml # The scraper. Sundays, 5PM UTC
+│       ├── weekly-event-scraper.yml # The scraper. Sundays, 5PM UTC
 │       └── jekyll-gh-pages.yml     # Rebuilds Pages when the data changes
 ├── scripts/
 │   ├── generic_event_scraper.py    # The scraper every source runs through
 │   ├── event_utils.py              # Date/price parsing, validation, dedupe
 │   ├── score_events.py             # Ranking, categorisation, price filter
-│   ├── jules_recover_failed.py     # Best-effort recovery for empty sources
+│   ├── recover_failed.py           # Second pass over sources that came back empty
 │   └── rausgegangen_scraper.py     # Site-specific scraper (unused by the matrix)
 ├── data/
 │   ├── events.json                 # Raw aggregate from the last run
@@ -39,14 +39,15 @@ This system scrapes event listings from various Berlin websites, filters for aff
 
 Scraping runs **weekly and only weekly**. There is one scheduled workflow.
 
-### Weekly Event Scraper (`weekly-jules-review.yml`)
+### Weekly Event Scraper (`weekly-event-scraper.yml`)
 - **Schedule**: Sundays at 5:00 PM UTC (`0 17 * * 0`), plus manual dispatch
 - **Actions**:
   - Scrapes every source in the matrix in parallel, one job each, each
     writing `data/raw_<source>.json` and an HTML snapshot
   - Aggregates them, printing a per-source count so a source that has
     quietly stopped yielding is visible in the log
-  - Attempts best-effort recovery for sources that returned nothing
+  - Runs a recovery pass over any source that returned nothing, walking from
+    its listing to the individual event pages it links to
   - Scores, categorises and price-filters the result
   - Commits `data/events.json` + `data/events_scored.json` and deploys Pages
 
@@ -141,7 +142,7 @@ scraper_settings:
 ### Adding a Site to the Weekly Scrape
 
 Sites in the weekly run do **not** need a scraper of their own. Add one line to
-the matrix in `.github/workflows/weekly-jules-review.yml`:
+the matrix in `.github/workflows/weekly-event-scraper.yml`:
 
 ```yaml
 - { name: my_venue, url: "https://example.berlin/programm" }

@@ -3,10 +3,8 @@
 Score, categorize and filter scraped Berlin events against a fixed preference
 profile, then order them by day and, within each day, from free to dearest.
 
-This is the deterministic reference implementation of the scoring spec Jules
-is asked to (re)write in scripts/jules_event_scorer.py, and also the fallback
-used when that Jules call is unavailable or fails - so the pipeline always
-produces docs/events_scored.json.
+This is the deterministic implementation of the scoring spec; the pipeline
+always produces docs/events_scored.json.
 
 Preference profile:
 - Price: free is best, up to 10 EUR is preferred, up to 20 EUR is the hard
