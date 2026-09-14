@@ -160,14 +160,21 @@ page and merging the results rather than stopping at the first that hits:
 | date blocks | dated events on pages with no event-ish class names at all |
 | WordPress REST | EventON / The Events Calendar plugin data, for calendars rendered client-side |
 
-If none of those find anything, it escalates: CloakBrowser (a stealth headless
-Chromium, for JS single-page apps) and then Jina Reader, asked for **HTML** so
-the same six extractors run again over a copy of the page fetched from
-somewhere this network is not blocked. That last tier is what gets past an
-anti-bot interstitial: measured against a Cloudflare-challenged source from a
-blocked network, a direct GET yielded 0 events and the Jina HTML tier yielded
-31. It needs a `JINA_API_KEY` secret; without one it logs that it is skipping
-and the run continues.
+If none of those find anything, it escalates — **Jina Reader first**, asked
+for HTML so the same six extractors run again over a copy of the page fetched
+from somewhere this network is not blocked, and **CloakBrowser** (stealth
+headless Chromium) last.
+
+That order is a measurement, not a preference. In probe run 34825099038,
+venturecafeberlin.org refused the runner outright; CloakBrowser got its
+challenge page and 0 events, while the Jina tier got the real page and the
+event. Across the probe set Jina kept 33 events to CloakBrowser's 32, won two
+sites to its none, and took 0.5–1.7s per site against 5–24s. The same site had
+answered the *previous* runner normally — the blocking is intermittent, which
+is exactly what makes a second route worth having.
+
+Jina needs a `JINA_API_KEY` secret; without one it logs that it is skipping and
+CloakBrowser still runs, so the pipeline degrades rather than breaks.
 
 Requests are sent with a full browser header set - several Berlin sites answer
 a bare `User-Agent` with 403.

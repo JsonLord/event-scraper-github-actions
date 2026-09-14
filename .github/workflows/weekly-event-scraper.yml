@@ -186,13 +186,13 @@ jobs:
         # binary on first launch() anyway, so a failed pre-install must not
         # take down the whole matrix leg.
         #
-        # Worth knowing, from a fetch-strategy-probe run on this runner: the
-        # render tier currently earns nothing. It matched the plain GET
-        # event-for-event on every site probed (33 kept either way) while
-        # costing 7-26s per site, because the sites it was added for -
-        # berlin-buehnen.de, venturecafeberlin.org - do not challenge this
-        # runner's IP at all, only other networks. It is kept as insurance
-        # against that changing, not for measured value.
+        # Worth knowing, from fetch-strategy-probe runs on this runner: the
+        # render tier is now the LAST fallback, behind Jina. It has not
+        # uniquely rescued a single site in any probe run - it kept 32 events
+        # to the Jina tier's 33, won no site, and cost 5-24s each against
+        # 0.5-1.7s. On venturecafeberlin.org it returned the challenge page
+        # while Jina returned the real one. It is kept only because it is the
+        # fallback that needs no third-party service.
         continue-on-error: true
         run: python -m cloakbrowser install
 
