@@ -60,6 +60,36 @@ TIME_RE = re.compile(
 # "20 Uhr" / "8pm" - an hour with no minutes.
 HOUR_ONLY_RE = re.compile(r'(?<![\d.:])([01]?\d|2[0-3])\s*(?:Uhr\b|(am|pm)\b)', re.IGNORECASE)
 
+# Month and weekday names as a regex alternation, so calendar headings can be
+# recognised without repeating the list at every call site.
+MONTH_NAME_ALT = (
+    r'Januar|Februar|M(?:ä|ae)rz|April|Mai|Juni|Juli|August|September|Oktober|'
+    r'November|Dezember|January|February|March|June|July|October|December|'
+    r'Jan|Feb|M(?:ä|ae)r|Apr|May|Jun|Jul|Aug|Sept|Sep|Okt|Oct|Nov|Dez|Dec'
+)
+WEEKDAY_NAME_ALT = (
+    r'Montag|Dienstag|Mittwoch|Donnerstag|Freitag|Samstag|Sonnabend|Sonntag|'
+    r'Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday|'
+    r'Mon|Tue|Tues|Wed|Thu|Thur|Thurs|Fri|Sat|Sun|Mo|Di|Mi|Do|Fr|Sa|So'
+)
+
+# A heading that names a month and nothing else ("September", "Oktober 2026").
+# Calendars that group their programme under such a heading write only a day
+# number on each row, so the month has to be carried down from here.
+MONTH_HEADING_RE = re.compile(
+    r'^[\s\W]*(' + MONTH_NAME_ALT + r')\.?[\s\W]*(\d{4})?[\s\W]*$',
+    re.IGNORECASE,
+)
+
+# A heading that names a day of the month and nothing else: "13", "Sat 12",
+# "So 13.", "Mo,14". The day number may lead or follow the weekday name.
+DAY_HEADING_RE = re.compile(
+    r'^[\s\W]*(?:(?:' + WEEKDAY_NAME_ALT + r')\.?[\s,\.]*)?'
+    r'(\d{1,2})\.?'
+    r'[\s,\.]*(?:(?:' + WEEKDAY_NAME_ALT + r')\.?)?[\s\W]*$',
+    re.IGNORECASE,
+)
+
 MONTH_NAME_TO_NUM = {
     "jan": 1, "januar": 1, "january": 1,
     "feb": 2, "februar": 2, "february": 2,

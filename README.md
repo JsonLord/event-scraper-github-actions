@@ -136,7 +136,45 @@ scraper_settings:
 
 ## Customization
 
-### Adding New Scrapers
+### Adding a Site to the Weekly Scrape
+
+Sites in the weekly run do **not** need a scraper of their own. Add one line to
+the matrix in `.github/workflows/weekly-jules-review.yml`:
+
+```yaml
+- { name: my_venue, url: "https://example.berlin/programm" }
+```
+
+`scripts/generic_event_scraper.py` handles it, trying every strategy over the
+page and merging the results rather than stopping at the first that hits:
+
+| Strategy | Reads |
+| --- | --- |
+| schema.org JSON-LD | `"@type": "Event"` blocks - carries price and venue |
+| `<time datetime>` | machine-readable dates on cards with no date text |
+| class-hint scan | cards whose class names say event/teaser/card/list-item |
+| calendar headings | calendars that print the month once and a bare day number per row |
+| date blocks | dated events on pages with no event-ish class names at all |
+| WordPress REST | EventON / The Events Calendar plugin data, for calendars rendered client-side |
+
+If none of those find anything, it escalates: CloakBrowser (a stealth headless
+Chromium, for Cloudflare challenges and JS single-page apps) and then Jina
+Reader. Requests are sent with a full browser header set - several Berlin sites
+answer a bare `User-Agent` with 403.
+
+Before adding a site, check it actually serves its programme: point the scraper
+at it and see what comes back.
+
+```bash
+python scripts/generic_event_scraper.py \
+  --url "https://example.berlin/programm" \
+  --output /tmp/check.json --price-max 20 --date-days 7
+```
+
+A venue homepage is often the wrong URL - use the programme, Spielplan or
+calendar page.
+
+### Adding a Dedicated Scraper
 1. Create a new scraper script in `scripts/` following the pattern of `rausgegangen_scraper.py`
 2. Add an entry to `config.yaml` under `urls`
 3. The scraper should:
