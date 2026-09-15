@@ -70,7 +70,14 @@ jobs:
           # Venue and listing sites. Duplicates from the original source list
           # (rausgegangen, staatsoper-berlin.de, ritterbutzke.de) are scraped
           # once, not once per duplicate URL.
-          - { name: berlin_buehnen,         url: "https://www.berlin-buehnen.de/de/spielplan" }
+          # date_horizon: berlin-buehnen renders one day's programme per
+          # request and honours ?date=. Measured on the runner: the undated
+          # listing keeps 32 events, the same URL dated four days out keeps 36
+          # from a different set of rows (68 raw vs 71) - a different page,
+          # not a superset. Crawling the week a day at a time and merging is
+          # the idea taken from JsonLord/Events, minus its LLM step: the HTML
+          # goes through the normal extractors instead.
+          - { name: berlin_buehnen,         url: "https://www.berlin-buehnen.de/de/spielplan", date_horizon: true }
           - { name: zku_berlin,             url: "https://www.zku-berlin.org/de/timeline/" }
           - { name: ufafabrik,              url: "https://ufafabrik.de/spielplan.html" }
           - { name: stadtmuseum,            url: "https://www.stadtmuseum.de/programm" }
@@ -225,11 +232,23 @@ jobs:
           JINA_API_KEY: ${{ secrets.JINA_API_KEY }}
         run: |
           mkdir -p data/html
+          # date_horizon is opt-in per source. Measured: appending ?date= to a
+          # site that ignores it costs 8x the requests for zero extra events
+          # (oper-in-berlin returns the identical 71 candidates for all eight
+          # days), so it is set only where the parameter demonstrably changes
+          # the page.
+          HORIZON=""
+          if [ "${{ matrix.date_horizon }}" = "true" ]; then
+            HORIZON="--date-horizon"
+            echo "Date horizon enabled for ${{ matrix.name }}"
+          fi
+
           python scripts/generic_event_scraper.py \
             --url "${TARGET_URL}" \
             --output "data/raw_${{ steps.site-info.outputs.site_name }}.json" \
             --price-max 20 \
             --date-days 7 \
+            $HORIZON \
             --save-html \
             --html-output "data/html/${{ steps.site-info.outputs.site_name }}.html"
 
