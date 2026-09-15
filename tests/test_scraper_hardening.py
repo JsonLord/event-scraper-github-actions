@@ -565,3 +565,37 @@ def test_the_jina_tier_stops_at_its_fetch_budget(monkeypatch):
     for _ in range(5):
         module.fetch_jina_html("https://blocked.example/")
     assert len(calls) == 2
+
+
+def test_the_horizon_does_not_fake_a_detail_link_on_every_day(monkeypatch):
+    """The regression that made this lose events: a card with no detail link
+    carries the page it came from as its url - the DATED url. Rewriting only
+    source_url left the two different, so is_detail_link() reported a detail
+    link for every such card and dedupe_events applied its "one row per detail
+    URL" rule, keeping exactly one event per day. berlin-buehnen went 30 -> 8,
+    one per day crawled."""
+    from scripts.event_utils import dedupe_events, validate_events, scrape_window
+    from scripts import generic_event_scraper as module
+
+    listing = "https://v.example/spielplan"
+
+    def fake_scrape(url):
+        # Three link-less cards per day, as a listing without detail links
+        # gives: each carries the page's own (dated) URL.
+        day = url.rsplit("=", 1)[-1]
+        return [{"title": f"Show {n}", "date": day, "time": "20:00", "price": 0.0,
+                 "category": "", "description": "", "url": url, "venue": "",
+                 "source_url": url} for n in range(3)]
+
+    monkeypatch.setattr(module, "scrape", fake_scrape)
+    events = module.scrape_date_horizon(listing, 3)
+
+    # No row may still point at a dated URL.
+    assert all("date=" not in e["url"] for e in events), "urls must be normalised"
+
+    window_start, window_end = scrape_window(30)
+    kept, _ = validate_events(events, source_url=listing, window_start=window_start,
+                              window_end=window_end, max_price=20)
+    kept = dedupe_events(kept)
+    # 4 days x 3 distinct titles, not 4 (one per day).
+    assert len(kept) == 12, f"expected every card, got {len(kept)}"

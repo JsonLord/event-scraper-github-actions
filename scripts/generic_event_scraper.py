@@ -1149,13 +1149,27 @@ def scrape_date_horizon(url: str, days: int) -> List[Dict[str, Any]]:
             logger.warning(f"Date horizon: day +{offset} failed ({e})")
             continue
         logger.info(f"Date horizon: day +{offset} ({day_url}) -> {len(found)} candidates")
-        # Every row keeps the listing it came from as its source, not the
-        # dated URL, so downstream grouping still sees one source.
-        for event in found:
-            event["source_url"] = url
         batches.append(found)
 
+    # Merge FIRST, normalise after. _merge keys on (url, title), so rewriting
+    # the dated URLs to the base before merging collapses the same show on
+    # different days into one row - the days become indistinguishable.
     merged = _merge(*batches) if batches else []
+
+    # Now point every row back at the undated listing. Doing this to
+    # source_url alone is what made the first attempt lose events: a card with
+    # no detail link carries the page it came from as its url - the DATED one.
+    # Leaving that while source_url became undated made is_detail_link()
+    # compare two different strings and claim a detail link for every such
+    # card, and dedupe_events then applied its "one row per detail URL" rule,
+    # keeping exactly one event per day. berlin-buehnen went 30 -> 8, one for
+    # each day crawled.
+    dated = {clean_url(u).rstrip("/") for u in seen_urls}
+    for event in merged:
+        if clean_url(str(event.get("url") or "")).rstrip("/") in dated:
+            event["url"] = url
+        event["source_url"] = url
+
     logger.info(f"Date horizon: {len(merged)} candidates across {len(batches)} day(s)")
     return merged
 
