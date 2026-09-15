@@ -527,10 +527,20 @@ def test_the_horizon_is_capped_at_a_week(monkeypatch):
 
 
 def test_one_failing_day_does_not_lose_the_others(monkeypatch):
+    """The failing day is chosen by call order, not by its date.
+
+    Keying it on a date ("if url ends -16") made the test depend on today:
+    scrape_date_horizon() walks from date.today(), so the 16th only falls
+    inside a four-day window on four days of the month. On every other day
+    nothing raised, all four calls succeeded, and the assertion of three
+    events failed - a test that passes or fails by the calendar."""
     from scripts import generic_event_scraper as module
 
+    calls = []
+
     def fake_scrape(url):
-        if url.endswith("-16"):
+        calls.append(url)
+        if len(calls) == 2:
             raise RuntimeError("connection reset")
         day = url.rsplit("=", 1)[-1]
         return [{"title": f"Show {day}", "date": day, "time": "20:00",
@@ -539,7 +549,9 @@ def test_one_failing_day_does_not_lose_the_others(monkeypatch):
                  "source_url": url}]
 
     monkeypatch.setattr(module, "scrape", fake_scrape)
-    assert len(module.scrape_date_horizon("https://v.example/spielplan", 3)) == 3
+    events = module.scrape_date_horizon("https://v.example/spielplan", 3)
+    assert len(calls) == 4, "every day is still attempted"
+    assert len(events) == 3, "the three good days survive the one that raised"
 
 
 def test_the_jina_tier_stops_at_its_fetch_budget(monkeypatch):
