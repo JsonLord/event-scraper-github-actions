@@ -36,9 +36,9 @@ import os
 import re
 import sys
 import time
-from datetime import datetime
+from datetime import date, datetime, timedelta
 from typing import Any, Dict, List, Optional
-from urllib.parse import urljoin, urlparse
+from urllib.parse import parse_qsl, urlencode, urljoin, urlparse, urlunparse
 
 import requests
 from bs4 import BeautifulSoup
@@ -887,6 +887,17 @@ JINA_ENDPOINT = "https://r.jina.ai/"
 JINA_HEADERS = {"X-Return-Format": "html", "Accept": "text/plain"}
 
 
+# Jina bills by the content it returns, and asking for HTML returns the whole
+# page: berlin-buehnen.de comes back as 1.2MB of HTML against 9KB of markdown.
+# That is ~130x the tokens per fetch, and with a date horizon multiplying
+# fetches by eight it emptied a fresh account's balance inside a day
+# (InsufficientBalanceError, regular_balance -4,432,325). This caps how many
+# Jina fetches one scraper process will make; the tier is a fallback for
+# blocked sources, not a bulk fetcher.
+JINA_FETCH_BUDGET = int(os.environ.get("JINA_FETCH_BUDGET", "2"))
+_jina_fetches = 0
+
+
 def fetch_jina_html(url: str, timeout: int = 60) -> Optional[str]:
     """Fetch a page through Jina Reader, as HTML. None if unavailable.
 
@@ -894,11 +905,17 @@ def fetch_jina_html(url: str, timeout: int = 60) -> Optional[str]:
     tier have both produced nothing - typically an anti-bot interstitial that
     Jina's own infrastructure is not subject to.
     """
+    global _jina_fetches
     api_key = os.environ.get("JINA_API_KEY")
     if not api_key:
         logger.info("No JINA_API_KEY set; skipping the Jina tier "
                     "(anonymous calls are unreliably blocked by IP reputation)")
         return None
+    if _jina_fetches >= JINA_FETCH_BUDGET:
+        logger.info(f"Jina fetch budget spent ({JINA_FETCH_BUDGET}); skipping the tier. "
+                    "Raise JINA_FETCH_BUDGET if the account has balance to spare.")
+        return None
+    _jina_fetches += 1
     headers = dict(JINA_HEADERS)
     headers["Authorization"] = f"Bearer {api_key}"
     try:
@@ -906,7 +923,14 @@ def fetch_jina_html(url: str, timeout: int = 60) -> Optional[str]:
         response.raise_for_status()
         return response.text
     except requests.exceptions.RequestException as e:
-        logger.warning(f"Jina Reader fetch failed for {url}: {e}")
+        status = getattr(getattr(e, "response", None), "status_code", None)
+        if status == 402:
+            logger.error(
+                "Jina returned 402 Payment Required - the account balance is "
+                "exhausted, so this tier is unavailable until it is topped up. "
+                "Blocked sources will fall through to CloakBrowser.")
+        else:
+            logger.warning(f"Jina Reader fetch failed for {url}: {e}")
         return None
 
 
@@ -1049,6 +1073,93 @@ def is_wordpress(html: str) -> bool:
     return "/wp-content/" in html or "/wp-json/" in html or "wp-includes" in html
 
 
+# Query parameters a schedule site might use to select one day, in the order
+# an existing one is preferred. Ported from JsonLord/Events' buildDateUrl,
+# which crawls berlin-buehnen.de a day at a time rather than fetching its
+# listing once.
+DATE_PARAM_FORMATS = (
+    ("date", "%Y-%m-%d"),
+    ("datum", "%d.%m.%Y"),
+    ("day", "%Y-%m-%d"),
+    ("zeitraum", "%Y-%m-%d"),
+)
+
+# Deliberately NOT here: start_date/end_date and other range parameters.
+# Rewriting one half of a range leaves the other behind - setting
+# start_date on rausgegangen's URL while its end_date stayed put produced
+# an inverted range asking for events after the window had closed. A source
+# that already expresses a range does not need a per-day horizon anyway.
+RANGE_PARAMS = ("start_date", "end_date", "from", "to", "bis", "von")
+
+# A week is the scrape window, and the reference implementation caps its own
+# horizon at 7 days too. Beyond that the extra requests buy nothing the
+# window would keep.
+MAX_HORIZON_DAYS = 7
+
+
+def build_date_url(base_url: str, target: date) -> str:
+    """Point a listing URL at one specific day.
+
+    Reuses whichever date parameter the URL already carries, and otherwise
+    adds ``date``. Blindly adding one is only worth doing where the site is
+    known to honour it - measured across six of this matrix's sources,
+    appending ``?date=`` changed neither the page nor the event count, so
+    doing it everywhere would multiply requests for nothing. Hence the
+    per-source opt-in in the workflow rather than applying this by default.
+    """
+    parsed = urlparse(base_url)
+    query = dict(parse_qsl(parsed.query, keep_blank_values=True))
+    if any(name in query for name in RANGE_PARAMS):
+        return base_url
+    for name, fmt in DATE_PARAM_FORMATS:
+        if name in query:
+            query[name] = target.strftime(fmt)
+            break
+    else:
+        query["date"] = target.isoformat()
+    return urlunparse(parsed._replace(query=urlencode(query)))
+
+
+def scrape_date_horizon(url: str, days: int) -> List[Dict[str, Any]]:
+    """Crawl a schedule one day at a time and merge the days.
+
+    Sites that render a single day per request hide most of their programme
+    from a one-shot fetch. berlin-buehnen.de is the case this was ported for:
+    measured on a hosted runner, its undated listing yields 32 events while
+    the same URL with ``?date=`` four days out yields 36 - a different page
+    with different rows, not a superset.
+
+    Each day goes through the ordinary scrape(), so it inherits the whole
+    tier chain and all six extractors. There is no model in this path: the
+    reference implementation used an LLM to reassemble events from markdown
+    fragments, which is unnecessary when the HTML is parsed directly.
+    """
+    days = max(0, min(days, MAX_HORIZON_DAYS))
+    today = date.today()
+    batches, seen_urls = [], set()
+
+    for offset in range(days + 1):
+        day_url = build_date_url(url, today + timedelta(days=offset))
+        if day_url in seen_urls:
+            continue
+        seen_urls.add(day_url)
+        try:
+            found = scrape(day_url)
+        except Exception as e:  # noqa: BLE001 - one bad day must not lose the rest
+            logger.warning(f"Date horizon: day +{offset} failed ({e})")
+            continue
+        logger.info(f"Date horizon: day +{offset} ({day_url}) -> {len(found)} candidates")
+        # Every row keeps the listing it came from as its source, not the
+        # dated URL, so downstream grouping still sees one source.
+        for event in found:
+            event["source_url"] = url
+        batches.append(found)
+
+    merged = _merge(*batches) if batches else []
+    logger.info(f"Date horizon: {len(merged)} candidates across {len(batches)} day(s)")
+    return merged
+
+
 def scrape(url: str) -> List[Dict[str, Any]]:
     html = fetch_plain(url)
     if html and not is_bot_challenge(html):
@@ -1108,6 +1219,12 @@ def main():
     parser.add_argument("--save-html", action="store_true", help="Save a page snapshot for analysis")
     parser.add_argument("--html-output", help="Path where fetched page content should be saved")
     parser.add_argument(
+        "--date-horizon", action="store_true",
+        help="Crawl one page per day across the window, injecting the date into "
+             "the URL. Only for sources known to honour a date parameter: "
+             "appending one to a site that ignores it multiplies requests for "
+             "nothing.")
+    parser.add_argument(
         "--price-enrich-limit", type=int, default=MAX_PRICE_ENRICH_FETCHES,
         help="Max per-event detail-page fetches for events with no listed price "
              f"(default {MAX_PRICE_ENRICH_FETCHES}; 0 disables)",
@@ -1116,7 +1233,8 @@ def main():
     args = parser.parse_args()
 
     try:
-        events = scrape(args.url)
+        events = (scrape_date_horizon(args.url, args.date_days)
+                  if args.date_horizon else scrape(args.url))
     except Exception as e:
         logger.error(f"Scraping failed: {e}")
         events = []

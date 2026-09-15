@@ -455,3 +455,113 @@ def test_the_render_tier_still_runs_when_jina_is_unavailable(monkeypatch):
                      '</div></body></html>'),
     )
     assert [e["title"] for e in module.scrape("https://blocked.example/programm")] == ["Rendered Show"]
+
+
+# --------------------------------------------------------------------------
+# Date-horizon crawling (ported from JsonLord/Events, without its LLM step)
+# --------------------------------------------------------------------------
+
+def test_an_existing_date_parameter_is_reused_in_its_own_format():
+    from datetime import date as _date
+    from scripts import generic_event_scraper as module
+
+    day = _date(2026, 9, 19)
+    assert module.build_date_url("https://x.de/p?datum=01.01.2026", day) == \
+        "https://x.de/p?datum=19.09.2026"
+    assert module.build_date_url("https://x.de/p?date=2026-01-01", day) == \
+        "https://x.de/p?date=2026-09-19"
+
+
+def test_a_date_parameter_is_added_when_none_exists():
+    from datetime import date as _date
+    from scripts import generic_event_scraper as module
+
+    assert module.build_date_url("https://www.berlin-buehnen.de/de/spielplan",
+                                 _date(2026, 9, 19)) == \
+        "https://www.berlin-buehnen.de/de/spielplan?date=2026-09-19"
+
+
+def test_a_range_url_is_left_alone():
+    """Rewriting one half of a range leaves the other behind: setting
+    start_date on rausgegangen's URL while end_date stayed put produced an
+    inverted range asking for events after the window had closed."""
+    from datetime import date as _date
+    from scripts import generic_event_scraper as module
+
+    ranged = "https://rausgegangen.de/e/?start_date=2026-01-01&end_date=2026-01-08"
+    assert module.build_date_url(ranged, _date(2026, 9, 19)) == ranged
+
+
+def test_the_horizon_merges_days_and_keeps_the_listing_as_source(monkeypatch):
+    from scripts import generic_event_scraper as module
+
+    def fake_scrape(url):
+        # Each day returns its own event, as a day-per-request site would.
+        day = url.rsplit("=", 1)[-1]
+        return [{"title": f"Show on {day}", "date": day, "time": "20:00",
+                 "price": 0.0, "category": "", "description": "",
+                 "url": f"https://v.example/event/{day}", "venue": "",
+                 "source_url": url}]
+
+    monkeypatch.setattr(module, "scrape", fake_scrape)
+    events = module.scrape_date_horizon("https://v.example/spielplan", 3)
+
+    assert len(events) == 4, "one row per day, merged"
+    # Rows carry the listing URL, not the dated one, so downstream grouping
+    # still sees a single source.
+    assert {e["source_url"] for e in events} == {"https://v.example/spielplan"}
+
+
+def test_the_horizon_is_capped_at_a_week(monkeypatch):
+    from scripts import generic_event_scraper as module
+
+    calls = []
+
+    def fake_scrape(url):
+        calls.append(url)
+        return []
+
+    monkeypatch.setattr(module, "scrape", fake_scrape)
+    module.scrape_date_horizon("https://v.example/spielplan", 90)
+    assert len(calls) == module.MAX_HORIZON_DAYS + 1
+
+
+def test_one_failing_day_does_not_lose_the_others(monkeypatch):
+    from scripts import generic_event_scraper as module
+
+    def fake_scrape(url):
+        if url.endswith("-16"):
+            raise RuntimeError("connection reset")
+        day = url.rsplit("=", 1)[-1]
+        return [{"title": f"Show {day}", "date": day, "time": "20:00",
+                 "price": 0.0, "category": "", "description": "",
+                 "url": f"https://v.example/e/{day}", "venue": "",
+                 "source_url": url}]
+
+    monkeypatch.setattr(module, "scrape", fake_scrape)
+    assert len(module.scrape_date_horizon("https://v.example/spielplan", 3)) == 3
+
+
+def test_the_jina_tier_stops_at_its_fetch_budget(monkeypatch):
+    """Jina bills by returned content and HTML returns whole pages; with a
+    horizon multiplying fetches by eight, an unbounded tier emptied a fresh
+    account inside a day. The budget keeps it a fallback, not a bulk fetcher."""
+    from scripts import generic_event_scraper as module
+
+    class Response:
+        text = "<html></html>"
+
+        def raise_for_status(self):
+            return None
+
+    calls = []
+    monkeypatch.setenv("JINA_API_KEY", "test-key")
+    monkeypatch.setattr(module, "JINA_FETCH_BUDGET", 2)
+    monkeypatch.setattr(module, "_jina_fetches", 0)
+    monkeypatch.setattr(module.requests, "get",
+                        lambda url, **kw: (calls.append(url), Response())[1],
+                        raising=False)
+
+    for _ in range(5):
+        module.fetch_jina_html("https://blocked.example/")
+    assert len(calls) == 2
