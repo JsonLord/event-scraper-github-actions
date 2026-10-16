@@ -1,0 +1,77 @@
+{
+  "repo": "https://github.com/JsonLord/event-scraper-github-actions",
+  "components": [
+    {
+      "id": "backend-api",
+      "name": "Backend FastAPI Service",
+      "files": ["app/main.py", "app/__init__.py"],
+      "dependencies": [],
+      "description": "Provides endpoints for retrieving events, status, and health checks.",
+      "suggested_spec": "Implement a robust FastAPI backend with Pydantic models for event data and CRUD operations."
+    },
+    {
+      "id": "jules-integration",
+      "name": "Jules AI Integration Client",
+      "files": ["scripts/jules_client.py"],
+      "dependencies": [],
+      "description": "Core client for interacting with the Jules API (v1alpha) for multi-agent support.",
+      "suggested_spec": "Develop a Python client to wrap Jules API endpoints for session management and activity tracking."
+    },
+    {
+      "id": "event-scraping-engine",
+      "name": "Event Scraping Engine",
+      "files": [
+        "scripts/rausgegangen_scraper.py",
+        "scripts/eventbrite_scraper.py",
+        "scripts/meetup_scraper.py",
+        "scripts/jules_cloak_scraper.py"
+      ],
+      "dependencies": ["jules-integration"],
+      "description": "Handles web scraping from various sources using CloakBrowser and Jina Reader fallbacks.",
+      "suggested_spec": "Create modular scrapers that utilize stealth browsers and AI-driven content extraction."
+    },
+    {
+      "id": "self-healing-system",
+      "name": "Autonomous Repair & Validation System",
+      "files": [
+        "scripts/autonomous_repair.py",
+        "scripts/jules_analysis.py",
+        "scripts/jules_scraper_generator.py",
+        "scripts/firecrawl_validation.py",
+        "scripts/scraper_improvement_cycle.py",
+        "scripts/jules_manual_review.py",
+        "scripts/apply_jules_improvements.py"
+      ],
+      "dependencies": ["jules-integration", "event-scraping-engine"],
+      "description": "Analyzes failures, generates improved scraper code using Jules AI, and applies fixes automatically.",
+      "suggested_spec": "Implement an autonomous loop that detects scraping failures and uses LLMs to self-correct the codebase."
+    },
+    {
+      "id": "orchestration-and-deployment",
+      "name": "Workflow Orchestration & Deployment",
+      "files": [
+        "scripts/weekly-event-scraper.py",
+        "generate_github_pages.sh",
+        "scripts/hermes-model-switch.py",
+        "scripts/update-model-context-length.py"
+      ],
+      "dependencies": ["event-scraping-engine", "self-healing-system"],
+      "description": "Orchestrates the weekly scraping runs and manages the deployment of results to GitHub Pages.",
+      "suggested_spec": "Automate the end-to-end data pipeline from scraping to static site generation and deployment."
+    }
+  ],
+  "entry_points": [
+    "app/main.py",
+    "scripts/weekly-event-scraper.py",
+    "scripts/autonomous_repair.py"
+  ],
+  "tech_stack": [
+    "Python 3.12",
+    "FastAPI",
+    "CloakBrowser",
+    "SQLite",
+    "GitHub Actions",
+    "Jules AI (Google)",
+    "Jina Reader"
+  ]
+}
