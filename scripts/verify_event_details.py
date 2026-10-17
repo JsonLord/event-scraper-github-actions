@@ -152,7 +152,7 @@ def observation(event, html, final_url, now):
     enriched = [enrich_evidence(c, now) for c in matching]
     for candidate, item in zip(matching,enriched):
         if candidate.get('_explicit_available') and item['ticket_status']=='unknown' and item['event_status'] not in ('cancelled','postponed'):
-            item['ticket_status']='available' 
+            item['ticket_status']='available'
     # Conflicting bound records cannot assert inventory or choose cheap prices.
     prices = {(e['price_min'],e['price_max']) for e in enriched if e['price'] is not None}
     states = {e['ticket_status'] for e in enriched} - {'unknown'}

@@ -15,6 +15,10 @@ name: Fetch Strategy Probe
 on:
   workflow_dispatch:
     inputs:
+      evidence_run_id:
+        description: 'Recover sanitized qualification artifacts only; makes ZERO provider calls'
+        type: string
+        default: ''
       qualify:
         description: 'Read-only TinyFish qualification (max 2 Fetch URLs + 2 Search calls, no deployment)'
         type: boolean
@@ -37,7 +41,7 @@ permissions:
 
 jobs:
   probe:
-    if: ${{ !inputs.qualify }}
+    if: ${{ !inputs.qualify && !inputs.evidence_run_id }}
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
@@ -102,7 +106,7 @@ jobs:
           if-no-files-found: warn
 
   qualify:
-    if: ${{ inputs.qualify }}
+    if: ${{ inputs.qualify && !inputs.evidence_run_id }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -123,3 +127,38 @@ jobs:
           name: tinyfish-readonly-qualification
           path: qualification/
           retention-days: 7
+
+  recover-evidence:
+    if: ${{ inputs.evidence_run_id }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      actions: read
+      contents: read
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: tinyfish-readonly-qualification
+          run-id: ${{ inputs.evidence_run_id }}
+          github-token: ${{ github.token }}
+          path: qualification
+      - name: Expose only sanitized evidence as check annotations
+        env:
+          TINYFISH_API_KEY: ${{ secrets.TINYFISH_API_KEY }}
+        run: |
+          python - <<'PY'
+          import json, os, pathlib
+          for name in ('report.json', 'fetch-1.json', 'fetch-2.json'):
+              path = pathlib.Path('qualification') / name
+              if not path.exists():
+                  continue
+              text = json.dumps(json.loads(path.read_text()), ensure_ascii=False)
+              key = os.environ.get('TINYFISH_API_KEY', '')
+              if key:
+                  text = text.replace(key, '[REDACTED]')
+              if len(text.encode()) > 60000:
+                  print('::notice title=Evidence too large::Download the original sanitized artifact for ' + name)
+                  continue
+              text = text.replace('%', '%25').replace('\r', '%0D').replace('\n', '%0A')
+              print('::notice title=TinyFish ' + name + '::' + text)
+          PY
