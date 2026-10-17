@@ -174,6 +174,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -187,19 +189,6 @@ jobs:
           pip install cloakbrowser python-dotenv pyyaml requests beautifulsoup4 lxml
 
       - name: Install CloakBrowser Binary
-        # This step intermittently segfaults on the GitHub runner (exit 139).
-        # It's non-fatal: the generic scraper works without CloakBrowser
-        # (it's only the 3rd-tier fallback) and CloakBrowser re-downloads the
-        # binary on first launch() anyway, so a failed pre-install must not
-        # take down the whole matrix leg.
-        #
-        # Worth knowing, from fetch-strategy-probe runs on this runner: the
-        # render tier is now the LAST fallback, behind Jina. It has not
-        # uniquely rescued a single site in any probe run - it kept 32 events
-        # to the Jina tier's 33, won no site, and cost 5-24s each against
-        # 0.5-1.7s. On venturecafeberlin.org it returned the challenge page
-        # while Jina returned the real one. It is kept only because it is the
-        # fallback that needs no third-party service.
         continue-on-error: true
         run: python -m cloakbrowser install
 
@@ -223,13 +212,7 @@ jobs:
 
       - name: Run scraper
         env:
-          # Last-tier fallback, used only when a direct GET and the
-          # rendered-DOM tier have both produced nothing - typically an
-          # anti-bot interstitial that Jina's infrastructure is not subject
-          # to. Optional: without the secret the tier logs that it is being
-          # skipped and the run continues. Add it under Settings -> Secrets
-          # and variables -> Actions.
-          JINA_API_KEY: ${{ secrets.JINA_API_KEY }}
+          TINYFISH_API_KEY: ${{ secrets.TINYFISH_API_KEY }}
         run: |
           mkdir -p data/html
           # date_horizon is opt-in per source. Measured: appending ?date= to a
@@ -272,6 +255,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -283,7 +268,7 @@ jobs:
       # link to. The Jules step this replaced only ever made HTTP calls, so
       # "pip install requests" was enough for it and would not be now.
       - name: Install dependencies
-        run: pip install requests beautifulsoup4 lxml
+        run: pip install requests beautifulsoup4 lxml python-dotenv
 
       - name: Download all results
         uses: actions/download-artifact@v4
@@ -379,12 +364,10 @@ jobs:
       # profile (max 20 EUR, free preferred, category + Charlottenburg
       # proximity weighting), then ordered by day and, within each day,
       # from free to dearest.
-      - name: Score and categorize events
+      - name: Score, merge fresh observations and validate
         run: |
-          python scripts/score_events.py \
-            --input docs/events.json \
-            --output docs/events_scored.json \
-            --max-price 20
+          python scripts/build_page_dataset.py --input data/events.json --output-dir docs
+          python scripts/audit_events.py --input docs/events_scored.json --gate --output /tmp/quality.json
 
       # docs/events_scored.json only lived in the Pages deployment artifact,
       # which GitHub reclaims after its retention window - the ranked,
@@ -401,33 +384,18 @@ jobs:
           touch docs/.nojekyll
 
       - name: Set up GitHub Pages
+        if: ${{ github.ref == 'refs/heads/main' && vars.PAGES_DEPLOYMENT_ENABLED == 'true' }}
         uses: actions/configure-pages@v5
 
       - name: Upload synthesised event findings
+        if: ${{ github.ref == 'refs/heads/main' && vars.PAGES_DEPLOYMENT_ENABLED == 'true' }}
         uses: actions/upload-pages-artifact@v3
         with:
           path: ./docs
 
-      # A plain "pull --rebase && push" left a fully successful run's data
-      # stranded uncommitted and Pages undeployed: this exact scenario, live -
-      # a manual retrigger raced the tail end of a run it superseded (started
-      # just as that older run's own aggregate-and-deploy, already past its
-      # `needs` gate, finished pushing under cancellation), landing a stale
-      # commit moments before this step ran. The rebase hit a conflict inside
-      # data/events.json - a single machine-generated JSON blob has no
-      # meaningful line-level merge - and the whole job failed with the
-      # freshly scored data computed correctly but never pushed, which also
-      # skipped publish-pages entirely (it needs this job to succeed).
-      #
-      # data/events.json and data/events_scored.json are wholly regenerated
-      # every run, never hand-edited, so on conflict THIS run's output is
-      # always correct to keep. git rebase flips the usual merge meaning of
-      # ours/theirs: "ours" is the upstream being rebased onto (the stale
-      # commit it raced against), "theirs" is the commit being replayed (this
-      # run's). -X theirs is therefore the correct flag - -X ours would
-      # silently keep the STALE data on every conflict, which is worse than
-      # today's loud failure: it would ship outdated events with no one
-      # noticing, instead of failing visibly.
+      # The pages concurrency group serializes weekly/daily/manual deployments.
+      # Checkout uses the latest branch after acquiring that lock. External edits
+      # cause push rejection and prevent deployment rather than overwriting data.
       - name: Commit events and improvements (if any)
         run: |
           git config --global user.name 'GitHub Actions'
@@ -443,24 +411,10 @@ jobs:
           fi
           git commit -m "Update weekly aggregated events"
 
-          for attempt in 1 2 3 4 5; do
-            if git push; then
-              echo "Pushed on attempt $attempt"
-              exit 0
-            fi
-            echo "Push rejected (attempt $attempt) - fetching and rebasing, preferring this run's data"
-            git fetch origin "$GITHUB_REF_NAME"
-            if ! git rebase -X theirs "origin/$GITHUB_REF_NAME"; then
-              git rebase --abort
-              echo "::error::Rebase failed even with -X theirs; leaving the branch untouched rather than forcing"
-              exit 1
-            fi
-            sleep $((attempt * 3))
-          done
-          echo "::error::Could not push after 5 attempts"
-          exit 1
+          git push
 
   publish-pages:
+    if: ${{ github.ref == 'refs/heads/main' && vars.PAGES_DEPLOYMENT_ENABLED == 'true' }}
     name: Publish weekly event table
     needs: aggregate-and-deploy
     runs-on: ubuntu-latest

@@ -192,7 +192,8 @@
 
 <div class="controls">
   <input type="search" id="search" placeholder="Search title, venue, category, description…">
-  <label class="toggle"><input type="checkbox" id="freeOnly"> Free only</label>
+  <label class="toggle"><input type="checkbox" id="freeOnly"> Verified free only</label>
+  <label class="toggle"><input type="checkbox" id="showPast"> Include past events</label>
   <button id="exportBtn" class="primary" disabled>Add selected to calendar (.ics)</button>
 </div>
 
@@ -340,8 +341,31 @@
     return { wrap: wrap, tbody: tbody, thead: thead };
   }
 
+  function berlinClock(now) {
+    var parts = new Intl.DateTimeFormat("en-GB", {timeZone:"Europe/Berlin", year:"numeric", month:"2-digit", day:"2-digit", hour:"2-digit", minute:"2-digit", hourCycle:"h23"}).formatToParts(now);
+    var p = {}; parts.forEach(function (x) { p[x.type] = x.value; });
+    return {date:p.year + "-" + p.month + "-" + p.day, time:p.hour + ":" + p.minute};
+  }
+
+  function eventIsPast(ev, now) {
+    var clock = berlinClock(now), day = String(ev.date || "").slice(0,10);
+    return day && (day < clock.date || (day === clock.date && ev.time && ev.time < clock.time));
+  }
+
+  function freshEvidence(ev, field, hours) {
+    var stamp = (ev.field_observed_at || {})[field] || ev.observed_at;
+    var age = Date.now() - Date.parse(stamp || "");
+    return Number.isFinite(age) && age >= 0 && age < hours * 3600000;
+  }
+
+  function safeLink(url) {
+    try { var parsed = new URL(url); return /^https?:$/.test(parsed.protocol) && !parsed.username && !parsed.password; }
+    catch (_) { return false; }
+  }
+
   function passesFilters(ev) {
-    if (state.freeOnly && ev.price !== 0) return false;
+    if (!document.getElementById("showPast").checked && eventIsPast(ev, new Date())) return false;
+    if (state.freeOnly && (ev.free_admission_confirmed !== true || !freshEvidence(ev, "price", 48))) return false;
     return matchesSearch(ev, state.search);
   }
 
@@ -392,7 +416,7 @@
     // the listing it came from. Linking those to the listing looked like a
     // working link and led nowhere useful, so they render as plain text
     // with the listing offered separately.
-    if (ev.has_detail_link !== false && (ev.url || ev.source_url)) {
+    if (ev.detail_link_status === "verified" && freshEvidence(ev, "link", 168) && safeLink(ev.url)) {
       var titleLink = document.createElement("a");
       titleLink.className = "site-link";
       titleLink.href = ev.url || ev.source_url;
@@ -402,17 +426,26 @@
       tdName.appendChild(titleLink);
     } else {
       tdName.appendChild(document.createTextNode(ev.title || "Untitled event"));
-      if (ev.source_url) {
+      if (safeLink(ev.source_url)) {
         var listing = document.createElement("a");
         listing.className = "site-link listing-link";
         listing.href = ev.source_url;
         listing.target = "_blank";
         listing.rel = "noopener noreferrer";
-        listing.textContent = "on listing page";
+        listing.textContent = "Source listing · event link unverified";
         tdName.appendChild(document.createElement("br"));
         tdName.appendChild(listing);
       }
     }
+    var status = document.createElement("small");
+    var ticketState = freshEvidence(ev, "status", ev.ticket_status === "available" ? 12 : 24) ? ev.ticket_status : "unknown";
+    var ticket = ticketState === "sold_out" ? "Reported sold out" : ticketState === "available" ? "Reported available" : "Availability unknown";
+    var eventState = freshEvidence(ev, "event_status", 24) ? ev.event_status : "unknown";
+    status.textContent = (eventState === "cancelled" ? "Reported cancelled · " : eventState === "postponed" ? "Reported postponed · " : "") + ticket;
+    tdName.appendChild(document.createElement("br")); tdName.appendChild(status);
+    var checked = document.createElement("small");
+    checked.textContent = "Last verified: " + (ev.last_verified_at || "never") + " · Last observed: " + (ev.observed_at || "unknown") + " · Last checked: " + (ev.verification_checked_at || "never");
+    tdName.appendChild(document.createElement("br")); tdName.appendChild(checked);
     tr.appendChild(tdName);
 
     var tdVenue = document.createElement("td");
@@ -444,8 +477,11 @@
     tr.appendChild(tdCat);
 
     var tdPrice = document.createElement("td");
-    tdPrice.textContent = ev.price_label || (ev.price === 0 ? "Free" : (ev.price != null ? "€" + ev.price : "Check site"));
+    tdPrice.textContent = ev.free_admission_confirmed && freshEvidence(ev, "price", 48) ? "Free" : (ev.price_label === "Free" ? "Check site" : ev.price_label || "Check site");
+    if (ev.student_discount_status === "explicit" && freshEvidence(ev, "discount", 168)) tdPrice.textContent += " · Student offer (conditions apply)";
+    else if (freshEvidence(ev, "discount", 168) && (ev.offers || []).some(function (o) { return o.kind === "reduced"; })) tdPrice.textContent += " · Reduced offer (eligibility applies)";
     if (ev.price == null) tdPrice.className = "muted";
+    tdPrice.title = "Price observed: " + ((ev.field_observed_at || {}).price || ev.observed_at || "unknown") + "\n" + (ev.offers || []).map(function (o) { return o.kind + ": €" + o.amount_eur + " " + (o.eligibility || "") + " (" + (o.observed_at || "unknown time") + ")"; }).join("\n");
     tr.appendChild(tdPrice);
 
     var tdSource = document.createElement("td");
@@ -570,11 +606,11 @@
       var stamp = icsDateStamp(ev);
       if (!stamp) return;
       lines.push("BEGIN:VEVENT");
-      lines.push("UID:" + Date.now() + "-" + i + "@berlin-events");
+      lines.push("UID:" + (ev.event_id || (Date.now() + "-" + i)) + "@berlin-events");
       if (stamp.allDay) {
         lines.push("DTSTART;VALUE=DATE:" + stamp.start);
       } else {
-        lines.push("DTSTART:" + stamp.start);
+        lines.push("DTSTART;TZID=Europe/Berlin:" + stamp.start);
       }
       lines.push("SUMMARY:" + icsEscape(ev.title));
       lines.push("LOCATION:" + icsEscape(ev.venue || ""));
@@ -620,6 +656,8 @@
   });
 
   document.getElementById("exportBtn").addEventListener("click", exportSelected);
+
+  document.getElementById("showPast").addEventListener("change", render);
 
   fetch("events_scored.json")
     .then(function (r) { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); })

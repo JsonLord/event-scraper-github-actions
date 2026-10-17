@@ -1,0 +1,63 @@
+{
+  "version": "R1.2",
+  "phase": "raus-completion",
+  "observed_at": "2026-10-17T22:41:07.037234+00:00",
+  "sources": {
+    "rausgegangen": {
+      "listing_results": [
+        {
+          "transport": "tinyfish_fetch",
+          "outcome": "received",
+          "empty_extraction_structure": {
+            "headings": [],
+            "text_excerpt": "Tomorrow, 18. Okt | 09:30 AERA Bread Free admission Tomorrow, 18. Okt | 10:00 Berlin 35,20 € Bode-Museum 7,00 € Tomorrow, 18. Okt | 11:00 Nowkoelln Flowmarkt Café Lulo Tomorrow, 18. Okt | 11:30 Yorck Kino 11,00 € Tomorrow, 18. Okt | 12:00 Mom's Limousine Service Helka Ceramics Tomorrow, 18. Okt | 15:00 Brauhaus Neulich Tomorrow, 18. Okt | 18:30 Alte Turnhalle (Berlin-Friedrichshain) 4,84 to 26,04 € Mo, 19. Okt | 18:00 Monster Ronson's Karaoke 10,00 € Tempelhofer Feld 21,80 € Mo, 19. Okt | 19:00 Drink and Draw Berlin 39,00 € Mo, 19. Okt | 19:30 Thalia Filmtheater 19,50 to 24,00 € Mo, 19. Okt | 20:00 Fotostudio & Videostudio Roger Paletti keine Preisangabe Di, 20. Okt | 17:00 Berliner Tafel e.V. Di, 20. Okt | 18:30 Sfera 94,94 to 126,74 € TABULA RASA@RAW Di, 20. Okt | 19:00 Sputnik Kino 9,90 € Di, 20. Okt | 20:00 Humboldt-Saal Urania 35,40 to 45,40 € Mi, 21. Okt | 19:00 Flughafen Tempelhof - THF TOWER 5,00 € Huxleys Neue Welt 49,90 € Festsaal Kreuzberg 31,00 € Colosseum Berlin 18,30 € Mi, 21. Okt | 20:00 Astra Kulturhaus Lido Neue Zukunft 18,00 € Privatclub Berlin 14,38 to 84,00 € Do, 22. Okt | 11:00 DRIVE. Volkswagen Group Forum Do, 22. Okt | 18:00 Kunstquartier Bethanien Do, 22. Okt | 19:00 Circus Potoo 10,00 to 30,00 € MODUS Berlin 24,00 € Siebdruckwerstatt Kreuzberg (DAYDAY) 35,00 € Do, 22. Okt | 19:30 SO36 Sub Opus 36 e.V. 0,00 to 39,20 € Do, 22. Okt | 20:00 18,00 to 22,00 € Kulturhaus Insel Berlin Bi Nuu 28,90 € Fr, 23. Okt | 11:00 Fr, 23. Okt | 18:00 Amano East Side Rooftop 17,99 € Fr, 23. Okt | 19:00 35,00 to 37,00 € Monarch 11,20 to 21,80 € Fr, 23. Okt | 20:00 Maschi",
+            "event_links": 0
+          }
+        }
+      ],
+      "discovered_upcoming_window": 0,
+      "sample_events": 0,
+      "missing_links": 0,
+      "missing_venues": 0
+    }
+  },
+  "total_discovered": 0,
+  "sample_events": 0,
+  "matched_events": 0,
+  "exact_match_rate": null,
+  "materialized_events": 0,
+  "source_coverage_complete": false,
+  "http_attempts": 2,
+  "http_bytes": 9222,
+  "http_per_host": {
+    "rausgegangen.de": 2
+  },
+  "tinyfish_fetch_urls": 1,
+  "tinyfish_search_calls": 0,
+  "tinyfish_calls": [
+    {
+      "operation": "fetch",
+      "http_status": 200,
+      "schema_valid": true,
+      "result_count": 1,
+      "error_codes": [],
+      "duration_seconds": 6.793,
+      "outcome": "ok"
+    }
+  ],
+  "network_wall_seconds": 7.045,
+  "pipeline_wall_seconds": 7.246,
+  "production_files_unchanged": true,
+  "frontend_smoke": {
+    "status": "not_run_empty_materialization"
+  },
+  "integration": {
+    "fresh_second_run_preserved_state": true,
+    "ttl_expiration_passed": true,
+    "input_immutability_passed": true,
+    "missing_venue_replays": [],
+    "multi_performance_pages": []
+  },
+  "second_run_targets": 0,
+  "events": []
+}
