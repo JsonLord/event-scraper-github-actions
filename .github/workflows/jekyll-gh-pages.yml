@@ -4,8 +4,9 @@ on:
   push:
     branches: ["main"]
     paths:
-      - "data/events.json"
-      - "scripts/score_events.py"
+      - "data/**"
+      - "scripts/**"
+      - "config/verification_policy.json"
       - "web/index.html"
       - ".github/workflows/jekyll-gh-pages.yml"
   workflow_dispatch:
@@ -25,24 +26,21 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
 
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
 
-      - name: Synthesise event findings
-        run: |
-          mkdir -p _site
-          python scripts/score_events.py \
-            --input data/events.json \
-            --output _site/events_scored.json \
-            --max-price 20
+      - name: Install build dependencies
+        run: pip install requests beautifulsoup4 lxml python-dotenv
 
-      - name: Build event table
+      - name: Build and validate shared dataset
         run: |
-          cp web/index.html _site/index.html
-          touch _site/.nojekyll
+          python scripts/build_page_dataset.py --output-dir _site
+          python scripts/audit_events.py --input _site/events_scored.json --gate --output /tmp/quality.json
 
       - name: Set up GitHub Pages
         uses: actions/configure-pages@v5

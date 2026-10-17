@@ -58,10 +58,10 @@ def enrich_evidence(event, observed_at=None):
     result = dict(event)
     text = str(event.get('description') or '')
     title = str(event.get('title') or '')
-    if title and text.startswith(title):
-        text = text[len(title):].lstrip()
+    if title and not re.search(r'€|\d+[,.]\d+', title):
+        text = re.sub(re.escape(title), '', text, count=1, flags=re.I).strip()
     stamp = observed_at or event.get('observed_at')
-    url = event.get('url') or event.get('source_url') or ''
+    url = event.get('evidence_url') or event.get('source_url') or event.get('url') or ''
     offers = [dict(o) for o in event.get('offers', []) if isinstance(o, dict)]
     span = PRICE_RANGE_RE.search(text)
     if not offers:
@@ -79,7 +79,7 @@ def enrich_evidence(event, observed_at=None):
     price = min(values) if values else amount(event.get('price'))
     maximum = max(highs) if highs else price
     # Legacy numeric zero has no independent proof. Positive prices are retained.
-    free_proof = bool(FREE_RE.search(text)) or any(o.get('source') == 'jsonld_offer' and o.get('amount_eur') == 0 for o in offers)
+    free_proof = bool(re.search(r'\b(?:free (?:admission|entry)|eintritt (?:ist )?frei|freier eintritt|gratis|kostenlos|kostenfrei|umsonst)\b', text, re.I)) or any(o.get('source') == 'jsonld_offer' and o.get('amount_eur') == 0 for o in offers)
     if price == 0 and not free_proof and not values:
         price = maximum = None
     confirmed = free_proof and maximum in (None, 0)

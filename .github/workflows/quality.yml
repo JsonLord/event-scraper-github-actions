@@ -19,7 +19,12 @@ jobs:
       - run: pip install -r requirements.txt
       - run: python -m pytest -q
       - run: node tests/test_frontend.cjs
-      - run: python scripts/audit_events.py --output /tmp/quality-audit.json
+      - run: python scripts/audit_events.py --input tests/fixtures/events_scored_2026-10-11.json --output /tmp/quality-audit.json
+      - name: Offline Pages build and schema gate
+        run: |
+          python scripts/build_page_dataset.py --output-dir /tmp/r1-site --now 2026-10-17T07:17:00Z
+          python scripts/audit_events.py --input /tmp/r1-site/events_scored.json --gate --output /tmp/build-quality.json
+          python scripts/verify_event_details.py --dry-run --now 2026-10-17T07:17:00Z
       - name: Validate workflows
         run: |
           python - <<'PY'

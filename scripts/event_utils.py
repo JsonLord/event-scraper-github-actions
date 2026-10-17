@@ -21,7 +21,7 @@ from __future__ import annotations
 import html
 import re
 import unicodedata
-from datetime import date, timedelta
+from datetime import date, timedelta, datetime, timezone
 from typing import Any, Dict, Iterable, List, Optional, Tuple
 from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 
@@ -908,6 +908,7 @@ def validate_event(
 
     from scripts.ticket_evidence import enrich_evidence
     normalized.update({k: event[k] for k in ("offers", "event_status", "observed_at", "evidence") if k in event})
+    normalized.setdefault("observed_at", datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"))
     return enrich_evidence(normalized)
 
 

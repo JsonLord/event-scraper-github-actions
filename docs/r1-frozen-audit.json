@@ -369,17 +369,17 @@
   "after": {
     "total": {
       "records": 464,
-      "unknown_prices": 312,
-      "zero_prices": 32,
-      "free_labels": 31,
-      "verified_free": 31,
+      "unknown_prices": 318,
+      "zero_prices": 26,
+      "free_labels": 25,
+      "verified_free": 25,
       "missing_links": 139,
       "verified_links": 0,
       "blank_venues": 289,
       "past": 343,
       "student_evidence": 1,
       "generic_reduced": 1,
-      "reported_sold_out": 32,
+      "reported_sold_out": 30,
       "reported_cancelled": 3
     },
     "sources": {
@@ -430,10 +430,10 @@
       },
       "lakestudiosberlin.com": {
         "records": 1,
-        "unknown_prices": 0,
-        "zero_prices": 1,
-        "free_labels": 1,
-        "verified_free": 1,
+        "unknown_prices": 1,
+        "zero_prices": 0,
+        "free_labels": 0,
+        "verified_free": 0,
         "missing_links": 0,
         "verified_links": 0,
         "blank_venues": 1,
@@ -455,7 +455,7 @@
         "past": 118,
         "student_evidence": 0,
         "generic_reduced": 0,
-        "reported_sold_out": 3,
+        "reported_sold_out": 1,
         "reported_cancelled": 0
       },
       "renaissance-theater.de": {
@@ -565,10 +565,10 @@
       },
       "www.meetup.com": {
         "records": 59,
-        "unknown_prices": 46,
-        "zero_prices": 6,
-        "free_labels": 6,
-        "verified_free": 6,
+        "unknown_prices": 51,
+        "zero_prices": 1,
+        "free_labels": 1,
+        "verified_free": 1,
         "missing_links": 0,
         "verified_links": 0,
         "blank_venues": 11,

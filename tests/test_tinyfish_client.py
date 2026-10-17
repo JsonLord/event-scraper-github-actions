@@ -59,3 +59,16 @@ def test_private_final_url_and_markdown_rejected(monkeypatch):
     a='https://a.example/x'
     for item in [dict(url=a,final_url='http://127.0.0.1/',format='html',text='x'),dict(url=a,format='markdown',text='x')]:
         c,t=client(monkeypatch,Response({'results':[item]})); assert not c.fetch([a])
+
+def test_throttle_applies_between_search_and_fetch(monkeypatch):
+    monkeypatch.setenv('TINYFISH_API_KEY','fixture-secret')
+    sleeps=[];transport=Transport(Response({'results':[]}))
+    c=TinyFishClient(transport,sleep=sleeps.append,clock=lambda:1,validator=lambda _:True)
+    c.search('show Berlin');c.fetch(['https://a.example/show'])
+    assert sleeps==[1]
+
+@pytest.mark.parametrize('payload',[[],{'results':'bad'},{'results':None},{'errors':17}])
+def test_malformed_payload_types_fail_closed(monkeypatch,payload):
+    c,t=client(monkeypatch,Response(payload))
+    assert c.fetch(['https://a.example/show'])=={}
+    assert c.diagnostic=='tinyfish_failed'

@@ -217,3 +217,61 @@ Edit `scripts/firecrawl_validation.py` to:
 ## License
 
 MIT
+## R1 evidence and daily verification
+
+Weekly discovery remains Sunday 17:00 UTC, with the source matrix, per-day
+Berlin Bühnen horizon, low-aggregate guard and recovery stages. Daily
+verification runs at 07:17 UTC, or manually. `data/events.json` remains canonical;
+`data/event_verifications.json` stores compact observations by occurrence ID.
+Weekly, daily and manual Pages workflows all call `scripts/build_page_dataset.py`.
+The daily workflow deploys its own artifact: token-created commits do not trigger
+ordinary push workflows. All three workflows share the `pages` concurrency group,
+check out the latest branch, and fail on an external push race instead of
+replacing newer observation data.
+
+The daily limits in `config/verification_policy.json` cannot be raised above
+40 targets, 40 HTTP attempts (including robots/redirects/retries), eight attempts
+per host, 30 Fetch URLs, and 12 Search queries. Processing is sequential (one in
+flight, below the limit of two). Responses are capped at 1.5 MB and the run at
+25 MB; timeouts are 8 s connect / 12 s read. Robots policy failures deny retrieval.
+Cross-host redirects remain unverified. Fetch/Search attempts consume their own
+budgets even on failure, with at least one second between provider requests.
+Account-wide usage by other applications cannot be controlled here.
+
+Only exact folded title, occurrence date/time and venue matches verify a detail
+link. A ticket button never proves availability. Missing venue/time evidence may
+leave a real event unverified. Available reports expire after 12 hours, sold-out
+and cancellation reports after 24 hours, prices after 48 hours, and discounts and
+links after seven days. The browser checks expiry as well as the build. Failures
+retain historical evidence; unknown/stale is never upgraded to available/free.
+
+Use Python 3.11 (the existing PyYAML pin fails to build on Python 3.12):
+
+```bash
+python3.11 -m venv .venv
+.venv/bin/pip install -r requirements.txt
+.venv/bin/python -m pytest -q
+node tests/test_frontend.cjs
+.venv/bin/python scripts/audit_events.py \
+  --input tests/fixtures/events_scored_2026-10-11.json --output /tmp/r1-audit.json
+.venv/bin/python scripts/verify_event_details.py --dry-run --now 2026-10-17T07:17:00Z
+.venv/bin/python scripts/build_page_dataset.py --output-dir /tmp/r1-site --now 2026-10-17T07:17:00Z
+.venv/bin/python scripts/audit_events.py --input /tmp/r1-site/events_scored.json --gate --output /tmp/r1-quality.json
+# Optional full browser smoke when Chromium is installed:
+.venv/bin/python scripts/smoke_pages.py --site /tmp/r1-site --output /tmp/r1-smoke
+```
+
+Tests never call live providers. Dry-run makes no requests and does not modify the
+overlay. Normal verification needs public source access but no API key. Optional
+`TINYFISH_ENABLED`, `TINYFISH_FETCH_ENABLED`, and `TINYFISH_SEARCH_ENABLED` default
+to `true`, effective only with a key. Authentication/rate failures close the
+provider for the run. No key is included in the build, frontend, artifacts or
+usage diagnostics. Search snippets are never price/status evidence. Free vendor
+limits are documented in `spec.md`; review current provider terms before enabling
+live use. No paid Agent/Browser/Monitor endpoint, Wallet, proxy, challenge solving
+or login is part of verification.
+
+Review [the frozen audit and remaining release gates](docs/R1_REVIEW.md) before
+merging or manually deploying. The historical plaintext credential must be
+manually revoked/rotated by its owner; no history rewrite or secret rotation was
+performed.

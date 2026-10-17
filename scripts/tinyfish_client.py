@@ -57,6 +57,9 @@ class TinyFishClient:
             payload = response.json()
             if not isinstance(payload, dict):
                 raise ValueError('object required')
+            for field in ('results','errors'):
+                if field in payload and not isinstance(payload[field],list):
+                    raise ValueError('array required')
             self.diagnostic = 'ok'
             return payload
         except (requests.exceptions.RequestException, ValueError, TypeError):
@@ -74,7 +77,7 @@ class TinyFishClient:
             return {}
         self.fetch_urls += len(targets)  # Failed URLs consume quota too.
         payload = self._call('post', 'https://api.fetch.tinyfish.ai', json={'urls': targets, 'format':'html', 'links':True})
-        errors = {x.get('url') for x in payload.get('errors', []) if isinstance(x, dict)}
+        errors = {x.get('url') for x in (payload.get('errors') or []) if isinstance(x, dict)}
         out = {}
         for item in payload.get('results', []) or []:
             if not isinstance(item, dict):
@@ -84,6 +87,8 @@ class TinyFishClient:
             if requested not in targets or requested in errors or not self.validator(final):
                 continue
             if item.get('format') != 'html' or not isinstance(item.get('text'), str):
+                continue
+            if len(item['text'].encode()) > 1_500_000:
                 continue
             out[requested] = dict(url=requested, final_url=final, html=item['text'])
         return out

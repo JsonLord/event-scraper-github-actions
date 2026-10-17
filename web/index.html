@@ -352,6 +352,12 @@
     return day && (day < clock.date || (day === clock.date && ev.time && ev.time < clock.time));
   }
 
+  function freshEvidence(ev, field, hours) {
+    var stamp = (ev.field_observed_at || {})[field] || ev.observed_at;
+    var age = Date.now() - Date.parse(stamp || "");
+    return Number.isFinite(age) && age >= 0 && age < hours * 3600000;
+  }
+
   function safeLink(url) {
     try { var parsed = new URL(url); return /^https?:$/.test(parsed.protocol) && !parsed.username && !parsed.password; }
     catch (_) { return false; }
@@ -359,7 +365,7 @@
 
   function passesFilters(ev) {
     if (!document.getElementById("showPast").checked && eventIsPast(ev, new Date())) return false;
-    if (state.freeOnly && ev.free_admission_confirmed !== true) return false;
+    if (state.freeOnly && (ev.free_admission_confirmed !== true || !freshEvidence(ev, "price", 48))) return false;
     return matchesSearch(ev, state.search);
   }
 
@@ -410,7 +416,7 @@
     // the listing it came from. Linking those to the listing looked like a
     // working link and led nowhere useful, so they render as plain text
     // with the listing offered separately.
-    if (ev.detail_link_status === "verified" && safeLink(ev.url)) {
+    if (ev.detail_link_status === "verified" && freshEvidence(ev, "link", 168) && safeLink(ev.url)) {
       var titleLink = document.createElement("a");
       titleLink.className = "site-link";
       titleLink.href = ev.url || ev.source_url;
@@ -432,11 +438,13 @@
       }
     }
     var status = document.createElement("small");
-    var ticket = ev.ticket_status === "sold_out" ? "Reported sold out" : ev.ticket_status === "available" ? "Reported available" : "Availability unknown";
-    status.textContent = (ev.event_status === "cancelled" ? "Reported cancelled · " : ev.event_status === "postponed" ? "Reported postponed · " : "") + ticket;
+    var ticketState = freshEvidence(ev, "status", ev.ticket_status === "available" ? 12 : 24) ? ev.ticket_status : "unknown";
+    var ticket = ticketState === "sold_out" ? "Reported sold out" : ticketState === "available" ? "Reported available" : "Availability unknown";
+    var eventState = freshEvidence(ev, "event_status", 24) ? ev.event_status : "unknown";
+    status.textContent = (eventState === "cancelled" ? "Reported cancelled · " : eventState === "postponed" ? "Reported postponed · " : "") + ticket;
     tdName.appendChild(document.createElement("br")); tdName.appendChild(status);
     var checked = document.createElement("small");
-    checked.textContent = "Last verified: " + (ev.last_verified_at || "never") + " · Last observed: " + (ev.observed_at || "unknown");
+    checked.textContent = "Last verified: " + (ev.last_verified_at || "never") + " · Last observed: " + (ev.observed_at || "unknown") + " · Last checked: " + (ev.verification_checked_at || "never");
     tdName.appendChild(document.createElement("br")); tdName.appendChild(checked);
     tr.appendChild(tdName);
 
@@ -469,10 +477,11 @@
     tr.appendChild(tdCat);
 
     var tdPrice = document.createElement("td");
-    tdPrice.textContent = ev.free_admission_confirmed ? "Free" : (ev.price_label === "Free" ? "Check site" : ev.price_label || "Check site");
-    if (ev.student_discount_status === "explicit") tdPrice.textContent += " · Student offer (conditions apply)";
-    else if ((ev.offers || []).some(function (o) { return o.kind === "reduced"; })) tdPrice.textContent += " · Reduced offer (eligibility applies)";
+    tdPrice.textContent = ev.free_admission_confirmed && freshEvidence(ev, "price", 48) ? "Free" : (ev.price_label === "Free" ? "Check site" : ev.price_label || "Check site");
+    if (ev.student_discount_status === "explicit" && freshEvidence(ev, "discount", 168)) tdPrice.textContent += " · Student offer (conditions apply)";
+    else if (freshEvidence(ev, "discount", 168) && (ev.offers || []).some(function (o) { return o.kind === "reduced"; })) tdPrice.textContent += " · Reduced offer (eligibility applies)";
     if (ev.price == null) tdPrice.className = "muted";
+    tdPrice.title = "Price observed: " + ((ev.field_observed_at || {}).price || ev.observed_at || "unknown") + "\n" + (ev.offers || []).map(function (o) { return o.kind + ": €" + o.amount_eur + " " + (o.eligibility || "") + " (" + (o.observed_at || "unknown time") + ")"; }).join("\n");
     tr.appendChild(tdPrice);
 
     var tdSource = document.createElement("td");
@@ -601,7 +610,7 @@
       if (stamp.allDay) {
         lines.push("DTSTART;VALUE=DATE:" + stamp.start);
       } else {
-        lines.push("DTSTART:" + stamp.start);
+        lines.push("DTSTART;TZID=Europe/Berlin:" + stamp.start);
       }
       lines.push("SUMMARY:" + icsEscape(ev.title));
       lines.push("LOCATION:" + icsEscape(ev.venue || ""));

@@ -464,6 +464,8 @@ def category_score(primary: List[str], secondary: List[str],
 
 
 def score_event(event: Dict[str, Any], today: Optional[date] = None) -> Dict[str, Any]:
+    from scripts.ticket_evidence import enrich_evidence
+    event = enrich_evidence(event)
     price = event.get("price")
     primary, secondary, near = split_categories(event)
     content_categories = primary + secondary

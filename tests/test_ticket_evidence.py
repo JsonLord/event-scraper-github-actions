@@ -37,3 +37,11 @@ def test_occurrences_do_not_collapse():
 def test_candidate_is_not_verified():
     e = validate_event(dict(title='Grüße!',date='2026-10-17',url='https://a.de/show'), 'https://a.de/',date(2026,10,17),date(2026,10,18))
     assert e['has_detail_link'] and e['detail_link_status'] == 'candidate'
+
+def test_partial_price_in_legacy_title_does_not_destroy_range():
+    e=enrich_evidence(dict(title='46 Quadratmeter THEATER THIKWA 18,40 to',description='Today | 18:00 46 Quadratmeter THEATER THIKWA 18,40 to 28,70 €',price=18.4))
+    assert e['price_min']==18.4 and e['price_max']==28.7
+
+def test_show_named_free_is_not_admission_proof():
+    e=enrich_evidence(dict(title='Free',description='Today | Free keine Preisangabe',price=0))
+    assert not e['free_admission_confirmed'] and e['price'] is None
