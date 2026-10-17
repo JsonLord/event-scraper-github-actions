@@ -186,3 +186,78 @@ Fetch URLs, no deployment step, and uses only the existing repository secret.
 The cloud process has no key; listing Actions secrets is denied to this
 integration, so availability is established only by the qualification run itself.
 Live provider results and final GO/NO-GO decisions will be recorded after that run.
+
+## Completed qualification and release decision (reviewed 2026-10-18)
+
+The manual-only run [39065395186](https://github.com/JsonLord/event-scraper-github-actions/actions/runs/39065395186)
+used the existing `TINYFISH_API_KEY` Actions secret on `ubuntu-latest`, with
+read-only repository permissions. The cloud process never received the value.
+No production workflow was dispatched, no schedule was activated and no Pages
+artifact/deployment was created. The run made **exactly two Fetch URL requests
+and two Search calls**. No additional provider calls were made while recovering
+or testing the output.
+
+| Operation | HTTP | Response validation | Duration | Content result at qualification time |
+|---|---:|---|---:|---|
+| Search: Berlin Bühnen title + venue + date | 200 | `results[]`, 10 candidates | 1.393 s | Exact target absent; candidates remain unverified |
+| Fetch: Berlin Bühnen selected occurrence | 200 | HTML result + `errors[]` envelope | 2.043 s | Initially unmatched; multi-performance page correctly stayed UNKNOWN |
+| Search: ufaFabrik title + venue + date | 200 | `results[]`, 1 candidate | 1.855 s | Exact target found, still only a candidate |
+| Fetch: ufaFabrik selected occurrence | 200 | HTML result + `errors[]` envelope | 1.522 s | Title/date/time + official URL matched; price/discount evidence survived |
+
+Both source robots policies permitted the requested event URLs. All provider
+calls reported `ok`; no HTTP authentication, quota or rate error was observed.
+402 allowance exhaustion and 401/403/429 shutdown are covered by deterministic
+mock tests, not induced against the live account. The requests used `ttl: 0`,
+`format: html`, `links: true`, and `per_url_timeout_ms: 45000`; the client Fetch
+connect/read timeout was 8/150 seconds. No paid Agent/Browser endpoint, wallet
+operation, checkout or login flow was invoked. Account-wide allowance/wallet
+state was not queried and zero billing cannot be independently certified.
+
+Sanitized captures and the original qualification report are committed under
+`tests/fixtures/tinyfish_live/`, with provenance and transformation details in
+that directory's README. The Fetch envelopes retain `url`, `final_url`, `format`
+and semantic `text`; no original `datetime` attributes survive. Scripts were
+removed during sanitization, so the captures do not independently prove that
+TinyFish removed all JSON-LD. The parser does not require it.
+
+The Berlin Bühnen output contained the selected 18 October 11:00 occurrence,
+a cancelled **25 October** occurrence, and unrelated recommendations. The parser
+now scopes its selected hero and individual performance rows, with venue and
+price from the same detail's labelled accordions. The current offline replay
+matches the selected title/date/time/venue and €12–€14 range, without importing
+the other date's cancellation or claiming tickets are available. Mutating the
+selected row to cancelled is detected; choosing another performance at this URL
+is rejected. ufaFabrik replay now reads the venue from its captured article
+header and retains regular €26 / reduced €22 / student €12 with advance-sale
+conditions. Its “Karten kaufen” link remains availability UNKNOWN. Both real
+captured detail pages now match in offline replay (2/2); **no second live Fetch
+qualification of these parser changes was performed**.
+
+The original report deliberately preserves the initial live result: 1 matched,
+1 unmatched. Later parser fixes were validated offline against those exact
+sanitized responses. Successful HTTP status was never treated as verified event
+content. The source listing repairs also retain all 24 Berlin Bühnen and 18
+ufaFabrik rows observed during this review, each with an extracted venue and
+candidate event URL. These small current samples do not repair the frozen
+October 11 records or establish general coverage targets.
+
+Artifact retrieval from this cloud machine's signed-storage route failed.
+Read-only evidence recovery jobs [39065574438](https://github.com/JsonLord/event-scraper-github-actions/actions/runs/39065574438)
+and [39074656872](https://github.com/JsonLord/event-scraper-github-actions/actions/runs/39074656872)
+read the same saved artifact and exposed sanitized evidence through GitHub check
+annotations. The larger response was recovered in nine complete Base64 chunks
+before JSON parsing; a truncated annotation was never accepted as a fixture.
+Those jobs did not bind or invoke a provider transport, and did not deploy.
+
+| Area | GO / NO-GO | Exact scope and remaining gate |
+|---|---|---|
+| Offline data correctness | **GO** | 212 Python tests, frontend checks, workflow actionlint, frozen audit/schema gate and Chromium smoke pass locally; includes both real semantic captures and cross-performance cancellation regressions. |
+| Live TinyFish compatibility | **GO, limited qualification** | Existing key accepted; both documented endpoints returned valid data in all four requests. No claim about long-run quotas, every error response or billing state. |
+| Live source extraction | **NO-GO for broad production coverage** | Real listing samples and 2/2 captured-detail replays pass; the initial live parser matched 1/2. Broader layout/occurrence coverage and live requalification of the final parser remain untested. |
+| Daily verification | **NO-GO for production activation** | Budgets, deadlines, matching, expiry and fail-closed behavior are tested offline. The daily end-to-end runtime/persistence path was not dispatched because it also deploys; it still needs an approved non-publishing integration run. |
+| GitHub Pages production deployment | **NO-GO / approval withheld** | Offline build, responsive rendering and ICS pass. No production deployment or merge was requested or performed. |
+
+The frozen input datasets and production verification overlay were left
+unchanged. The audit baseline still normalizes 475 → 464 records, quarantining
+nine pseudo-titles and merging two duplicates. Changes are on PR #33's existing
+branch only. The historical credential revoke/rotate finding remains open.

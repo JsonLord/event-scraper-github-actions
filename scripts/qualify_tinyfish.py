@@ -59,6 +59,8 @@ def qualify(targets, output):
         item['robots_allowed']=allowed
         result=client.fetch([event['url']]).get(event['url']) if allowed else None
         if result:
+            original=BeautifulSoup(result['html'],'lxml')
+            item['original_structure']={'script_count':len(original.select('script')), 'datetime_count':len(original.select('[datetime]')), 'article_count':len(original.select('article'))}
             html=sanitized_html(result['html'])
             final=safe_url(result['final_url'])
             # Re-evaluate exactly the representation committed as a fixture.
