@@ -84,3 +84,20 @@ def test_raus_semantic_detail_discovery_requires_fetched_title_and_occurrence():
     assert es[0]['venue']=='Berlin Venue'
     # A bleached listing with only dates/venues cannot fabricate an event title.
     assert scrape_document('<p>18.10.2026 19:00 Berlin Venue €12</p>','https://rausgegangen.de/en/berlin/eventsbydate/','offline test')==[]
+
+def test_search_discovery_rejects_lookalike_hosts_and_snippet_facts():
+    from scripts.qualify_r12 import discover
+    good='https://rausgegangen.de/events/a-real-event/'
+    bad='https://rausgegangen.de.unrelated.example/events/a-real-event/'
+    html='<main><h1>A real Berlin event</h1><p>18.10.2026 19:00</p><h2>Location</h2><p>Berlin Venue</p><p>Eintritt €12</p></main>'
+    class HTTP:
+        permitted=True;reason='ok';bytes=0;policy=DEFAULT_POLICY
+        def __init__(self): self.urls=[]
+        def fetch(self,url): self.urls.append(url);return url,html
+    class Provider:
+        def search(self,query): return [bad,good]
+        def fetch(self,urls): raise AssertionError('Direct content should suffice')
+    http=HTTP()
+    sample,sources=discover(datetime(2026,10,17,20,tzinfo=timezone.utc),http,Provider(),'raus-search')
+    assert http.urls==[good] and len(sample)==1
+    assert sample[0]['title']=='A real Berlin event' and sample[0]['price']==12

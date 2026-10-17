@@ -917,7 +917,7 @@ def scrape_document(html: str, url: str, label: str) -> List[Dict[str, Any]]:
         return _merge(extract_jsonld_events(html, url), adapted)
     # Cleaned event detail HTML can retain an h1 and literal occurrence evidence
     # even after listing image labels, classes and JSON-LD are removed.
-    if 'rausgegangen.de' in (urlparse(url).hostname or '') and '/events/' in urlparse(url).path and 'eventsbydate' not in urlparse(url).path:
+    if (urlparse(url).hostname or '').removeprefix('www.') == 'rausgegangen.de' and '/events/' in urlparse(url).path and 'eventsbydate' not in urlparse(url).path:
         from scripts.event_matching import semantic_candidates
         soup=BeautifulSoup(html,'lxml')
         headings=soup.select('h1')

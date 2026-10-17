@@ -128,7 +128,7 @@ def discover(now,http,provider,phase='full'):
             for query in [f'site:rausgegangen.de/events/ Berlin "{today.strftime("%d.%m.%Y")}"',
                           f'site:rausgegangen.de/en/events/ Berlin "{today.strftime("%d.%m.%Y")}"']:
                 candidates.extend(provider.search(query))
-            candidates=list(dict.fromkeys(u for u in candidates if '/events/' in urlsplit(u).path and len(urlsplit(u).path.strip('/').split('/'))>=2))
+            candidates=list(dict.fromkeys(u for u in candidates if (urlsplit(u).hostname or '').removeprefix('www.')=='rausgegangen.de' and '/events/' in urlsplit(u).path and len(urlsplit(u).path.strip('/').split('/'))>=2))
             if candidates:
                 candidate=candidates[0]
                 document=http.fetch(candidate);method='direct_http'
