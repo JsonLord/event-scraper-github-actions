@@ -11,6 +11,7 @@ from datetime import datetime, timedelta, timezone
 import json
 from pathlib import Path
 import sys
+import time
 from urllib.parse import urljoin, urlsplit
 from urllib.robotparser import RobotFileParser
 from zoneinfo import ZoneInfo
@@ -43,7 +44,7 @@ def policy_from(path):
 
 
 class BoundedHTTP:
-    def __init__(self, policy=None, session=None, validator=public_url):
+    def __init__(self, policy=None, session=None, validator=public_url, deadline=None, clock=time.monotonic):
         self.policy = policy or DEFAULT_POLICY
         self.session = session or requests.Session()
         self.validator = validator
@@ -53,10 +54,13 @@ class BoundedHTTP:
         self.robots = {}
         self.reason = 'unknown'
         self.permitted = False
+        self.deadline,self.clock=deadline,clock
 
     def _get(self, url, robots=False):
         retries = 0
         while self.validator(url):
+            if self.deadline is not None and self.clock()+20>self.deadline:
+                self.reason='run_deadline'; return None
             host = urlsplit(url).netloc
             if host in self.blocked or self.requests >= self.policy['max_http_requests_per_run'] or self.hosts[host] >= self.policy['max_requests_per_host'] or self.bytes >= self.policy['max_total_response_bytes']:
                 self.reason = 'http_budget_or_host_blocked'
@@ -88,6 +92,8 @@ class BoundedHTTP:
                         self.reason = 'unsupported_mime'; return None
                     chunks, size = [], 0
                     while True:
+                        if self.deadline is not None and self.clock()+12>self.deadline:
+                            self.reason='run_deadline'; return None
                         remaining = min(self.policy['max_response_bytes']-size, self.policy['max_total_response_bytes']-self.bytes)
                         if remaining <= 0:
                             self.reason = 'byte_budget'; return None
@@ -130,36 +136,23 @@ class BoundedHTTP:
 
 
 def matches(event, candidate):
-    if folded(event.get('title','')) != folded(candidate.get('title','')):
-        return False
-    if event.get('date') != candidate.get('date'):
-        return False
-    if (event.get('time') or '') != (candidate.get('time') or ''):
-        return False
-    # Never verify a venue mismatch or an unbound generic page.
-    return bool(event.get('venue') and candidate.get('venue') and folded(event['venue']) == folded(candidate['venue']))
+    from scripts.event_matching import match_basis
+    return bool(match_basis(event,candidate,candidate.get('url','')))
 
 
 def observation(event, html, final_url, now):
     from scripts.generic_event_scraper import extract_jsonld_events, is_bot_challenge
     if is_bot_challenge(html) or not public_url(final_url,resolve=False): return None
-    path = urlsplit(final_url).path.rstrip('/')
-    if not path or path.lower() in ('/programm','/spielplan','/events','/de/spielplan','/en/events'): return None
+    from scripts.event_matching import event_url, match_basis, semantic_candidates
+    if not event_url(final_url) or event_url(final_url)==event_url(event.get('source_url','')): return None
     candidates = extract_jsonld_events(html,final_url)
-    # Single strongly bound article is supported when scripts/JSON-LD are absent.
-    soup = BeautifulSoup(html,'lxml')
-    for tag in soup.select('nav,footer,header,script,style'): tag.decompose()
-    articles = soup.select('article')
-    for card in articles:
-        heading = card.select_one('h1,h2,h3')
-        marker = card.select_one('time[datetime]')
-        venue = card.select_one('[itemprop="location"],.venue,.location')
-        markers = card.select('time[datetime]')
-        if not heading or not marker or not venue or len(markers)!=1: continue
-        candidates.append(dict(title=heading.get_text(' ',strip=True),date=normalize_date(marker['datetime']),time=parse_time(marker['datetime']),venue=venue.get_text(' ',strip=True),description=card.get_text(' ',strip=True),url=final_url))
-    matching = [c for c in candidates if matches(event,c)]
+    candidates += semantic_candidates(html,final_url,event.get('title',''))
+    matching = [c for c in candidates if match_basis(event,c,final_url)]
     if not matching: return None
     enriched = [enrich_evidence(c, now) for c in matching]
+    for candidate, item in zip(matching,enriched):
+        if candidate.get('_explicit_available') and item['ticket_status']=='unknown' and item['event_status'] not in ('cancelled','postponed'):
+            item['ticket_status']='available' 
     # Conflicting bound records cannot assert inventory or choose cheap prices.
     prices = {(e['price_min'],e['price_max']) for e in enriched if e['price'] is not None}
     states = {e['ticket_status'] for e in enriched} - {'unknown'}
@@ -177,7 +170,7 @@ def observation(event, html, final_url, now):
         fields['price']={k:chosen[k] for k in ('price','price_min','price_max','price_status','price_label','free_admission_confirmed')}
         fields['discount']={k:chosen[k] for k in ('offers','student_discount_status')}
     fields = {k:v for k,v in fields.items() if k not in ('status','event_status') or 'unknown' not in v.values() or (k=='status' and len(states)>1)}
-    return {k:dict(values=v,observed_at=now,evidence_url=clean_url(final_url),source='matched_event_page') for k,v in fields.items()}
+    return {k:dict(values=v,observed_at=now,evidence_url=clean_url(final_url),source='matched_event_page',match_basis=match_basis(event,matching[0],final_url)) for k,v in fields.items()}
 
 
 def select_targets(events, now, overlay, policy):
@@ -215,9 +208,11 @@ def run(events, overlay, now, policy=None, http=None, tinyfish=None, dry_run=Fal
     targets=select_targets(events,now,records,policy)
     usage=dict(targets=len(targets),http_attempts=0,http_bytes=0,tinyfish_fetch_urls=0,tinyfish_search_queries=0)
     if dry_run: return overlay,usage
-    http=http or BoundedHTTP(policy)
-    tinyfish=tinyfish or TinyFishClient(max_fetch=policy['max_tinyfish_fetch_urls_per_run'],max_search=policy['max_tinyfish_search_queries_per_run'])
+    deadline=time.monotonic()+policy.get('max_run_seconds',900)
+    http=http or BoundedHTTP(policy,deadline=deadline)
+    tinyfish=tinyfish or TinyFishClient(max_fetch=policy['max_tinyfish_fetch_urls_per_run'],max_search=policy['max_tinyfish_search_queries_per_run'],deadline=deadline)
     for event in targets:
+        if time.monotonic()>=deadline: break
         eid=occurrence_id(event); previous=records.get(eid,{})
         if previous.get('checked_at') and utc(previous['checked_at'])>now:
             continue

@@ -155,3 +155,34 @@ def test_policy_cannot_raise_hard_caps(tmp_path):
     path=tmp_path/'policy.json';path.write_text(json.dumps({'max_http_requests_per_run':1000,'max_tinyfish_fetch_urls_per_run':999,'ttl_hours':{'available':999}}))
     policy=policy_from(path)
     assert policy['max_http_requests_per_run']==40 and policy['max_tinyfish_fetch_urls_per_run']==30 and policy['ttl_hours']['available']==12
+
+def test_missing_venue_requires_official_identity_not_just_title_date():
+    target=dict(EVENT,venue='')
+    obs=observation(target,page(),EVENT['url'],NOW)
+    assert obs['link']['match_basis']=='official_canonical_occurrence'
+    assert observation(target,page(),'https://a.example/events/other',NOW) is None
+    assert observation(target,page(),'https://third-party.example/events/show',NOW) is None
+    assert observation(EVENT,page(location={'name':'Wrong venue'}),EVENT['url'],NOW) is None
+
+def test_official_id_hierarchy_still_requires_performance_and_official_host():
+    from scripts.event_matching import match_basis
+    target=dict(EVENT,venue='',official_event_id='performance-42')
+    candidate=dict(EVENT,venue='',url='https://a.example/events/new',official_event_id='performance-42')
+    assert match_basis(target,candidate,candidate['url'])=='official_id_occurrence'
+    assert match_basis(target,dict(candidate,date='2026-10-19'),candidate['url']) is None
+    assert match_basis(target,candidate,'https://unrelated.example/events/new') is None
+
+def test_attribute_free_semantic_html_and_neighbour_rejection():
+    html='<main><h1>Grüße – Straße!</h1><p>18.10.2026 19:00</p><p>Ort: Theater Berlin</p><p>Eintritt: €12,00</p><p>Tickets verfügbar</p></main>'
+    obs=observation(EVENT,html,EVENT['url'],NOW)
+    assert obs['link']['match_basis']=='title_occurrence_venue'
+    assert obs['price']['values']['price']==12
+    assert obs['status']['values']['ticket_status']=='available'
+    for changed in [html.replace('Ort: Theater Berlin','Ort: Wrong venue'),html.replace('18.10.2026','19.10.2026'),html.replace('</main>','<h2>Nearby event</h2><p>Ausverkauft €3</p></main>')]:
+        assert observation(EVENT,changed,EVENT['url'],NOW) is None
+    negative=observation(EVENT,html.replace('Tickets verfügbar','Keine Tickets verfügbar'),EVENT['url'],NOW)
+    assert 'status' not in negative
+
+def test_http_deadline_stops_without_spending_request_budget():
+    h,s=http([Response()]);h.deadline=10;h.clock=lambda:0
+    assert not h.fetch(EVENT['url']) and h.requests==0 and h.reason=='run_deadline'

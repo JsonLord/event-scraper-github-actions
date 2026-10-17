@@ -15,6 +15,10 @@ name: Fetch Strategy Probe
 on:
   workflow_dispatch:
     inputs:
+      qualify:
+        description: 'Read-only TinyFish qualification (max 2 Fetch URLs + 2 Search calls, no deployment)'
+        type: boolean
+        default: false
       sites:
         description: 'Sites to probe: inline JSON {"name":"url"}, or blank for config/probe_sites.json'
         required: false
@@ -28,8 +32,12 @@ on:
         required: false
         default: '7'
 
+permissions:
+  contents: read
+
 jobs:
   probe:
+    if: ${{ !inputs.qualify }}
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
@@ -44,7 +52,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install requests beautifulsoup4 lxml
+          pip install requests beautifulsoup4 lxml python-dotenv
           pip install cloakbrowser
 
       - name: Install CloakBrowser binary
@@ -56,15 +64,18 @@ jobs:
       - name: Probe
         env:
           TINYFISH_API_KEY: ${{ secrets.TINYFISH_API_KEY }}
+          PROBE_SITES: ${{ inputs.sites }}
+          PROBE_STRATEGIES: ${{ inputs.strategies }}
+          PROBE_DATE_DAYS: ${{ inputs.date_days }}
         run: |
           mkdir -p probe
-          SITES='${{ github.event.inputs.sites }}'
+          SITES="$PROBE_SITES"
           if [ -z "$SITES" ]; then SITES=config/probe_sites.json; fi
 
           python scripts/fetch_strategy_probe.py \
             --sites "$SITES" \
-            --strategies "${{ github.event.inputs.strategies }}" \
-            --date-days "${{ github.event.inputs.date_days }}" \
+            --strategies "$PROBE_STRATEGIES" \
+            --date-days "$PROBE_DATE_DAYS" \
             --output probe/results.json \
             | tee probe/console.txt || true
 
@@ -89,3 +100,26 @@ jobs:
           path: probe/
           retention-days: 30
           if-no-files-found: warn
+
+  qualify:
+    if: ${{ inputs.qualify }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install requests beautifulsoup4 lxml python-dotenv
+      - name: Qualify existing optional free endpoint credential
+        env:
+          TINYFISH_API_KEY: ${{ secrets.TINYFISH_API_KEY }}
+        run: python scripts/qualify_tinyfish.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: tinyfish-readonly-qualification
+          path: qualification/
+          retention-days: 7

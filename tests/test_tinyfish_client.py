@@ -24,7 +24,7 @@ def test_fetch_contract_partial_and_redirect(monkeypatch):
     method,url,kw=t.calls[0]
     assert (method,url)==('post','https://api.fetch.tinyfish.ai')
     assert kw['headers']=={'X-API-Key':'fixture-secret'} and not kw['allow_redirects']
-    assert kw['json']=={'urls':[a,b],'format':'html','links':True}
+    assert kw['json']=={'urls':[a,b],'format':'html','links':True,'ttl':0,'per_url_timeout_ms':45000}
     assert c.fetch_urls==2
 
 def test_search_contract_candidates_only(monkeypatch):
@@ -35,7 +35,7 @@ def test_search_contract_candidates_only(monkeypatch):
     assert kw['params']=={'query':'Grüße & Straße Berlin','location':'DE','language':'de'}
     assert c.search_queries==1
 
-@pytest.mark.parametrize('status',[401,403,429])
+@pytest.mark.parametrize('status',[401,402,403,429])
 def test_auth_and_rate_failure_closes_client(monkeypatch,status,capsys):
     c,t=client(monkeypatch,Response({},status))
     assert not c.fetch(['https://a.example/x'])
@@ -58,11 +58,11 @@ def test_private_or_secret_urls_rejected(url): assert not public_url(url,resolve
 def test_private_final_url_and_markdown_rejected(monkeypatch):
     a='https://a.example/x'
     for item in [dict(url=a,final_url='http://127.0.0.1/',format='html',text='x'),dict(url=a,format='markdown',text='x')]:
-        c,t=client(monkeypatch,Response({'results':[item]})); assert not c.fetch([a])
+        c,t=client(monkeypatch,Response({'results':[item],'errors':[]})); assert not c.fetch([a])
 
 def test_throttle_applies_between_search_and_fetch(monkeypatch):
     monkeypatch.setenv('TINYFISH_API_KEY','fixture-secret')
-    sleeps=[];transport=Transport(Response({'results':[]}))
+    sleeps=[];transport=Transport(Response({'results':[],'errors':[]}))
     c=TinyFishClient(transport,sleep=sleeps.append,clock=lambda:1,validator=lambda _:True)
     c.search('show Berlin');c.fetch(['https://a.example/show'])
     assert sleeps==[1]
@@ -72,3 +72,25 @@ def test_malformed_payload_types_fail_closed(monkeypatch,payload):
     c,t=client(monkeypatch,Response(payload))
     assert c.fetch(['https://a.example/show'])=={}
     assert c.diagnostic=='tinyfish_failed'
+
+def test_live_fetch_timeout_and_402_diagnostics_are_safe(monkeypatch):
+    c,t=client(monkeypatch,Response({'error':{'code':'INSUFFICIENT_CREDITS','message':'secret must not be logged'}},402))
+    assert not c.fetch(['https://a.example/show?tracking=value'])
+    assert t.calls[0][2]['timeout']==(8,150)
+    assert c.disabled and c.diagnostic=='tinyfish_allowance_exhausted'
+    assert not c.search('x')
+    report=str(c.diagnostics)
+    assert 'fixture-secret' not in report and 'tracking' not in report
+    assert c.diagnostics[0]['http_status']==402
+
+def test_run_deadline_reserves_full_fetch_timeout(monkeypatch):
+    c,t=client(monkeypatch,Response({'results':[],'errors':[]}),deadline=100,clock=lambda:0)
+    assert not c.fetch(['https://a.example/show']) and c.fetch_urls==0 and not t.calls
+
+def test_documented_per_url_errors_have_whitelisted_diagnostics(monkeypatch):
+    payload={'results':[], 'errors':[{'url':'https://a.example/show?x=private','error':'target_http_error','status':403},{'url':'https://b.example/show','error':'bot_blocked'},{'url':'https://b.example/show','error':'text-with-private-token'}]}
+    c,t=client(monkeypatch,Response(payload))
+    assert not c.fetch(['https://a.example/show'])
+    assert c.diagnostics[0]['schema_valid']
+    assert c.diagnostics[0]['error_codes']==['bot_blocked','target_http_error','unrecognized_error']
+    assert 'private' not in str(c.diagnostics)

@@ -907,7 +907,7 @@ def validate_event(
         return None
 
     from scripts.ticket_evidence import enrich_evidence
-    normalized.update({k: event[k] for k in ("offers", "event_status", "observed_at", "evidence") if k in event})
+    normalized.update({k: event[k] for k in ("offers", "event_status", "observed_at", "evidence", "canonical_url", "official_event_id") if k in event})
     normalized.setdefault("observed_at", datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"))
     return enrich_evidence(normalized)
 

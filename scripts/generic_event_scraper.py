@@ -286,6 +286,8 @@ def extract_jsonld_events(html: str, source_url: str) -> List[Dict[str, Any]]:
                 "time": parse_time(start_date),
                 "price": price,
                 "offers": offers,
+                "canonical_url": node.get("url") or "",
+                "official_event_id": node.get("identifier") or node.get("@id") or "",
                 "event_status": str(node.get("eventStatus", "unknown")).rsplit("/", 1)[-1],
                 "category": clean_text(node.get("eventAttendanceMode") or ""),
                 "description": clean_text(node.get("description"), max_length=400),

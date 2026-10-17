@@ -9,5 +9,13 @@
   "max_tinyfish_search_queries_per_run": 12,
   "connect_timeout_seconds": 8,
   "read_timeout_seconds": 12,
-  "ttl_hours": {"available": 12, "sold_out": 24, "price": 48, "discount": 168, "event_status": 24, "link": 168}
+  "ttl_hours": {
+    "available": 12,
+    "sold_out": 24,
+    "price": 48,
+    "discount": 168,
+    "event_status": 24,
+    "link": 168
+  },
+  "max_run_seconds": 900
 }

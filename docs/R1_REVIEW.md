@@ -140,3 +140,49 @@ instance; Git reads and public GitHub web pages work through existing access.
 plaintext credential-like value. The owner must manually **revoke/rotate** it.
 No value was printed, used, copied into fixtures or committed. The current spec
 is already sanitized. No history rewrite or production secret change was made.
+
+## PR #33 hardening follow-up (2026-10-17; supersedes access notes above)
+
+Official Fetch and Search references were fetched successfully over verified
+HTTPS on this review. Fetch documents `ttl: 0` for live content,
+`per_url_timeout_ms` (1–110000), a 110-second backend / 120-second CDN ceiling,
+and at least a 150-second client timeout. Both endpoints document 402 allowance
+exhaustion. Current Search reference lists 12,000 free requests/day and 30/min;
+Fetch lists 1,000 URLs/day and 150/min. No wallet action or paid endpoint was used.
+
+The client now sends `ttl: 0` and a 45-second per-URL budget, waits up to 150 seconds
+for a Fetch response (8-second connect), and disables both provider operations on
+401/402/403/429. Whitelisted diagnostics contain operation, HTTP status, schema
+validity, result count, per-URL error codes and duration, without credentials,
+queries or URLs. A shared 900-second verifier deadline reserves enough time for
+each next request; when less than 159 seconds remains, no new Fetch is attempted.
+The 20-minute job deadline leaves the remaining five minutes for setup/build/
+commit operations. Maximum quotas are ceilings, not promises to process every
+target within that deadline. Normal retrieval and provider budgets stay separate.
+
+Direct public source access also succeeded on this review. Berlin Bühnen uses
+`hylo-router-link.event-list-item` wrappers, not ordinary anchors; the real title
+is the `h3` in `slot=end`, and the wrapper has the occurrence URL. ufaFabrik uses
+`li.calendar-view-day__row`, with the shared date on its enclosing calendar cell
+and prices/title/venue confined to each row. The adapters now recognize those
+structures. Sanitized **real listing** fixtures (two Berlin Bühnen cards and
+seven ufaFabrik rows) replace reliance on synthetic layout evidence. Full-page
+inspection found 24 Berlin Bühnen cards and 18 ufaFabrik rows, all with candidate
+links and venues. These are current page observations, not retrospective repair
+of the frozen dataset or content-verified deep links.
+
+Semantic matching now also reads literal date/time and labelled venue text when
+classes, JSON-LD and `datetime` attributes are absent. It rejects multiple
+performances and neighboring event headings. Missing venue may be matched only
+through official canonical occurrence identity or matching official event ID,
+still requiring title and exact performance date/time. Known venue mismatches,
+generic venue/listing pages and third-party identity shortcuts remain UNKNOWN.
+Explicit scoped “Tickets verfügbar” may support reported availability; a ticket
+button, successful HTTP response or search snippet never does.
+
+A manual-only qualification mode was added to the existing Fetch Strategy Probe.
+It has read-only repository permissions, hard limits of two Search calls and two
+Fetch URLs, no deployment step, and uses only the existing repository secret.
+The cloud process has no key; listing Actions secrets is denied to this
+integration, so availability is established only by the qualification run itself.
+Live provider results and final GO/NO-GO decisions will be recorded after that run.

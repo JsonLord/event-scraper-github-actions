@@ -89,7 +89,7 @@ def enrich_evidence(event, observed_at=None):
     label = 'Check site' if price is None else 'Free' if confirmed else f'From €{price:g} · paid tiers' if maximum != price else format_price_label(price) if price else '€0 · conditions apply'
     source_status = {'EventScheduled':'scheduled','EventCancelled':'cancelled','EventPostponed':'postponed'}.get(event.get('event_status'), event.get('event_status', 'unknown'))
     state_text = text + ' ' + source_status
-    event_status = 'cancelled' if re.search(r'\b(?:abgesagt|cancelled|EventCancelled)\b', state_text, re.I) else 'postponed' if re.search(r'\b(?:verschoben|postponed|EventPostponed)\b', state_text, re.I) else source_status
+    event_status = 'cancelled' if re.search(r'\b(?:abgesagt|fällt\s+aus|cancelled|EventCancelled)\b', state_text, re.I) else 'postponed' if re.search(r'\b(?:verschoben|postponed|EventPostponed)\b', state_text, re.I) else source_status
     states = {o.get('availability') for o in offers}
     ticket = 'sold_out' if re.search(r'\b(?:ausverkauft|sold out)\b', text, re.I) or 'sold_out' in states else 'available' if 'available' in states else 'unknown'
     if event_status in ('cancelled', 'postponed'):
