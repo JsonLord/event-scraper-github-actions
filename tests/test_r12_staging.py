@@ -101,3 +101,15 @@ def test_search_discovery_rejects_lookalike_hosts_and_snippet_facts():
     sample,sources=discover(datetime(2026,10,17,20,tzinfo=timezone.utc),http,Provider(),'raus-search')
     assert http.urls==[good] and len(sample)==1
     assert sample[0]['title']=='A real Berlin event' and sample[0]['price']==12
+
+
+def test_candidate_discovery_never_counts_as_verified_source_coverage():
+    from scripts.qualify_r12 import coverage_metrics, SOURCES
+    details=[{'source_url':url,'matched':name!='rausgegangen'} for name,url in SOURCES.items()]
+    sources={name:{'sample_events':1,'discovered_upcoming_window':1,'listing_results':[{'outcome':'received','search_candidates':10}]} for name in SOURCES}
+    result=coverage_metrics(sources,details,[])
+    assert not result['verified_source_coverage_complete']
+    raus=result['sources']['rausgegangen']
+    assert raus['candidate_url_discovery_success'] and not raus['verified_source_coverage']
+    assert raus['exact_occurrence_match_rate']==0 and raus['final_publishable_events']==0
+    assert not coverage_metrics({},[],[])['verified_source_coverage_complete']

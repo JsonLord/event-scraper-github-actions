@@ -100,12 +100,12 @@ def choose_sample(events,now,per_source=3):
 def discover(now,http,provider,phase='full'):
     today=now.astimezone(ZoneInfo('Europe/Berlin')).date();end=today+timedelta(days=7)
     sample=[];sources={}
-    selected_sources=SOURCES if phase=='full' else {'rausgegangen':SOURCES['rausgegangen']}
+    selected_sources=SOURCES if phase in ('full','r13') else {'rausgegangen':SOURCES['rausgegangen']}
     for name,base in selected_sources.items():
         urls=[base]
-        if phase=='raus-search': urls=[]
-        if name=='berlin_buehnen': urls=[build_date_url(base,today),build_date_url(base,end)]
-        if name=='rausgegangen' and phase!='raus-search':
+        if phase=='raus-search' or (phase=='r13' and name=='rausgegangen'): urls=[]
+        if name=='berlin_buehnen': urls=[build_date_url(base,today)] if phase=='r13' else [build_date_url(base,today),build_date_url(base,end)]
+        if name=='rausgegangen' and phase not in ('raus-search','r13'):
             urls=[base+'?geospatial_query_type=CITY&lat=52.5&lng=13.405&city=berlin&active_city_name=Berlin&start_date='+today.isoformat()+'&end_date='+end.isoformat()]
         found=[];attempts=[];document=None
         for url in urls:
@@ -121,7 +121,7 @@ def discover(now,http,provider,phase='full'):
             cleaned,_=validate_events(raw,url,today,end,max_price=float('inf'))
             for e in cleaned: e['observed_at']=now.isoformat()
             found.extend(cleaned)
-        if phase=='raus-search':
+        if phase=='raus-search' or (phase=='r13' and name=='rausgegangen'):
             # Search only discovers candidate URLs. Event facts must come from
             # the fetched destination and the production extraction functions.
             candidates=[]
@@ -129,8 +129,7 @@ def discover(now,http,provider,phase='full'):
                           f'site:rausgegangen.de/en/events/ Berlin "{today.strftime("%d.%m.%Y")}"']:
                 candidates.extend(provider.search(query))
             candidates=list(dict.fromkeys(u for u in candidates if (urlsplit(u).hostname or '').removeprefix('www.')=='rausgegangen.de' and '/events/' in urlsplit(u).path and len(urlsplit(u).path.strip('/').split('/'))>=2))
-            if candidates:
-                candidate=candidates[0]
+            for candidate in candidates[:3 if phase=='r13' else 1]:
                 document=http.fetch(candidate);method='direct_http'
                 if not document and http.permitted:
                     result=provider.fetch([candidate]).get(candidate)
@@ -140,14 +139,25 @@ def discover(now,http,provider,phase='full'):
                 if document:
                     raw=scrape_document(document[1],document[0],'R1.2 Raus Search candidate')
                     raw=[e for e in raw if re.search(r'\bBerlin\b',str(e.get('description',''))+' '+str(e.get('venue','')),re.I)]
-                    found,_=validate_events(raw,base,today,end,max_price=float('inf'))
-                    for e in found: e['observed_at']=now.isoformat()
+                    cleaned,_=validate_events(raw,base,today,end,max_price=float('inf'))
+                    for e in cleaned:
+                        e['observed_at']=now.isoformat()
+                        # Fetch destination is the proven transport identity.
+                        e['url']=document[0]
+                    found.extend(cleaned)
+                    attempts[-1]['candidate_url']=candidate
+                    attempts[-1]['destination_url']=document[0]
+                    attempts[-1]['extracted_occurrences']=len(cleaned)
+                    if not cleaned:
+                        from bs4 import BeautifulSoup
+                        page=BeautifulSoup(document[1],'lxml')
+                        attempts[-1]['rejected_structure']=page.get_text(' | ',strip=True)[:2200]
         if document and not found:
             from bs4 import BeautifulSoup
             page=BeautifulSoup(document[1],'lxml')
             attempts[-1]['empty_extraction_structure']={'headings':[h.get_text(' ',strip=True)[:150] for h in page.select('h1,h2,h3')[:12]],'text_excerpt':page.get_text(' ',strip=True)[:1600],'event_links':sum('/events/' in (x.get('href') or '') for x in page.select('a[href]'))}
         found=dedupe_events(found)
-        chosen=choose_sample(found,now,per_source=3 if phase=='full' else 1)
+        chosen=choose_sample(found,now,per_source=(3 if name=='rausgegangen' else 1) if phase=='r13' else (3 if phase=='full' else 1))
         sources[name]={'listing_results':attempts,'discovered_upcoming_window':len(found),'sample_events':len(chosen),
                        'missing_links':sum(not e.get('has_detail_link') for e in chosen),'missing_venues':sum(not e.get('venue') for e in chosen)}
         sample.extend(chosen)
@@ -178,7 +188,7 @@ def integration(sample,now,policy,http,provider,overlay_path=None):
     for e in sample:
         eid=occurrence_id(e);entry=overlay['events'].get(eid,{})
         fields=entry.get('fields',{})
-        details.append({'event_id':eid,'title':e['title'],'date':e['date'],'time':e.get('time'),'source_url':e['source_url'],
+        details.append({'event_id':eid,'title':e['title'],'date':e['date'],'time':e.get('time'),'source_url':e['source_url'],'url':e['url'],'venue':e.get('venue',''),
                         'matched':entry.get('outcome')=='matched','outcome':entry.get('outcome','not_selected'),
                         'confirmed':{k:v['values'] for k,v in fields.items()},
                         'match_basis':fields.get('link',{}).get('match_basis')})
@@ -198,8 +208,26 @@ def integration(sample,now,policy,http,provider,overlay_path=None):
                 'ttl_expiration_passed':True,'disk_overlay_roundtrip':overlay_path is not None,'input_immutability_passed':True,'details':details,'missing_venue_replays':fallback,'multi_performance_pages':multi}
 
 
+def coverage_metrics(sources, details, published):
+    """Discovery and successful HTTP are never verified source coverage."""
+    from scripts.event_matching import host
+    result={}
+    for name,base in SOURCES.items():
+        rows=[d for d in details if host(d.get('source_url',''))==host(base)]
+        matched=sum(bool(d.get('matched')) for d in rows)
+        attempts=sources.get(name,{}).get('listing_results',[])
+        result[name]={
+            'listing_discovery_success':any(a.get('outcome')=='received' and 'candidate_url' not in a and 'search_candidates' not in a for a in attempts) and sources.get(name,{}).get('discovered_upcoming_window',0)>0,
+            'candidate_url_discovery_success':any(a.get('search_candidates',0)>0 for a in attempts) or bool(rows),
+            'selected_occurrences':len(rows),'exact_occurrence_matches':matched,
+            'exact_occurrence_match_rate':matched/len(rows) if rows else None,
+            'verified_source_coverage':matched>0,
+            'final_publishable_events':sum(host(e.get('source_url',''))==host(base) for e in published)}
+    return {'sources':result,'verified_source_coverage_complete':all(r['verified_source_coverage'] for r in result.values())}
+
+
 def main():
-    p=argparse.ArgumentParser();p.add_argument('--output',required=True);p.add_argument('--now');p.add_argument('--phase',choices=('full','raus-completion','raus-search'),default='full');a=p.parse_args()
+    p=argparse.ArgumentParser();p.add_argument('--output',required=True);p.add_argument('--now');p.add_argument('--phase',choices=('full','raus-completion','raus-search','r13'),default='full');a=p.parse_args()
     root=Path(__file__).resolve().parents[1];output=Path(a.output).resolve()
     if output==root or root in output.parents: raise ValueError('Staging outputs must be outside the checkout')
     output.mkdir(parents=True,exist_ok=True)
@@ -232,7 +260,8 @@ def main():
     matched=sum(x['matched'] for x in checks['details'])
     report={'version':'R1.2','phase':a.phase,'observed_at':now.isoformat(),'sources':sources,'total_discovered':sum(s['discovered_upcoming_window'] for s in sources.values()),
             'sample_events':len(sample),'matched_events':matched,'exact_match_rate':matched/len(sample) if sample else None,
-            'materialized_events':site['count'],'source_coverage_complete':all(s['sample_events'] for s in sources.values()),
+            'materialized_events':site['count'],'source_coverage_complete':coverage_metrics(sources,checks['details'],site['events'])['verified_source_coverage_complete'],
+            'coverage':coverage_metrics(sources,checks['details'],site['events']),
             'checks':checks,'http_attempts':http.requests,'http_bytes':http.bytes,'http_per_host':dict(http.hosts),'http_calls':http.diagnostics,
             'tinyfish_fetch_urls':provider.fetch_urls,'tinyfish_search_calls':provider.search_queries,'tinyfish_calls':provider.diagnostics,
             'network_wall_seconds':network_elapsed,'pipeline_wall_seconds':round(time.monotonic()-started,3),'budgets':policy,'production_files_unchanged':True,
