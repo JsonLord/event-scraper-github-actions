@@ -2,6 +2,7 @@
 """One materialization path for weekly, daily and manual Pages builds."""
 from __future__ import annotations
 import argparse
+from copy import deepcopy
 from datetime import datetime, timedelta, timezone
 import json
 from pathlib import Path
@@ -22,7 +23,7 @@ def fresh(observed, now, hours):
 def merge_overlay(events, overlay, now):
     now=utc(now); out=[]
     for original in events:
-        e=dict(original)
+        e=deepcopy(original)
         entry=overlay.get('events',{}).get(occurrence_id(e),{})
         e['field_observed_at']={}
         historical_link=entry.get('fields',{}).get('link',{})

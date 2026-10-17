@@ -22,6 +22,7 @@ concurrency:
 
 jobs:
   build:
+    if: ${{ github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && vars.PAGES_DEPLOYMENT_ENABLED == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -51,6 +52,7 @@ jobs:
           path: ./_site
 
   deploy:
+    if: ${{ github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && vars.PAGES_DEPLOYMENT_ENABLED == 'true' }}
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}

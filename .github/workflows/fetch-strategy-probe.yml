@@ -1,165 +1,46 @@
-name: Fetch Strategy Probe
+name: R1.2 read-only staging qualification
 
-# Manual only. This is a measurement tool, not part of the weekly pipeline:
-# it answers "which way of fetching this site actually yields events" for the
-# sources an ordinary GET cannot reach.
-#
-# It has to run here rather than on a developer machine, because the answer is
-# IP-dependent - a hosted runner and a home connection get different responses
-# from exactly these sites (Eventbrite answers this runner with HTTP 405 and a
-# residential IP with a parseable 200).
-#
-# Read the table it prints, then wire the winner into generic_event_scraper.py
-# and stop paying for the rest.
-
+# Registered manual workflow reused on the PR branch: no default-branch merge
+# or downstream workflow dispatch is needed to execute qualification.
 on:
   workflow_dispatch:
-    inputs:
-      evidence_run_id:
-        description: 'Recover sanitized qualification artifacts only; makes ZERO provider calls'
-        type: string
-        default: ''
-      qualify:
-        description: 'Read-only TinyFish qualification (max 2 Fetch URLs + 2 Search calls, no deployment)'
-        type: boolean
-        default: false
-      sites:
-        description: 'Sites to probe: inline JSON {"name":"url"}, or blank for config/probe_sites.json'
-        required: false
-        default: ''
-      strategies:
-        description: 'Comma-separated subset (direct, cloakbrowser, tinyfish_html)'
-        required: false
-        default: 'direct,cloakbrowser,tinyfish_html'
-      date_days:
-        description: 'Date window in days'
-        required: false
-        default: '7'
-
 permissions:
   contents: read
-
+concurrency:
+  group: r12-staging-qualification
+  cancel-in-progress: false
 jobs:
-  probe:
-    if: ${{ !inputs.qualify && !inputs.evidence_run_id }}
-    runs-on: ubuntu-latest
-    timeout-minutes: 45
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install requests beautifulsoup4 lxml python-dotenv
-          pip install cloakbrowser
-
-      - name: Install CloakBrowser binary
-        # Non-fatal: the probe reports a failing strategy as a result rather
-        # than crashing, and that is itself worth measuring.
-        continue-on-error: true
-        run: python -m cloakbrowser install
-
-      - name: Probe
-        env:
-          TINYFISH_API_KEY: ${{ secrets.TINYFISH_API_KEY }}
-          PROBE_SITES: ${{ inputs.sites }}
-          PROBE_STRATEGIES: ${{ inputs.strategies }}
-          PROBE_DATE_DAYS: ${{ inputs.date_days }}
-        run: |
-          mkdir -p probe
-          SITES="$PROBE_SITES"
-          if [ -z "$SITES" ]; then SITES=config/probe_sites.json; fi
-
-          python scripts/fetch_strategy_probe.py \
-            --sites "$SITES" \
-            --strategies "$PROBE_STRATEGIES" \
-            --date-days "$PROBE_DATE_DAYS" \
-            --output probe/results.json \
-            | tee probe/console.txt || true
-
-      - name: Publish the table to the run summary
-        if: always()
-        run: |
-          {
-            echo '## Fetch strategy probe'
-            echo
-            echo 'Events kept per site per strategy, measured on this runner.'
-            echo
-            echo '```'
-            sed -n '/^site /,$p' probe/console.txt 2>/dev/null || echo 'no output'
-            echo '```'
-          } >> "$GITHUB_STEP_SUMMARY"
-
-      - name: Upload results
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: fetch-strategy-probe
-          path: probe/
-          retention-days: 30
-          if-no-files-found: warn
-
   qualify:
-    if: ${{ inputs.qualify && !inputs.evidence_run_id }}
     runs-on: ubuntu-latest
-    timeout-minutes: 10
-    permissions:
-      contents: read
+    timeout-minutes: 20
+    env:
+      PYTHONDONTWRITEBYTECODE: '1'
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - run: pip install requests beautifulsoup4 lxml python-dotenv
-      - name: Qualify existing optional free endpoint credential
-        env:
-          TINYFISH_API_KEY: ${{ secrets.TINYFISH_API_KEY }}
-        run: python scripts/qualify_tinyfish.py
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: tinyfish-readonly-qualification
-          path: qualification/
-          retention-days: 7
-
-  recover-evidence:
-    if: ${{ inputs.evidence_run_id }}
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    permissions:
-      actions: read
-      contents: read
-    steps:
-      - uses: actions/download-artifact@v4
-        with:
-          name: tinyfish-readonly-qualification
-          run-id: ${{ inputs.evidence_run_id }}
-          github-token: ${{ github.token }}
-          path: qualification
-      - name: Expose only sanitized evidence as check annotations
+      - name: Install isolated staging tools
+        run: |
+          echo "PIP_CACHE_DIR=$RUNNER_TEMP/pip-cache" >> "$GITHUB_ENV"
+          echo "PLAYWRIGHT_BROWSERS_PATH=$RUNNER_TEMP/playwright" >> "$GITHUB_ENV"
+          export PIP_CACHE_DIR="$RUNNER_TEMP/pip-cache"
+          export PLAYWRIGHT_BROWSERS_PATH="$RUNNER_TEMP/playwright"
+          python -m venv "$RUNNER_TEMP/r12-venv"
+          "$RUNNER_TEMP/r12-venv/bin/pip" install -r requirements.txt
+          "$RUNNER_TEMP/r12-venv/bin/python" -m playwright install --with-deps chromium
+      - name: Run production pipeline in temporary staging storage
         env:
           TINYFISH_API_KEY: ${{ secrets.TINYFISH_API_KEY }}
         run: |
-          python - <<'PY'
-          import base64, json, os, pathlib
-          for name in ('fetch-1.json',):
-              path = pathlib.Path('qualification') / name
-              if not path.exists():
-                  continue
-              text = json.dumps(json.loads(path.read_text()), ensure_ascii=False)
-              key = os.environ.get('TINYFISH_API_KEY', '')
-              if key:
-                  text = text.replace(key, '[REDACTED]')
-              encoded = base64.b64encode(text.encode()).decode()
-              chunks = [encoded[i:i+3200] for i in range(0, len(encoded), 3200)]
-              if len(chunks) > 10:
-                  raise ValueError('Evidence exceeds check annotation limit; use original artifact')
-              for i, chunk in enumerate(chunks, 1):
-                  print(f'::notice title=TinyFish {name} chunk {i}/{len(chunks)}::{chunk}')
-          PY
+          "$RUNNER_TEMP/r12-venv/bin/python" scripts/qualify_r12.py --output "$RUNNER_TEMP/r12-output"
+      - name: Confirm checkout has no generated or modified files
+        run: test -z "$(git status --porcelain)"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: r12-sanitized-staging-diagnostics
+          path: ${{ runner.temp }}/r12-output
+          retention-days: 7

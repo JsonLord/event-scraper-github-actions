@@ -55,6 +55,7 @@ class BoundedHTTP:
         self.reason = 'unknown'
         self.permitted = False
         self.deadline,self.clock=deadline,clock
+        self.diagnostics=[]
 
     def _get(self, url, robots=False):
         retries = 0
@@ -66,11 +67,14 @@ class BoundedHTTP:
                 self.reason = 'http_budget_or_host_blocked'
                 return None
             self.requests += 1; self.hosts[host] += 1
+            started=self.clock(); before_bytes=self.bytes
+            diagnostic={'host':host,'operation':'robots' if robots else 'page','http_status':None}
             try:
                 self.session.cookies.clear()
                 response = self.session.get(url, headers={'User-Agent':AGENT, 'Accept':'text/html,text/plain'}, timeout=(self.policy['connect_timeout_seconds'], self.policy['read_timeout_seconds']), allow_redirects=False, stream=True)
                 with response:
                     status = response.status_code
+                    diagnostic['http_status']=status
                     if status in (403,429):
                         self.blocked.add(host); self.reason = 'http_'+str(status); return None
                     if status in (301,302,303,307,308):
@@ -111,6 +115,9 @@ class BoundedHTTP:
                 self.reason = 'network_failed'
                 if retries >= 1: return None
                 retries += 1
+            finally:
+                diagnostic.update(duration_seconds=round(self.clock()-started,3),response_bytes=self.bytes-before_bytes)
+                self.diagnostics.append(diagnostic)
         self.reason = 'unsafe_url'
         return None
 

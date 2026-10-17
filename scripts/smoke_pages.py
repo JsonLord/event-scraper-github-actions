@@ -11,7 +11,7 @@ from playwright.sync_api import sync_playwright
 
 
 def main():
-    p=argparse.ArgumentParser();p.add_argument('--site',default='/tmp/r1-site');p.add_argument('--output',default='/tmp/r1-smoke');a=p.parse_args()
+    p=argparse.ArgumentParser();p.add_argument('--site',default='/tmp/r1-site');p.add_argument('--output',default='/tmp/r1-smoke');p.add_argument('--now',default='2026-10-17T07:17:00Z');a=p.parse_args()
     out=Path(a.output);out.mkdir(parents=True,exist_ok=True)
     class Handler(SimpleHTTPRequestHandler):
         def log_message(self,*args): pass
@@ -22,7 +22,7 @@ def main():
             browser=pw.chromium.launch(executable_path=shutil.which('chromium'),headless=True,args=['--no-sandbox'])
             context=browser.new_context(timezone_id='Europe/Berlin',accept_downloads=True,viewport={'width':1280,'height':900})
             page=context.new_page();errors=[];page.on('pageerror',lambda error:errors.append(str(error)))
-            page.add_init_script("""{const NativeDate=Date;const fixed=NativeDate.parse('2026-10-17T07:17:00Z');globalThis.Date=class extends NativeDate {constructor(...args){super(...(args.length?args:[fixed]));} static now(){return fixed;}};}""")
+            page.add_init_script("""{const NativeDate=Date;const fixed=NativeDate.parse("""+json.dumps(a.now)+""");globalThis.Date=class extends NativeDate {constructor(...args){super(...(args.length?args:[fixed]));} static now(){return fixed;}};}""")
             page.goto(f'http://127.0.0.1:{server.server_port}/',wait_until='networkidle')
             page.wait_for_selector('tbody tr')
             visible=page.locator('tbody tr:has(input[type=checkbox])').count()
