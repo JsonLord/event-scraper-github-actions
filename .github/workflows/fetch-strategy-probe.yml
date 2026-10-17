@@ -20,9 +20,9 @@ on:
         required: false
         default: ''
       strategies:
-        description: 'Comma-separated subset (direct, cloakbrowser, jina_markdown, jina_html, jina_html_nocache, jina_html_browser, jina_html_proxy)'
+        description: 'Comma-separated subset (direct, cloakbrowser, tinyfish_html)'
         required: false
-        default: 'direct,cloakbrowser,jina_markdown,jina_html,jina_html_nocache,jina_html_browser,jina_html_proxy'
+        default: 'direct,cloakbrowser,tinyfish_html'
       date_days:
         description: 'Date window in days'
         required: false
@@ -55,10 +55,7 @@ jobs:
 
       - name: Probe
         env:
-          # Add this under Settings -> Secrets and variables -> Actions.
-          # Without it every jina_* strategy reports "JINA_API_KEY not set",
-          # which the probe prints as a result rather than failing the run.
-          JINA_API_KEY: ${{ secrets.JINA_API_KEY }}
+          TINYFISH_API_KEY: ${{ secrets.TINYFISH_API_KEY }}
         run: |
           mkdir -p probe
           SITES='${{ github.event.inputs.sites }}'

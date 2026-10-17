@@ -57,6 +57,9 @@ def enrich_evidence(event, observed_at=None):
     from scripts.event_utils import PRICE_RANGE_RE, PRICE_RE, FREE_RE, format_price_label
     result = dict(event)
     text = str(event.get('description') or '')
+    title = str(event.get('title') or '')
+    if title and text.startswith(title):
+        text = text[len(title):].lstrip()
     stamp = observed_at or event.get('observed_at')
     url = event.get('url') or event.get('source_url') or ''
     offers = [dict(o) for o in event.get('offers', []) if isinstance(o, dict)]

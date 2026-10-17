@@ -160,21 +160,17 @@ page and merging the results rather than stopping at the first that hits:
 | date blocks | dated events on pages with no event-ish class names at all |
 | WordPress REST | EventON / The Events Calendar plugin data, for calendars rendered client-side |
 
-If none of those find anything, it escalates — **Jina Reader first**, asked
-for HTML so the same six extractors run again over a copy of the page fetched
-from somewhere this network is not blocked, and **CloakBrowser** (stealth
-headless Chromium) last.
+If direct HTTP yields no events, the scraper tries optional TinyFish free
+Fetch (semantic HTML), then the existing optional CloakBrowser fallback.
+TinyFish is capped at two fetched URLs per discovery process. The daily
+verifier has its own stricter request, byte and provider budgets.
 
-That order is a measurement, not a preference. In probe run 34825099038,
-venturecafeberlin.org refused the runner outright; CloakBrowser got its
-challenge page and 0 events, while the Jina tier got the real page and the
-event. Across the probe set Jina kept 33 events to CloakBrowser's 32, won two
-sites to its none, and took 0.5–1.7s per site against 5–24s. The same site had
-answered the *previous* runner normally — the blocking is intermittent, which
-is exactly what makes a second route worth having.
-
-Jina needs a `JINA_API_KEY` secret; without one it logs that it is skipping and
-CloakBrowser still runs, so the pipeline degrades rather than breaks.
+Set the optional Actions repository secret `TINYFISH_API_KEY`, or use a local
+gitignored `.env` based on `.env.example`. Missing credentials leave the core
+workflow usable. Only free Fetch/Search endpoints are used; no paid API or
+Wallet action is authorized. Search results are candidates, never inventory
+or price evidence. Published free limits can change; see the vendor references
+in `spec.md`.
 
 Requests are sent with a full browser header set - several Berlin sites answer
 a bare `User-Agent` with 403.

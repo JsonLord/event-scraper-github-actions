@@ -187,19 +187,6 @@ jobs:
           pip install cloakbrowser python-dotenv pyyaml requests beautifulsoup4 lxml
 
       - name: Install CloakBrowser Binary
-        # This step intermittently segfaults on the GitHub runner (exit 139).
-        # It's non-fatal: the generic scraper works without CloakBrowser
-        # (it's only the 3rd-tier fallback) and CloakBrowser re-downloads the
-        # binary on first launch() anyway, so a failed pre-install must not
-        # take down the whole matrix leg.
-        #
-        # Worth knowing, from fetch-strategy-probe runs on this runner: the
-        # render tier is now the LAST fallback, behind Jina. It has not
-        # uniquely rescued a single site in any probe run - it kept 32 events
-        # to the Jina tier's 33, won no site, and cost 5-24s each against
-        # 0.5-1.7s. On venturecafeberlin.org it returned the challenge page
-        # while Jina returned the real one. It is kept only because it is the
-        # fallback that needs no third-party service.
         continue-on-error: true
         run: python -m cloakbrowser install
 
@@ -223,13 +210,7 @@ jobs:
 
       - name: Run scraper
         env:
-          # Last-tier fallback, used only when a direct GET and the
-          # rendered-DOM tier have both produced nothing - typically an
-          # anti-bot interstitial that Jina's infrastructure is not subject
-          # to. Optional: without the secret the tier logs that it is being
-          # skipped and the run continues. Add it under Settings -> Secrets
-          # and variables -> Actions.
-          JINA_API_KEY: ${{ secrets.JINA_API_KEY }}
+          TINYFISH_API_KEY: ${{ secrets.TINYFISH_API_KEY }}
         run: |
           mkdir -p data/html
           # date_horizon is opt-in per source. Measured: appending ?date= to a
