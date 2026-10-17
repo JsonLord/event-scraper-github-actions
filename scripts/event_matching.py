@@ -17,7 +17,7 @@ def event_url(url):
     if p.scheme not in ('http','https') or not path: return ''
     if re.search(r'/(?:venues?|locations?|theaters?)(?:/|$)',path,re.I): return ''
     if path.lower().split('/')[-1] in ('de','en','events','programm','program','spielplan','spielplan.html','program.html','veranstaltungen'): return ''
-    return urlunsplit((p.scheme,p.netloc,path,p.query,''))
+    return urlunsplit((p.scheme,host(url),path,p.query,''))
 
 
 def match_basis(event, candidate, final_url):
@@ -104,7 +104,7 @@ def semantic_candidates(html, final_url, expected_title):
     for scope in scopes:
         headings=scope.select('h1,h2,h3')
         if not headings or folded(headings[0].get_text(' ',strip=True))!=folded(expected_title): continue
-        allowed={'termin','termine','datum','zeit','ort','veranstaltungsort','tickets','ticketsundpreise','ticketsandprices','preise','eintritt','beschreibung','informationen','information'}
+        allowed={'termin','termine','datum','zeit','ort','veranstaltungsort','tickets','ticketsundpreise','ticketsandprices','preise','eintritt','beschreibung','informationen','information','description','lineup','location','venue','details'}
         if any(folded(h.get_text(' ',strip=True)) not in allowed|{folded(expected_title)} for h in headings[1:]): continue
         text=scope.get_text('\n',strip=True)
         markers=scope.select('time[datetime]')
@@ -124,7 +124,7 @@ def semantic_candidates(html, final_url, expected_title):
         venue_text=clean_text(venue.get_text(' ',strip=True)) if venue else ''
         if not venue_text:
             # Literal label only: do not treat any nearby address as the venue.
-            match=re.search(r'(?:^|\n)(?:Ort|Veranstaltungsort|Venue|Location)\s*:\s*([^\n]+)',text,re.I)
+            match=re.search(r'(?:^|\n)(?:Ort|Veranstaltungsort|Venue|Location)(?:\s*:\s*|\s*\n)([^\n]+)',text,re.I)
             if match: venue_text=clean_text(match.group(1))
         if not venue_text and host(final_url)=='ufafabrik.de' and scope.name=='article':
             paragraphs=scope.find_all('p',recursive=False)

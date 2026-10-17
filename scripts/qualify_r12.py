@@ -62,6 +62,11 @@ class RecordingHTTP(BoundedHTTP):
     def __init__(self,*args,**kwargs):
         super().__init__(*args,**kwargs);self.documents={}
     def fetch(self,url):
+        if url in self.documents:
+            self.reason='cached_same_run'; self.permitted=True;return self.documents[url]
+        provider=getattr(self,'provider',None)
+        if provider and url in provider.documents:
+            self.reason='cached_same_run_tinyfish';self.permitted=True;return provider.documents[url]
         result=super().fetch(url)
         if result: self.documents[url]=result
         return result
@@ -95,10 +100,11 @@ def discover(now,http,provider,phase='full'):
     selected_sources=SOURCES if phase=='full' else {'rausgegangen':SOURCES['rausgegangen']}
     for name,base in selected_sources.items():
         urls=[base]
+        if phase=='raus-search': urls=[]
         if name=='berlin_buehnen': urls=[build_date_url(base,today),build_date_url(base,end)]
-        if name=='rausgegangen':
+        if name=='rausgegangen' and phase!='raus-search':
             urls=[base+'?geospatial_query_type=CITY&lat=52.5&lng=13.405&city=berlin&active_city_name=Berlin&start_date='+today.isoformat()+'&end_date='+end.isoformat()]
-        found=[];attempts=[]
+        found=[];attempts=[];document=None
         for url in urls:
             document=http.fetch(url);method='direct_http'
             if not document and http.permitted:
@@ -112,6 +118,26 @@ def discover(now,http,provider,phase='full'):
             cleaned,_=validate_events(raw,url,today,end,max_price=float('inf'))
             for e in cleaned: e['observed_at']=now.isoformat()
             found.extend(cleaned)
+        if phase=='raus-search':
+            # Search only discovers candidate URLs. Event facts must come from
+            # the fetched destination and the production extraction functions.
+            candidates=[]
+            for query in [f'site:rausgegangen.de/events/ Berlin "{today.strftime("%d.%m.%Y")}"',
+                          f'site:rausgegangen.de/en/events/ Berlin "{today.strftime("%d.%m.%Y")}"']:
+                candidates.extend(provider.search(query))
+            candidates=list(dict.fromkeys(u for u in candidates if '/events/' in urlsplit(u).path and len(urlsplit(u).path.strip('/').split('/'))>=2))
+            if candidates:
+                candidate=candidates[0]
+                document=http.fetch(candidate);method='direct_http'
+                if not document and http.permitted:
+                    result=provider.fetch([candidate]).get(candidate)
+                    if result and http.bytes+len(result['html'].encode())<=http.policy['max_total_response_bytes']:
+                        document=(result['final_url'],result['html']);method='tinyfish_fetch';http.bytes+=len(document[1].encode())
+                attempts.append({'transport':method,'outcome':http.reason if not document else 'received','search_candidates':len(candidates)})
+                if document:
+                    raw=scrape_document(document[1],document[0],'R1.2 Raus Search candidate')
+                    found,_=validate_events(raw,base,today,end,max_price=float('inf'))
+                    for e in found: e['observed_at']=now.isoformat()
         if document and not found:
             from bs4 import BeautifulSoup
             page=BeautifulSoup(document[1],'lxml')
@@ -164,7 +190,7 @@ def integration(sample,now,policy,http,provider):
 
 
 def main():
-    p=argparse.ArgumentParser();p.add_argument('--output',required=True);p.add_argument('--now');p.add_argument('--phase',choices=('full','raus-completion'),default='full');a=p.parse_args()
+    p=argparse.ArgumentParser();p.add_argument('--output',required=True);p.add_argument('--now');p.add_argument('--phase',choices=('full','raus-completion','raus-search'),default='full');a=p.parse_args()
     root=Path(__file__).resolve().parents[1];output=Path(a.output).resolve()
     if output==root or root in output.parents: raise ValueError('Staging outputs must be outside the checkout')
     output.mkdir(parents=True,exist_ok=True)
@@ -172,9 +198,12 @@ def main():
     policy=dict(DEFAULT_POLICY,max_events_per_run=9,max_tinyfish_fetch_urls_per_run=6,max_tinyfish_search_queries_per_run=4,max_run_seconds=600)
     if a.phase=='raus-completion':
         policy.update(max_events_per_run=1,max_tinyfish_fetch_urls_per_run=2,max_tinyfish_search_queries_per_run=4,max_http_requests_per_run=4,max_requests_per_host=4)
+    if a.phase=='raus-search':
+        policy.update(max_events_per_run=1,max_tinyfish_fetch_urls_per_run=1,max_tinyfish_search_queries_per_run=2,max_http_requests_per_run=2,max_requests_per_host=2)
     deadline=time.monotonic()+600
     http=RecordingHTTP(policy,deadline=deadline)
-    provider=RecordingTinyFish(max_fetch=policy['max_tinyfish_fetch_urls_per_run'],max_search=4,deadline=deadline)
+    provider=RecordingTinyFish(max_fetch=policy['max_tinyfish_fetch_urls_per_run'],max_search=policy['max_tinyfish_search_queries_per_run'],deadline=deadline)
+    http.provider=provider
     sample,sources=discover(now,http,provider,a.phase)
     data={'generated_at':now.isoformat(),'events':sample}
     overlay,second,site,expired,checks=integration(sample,now,policy,http,provider)

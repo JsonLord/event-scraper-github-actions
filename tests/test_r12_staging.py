@@ -64,3 +64,23 @@ def test_actual_pipeline_with_real_semantic_responses_and_second_run():
     assert checks['multi_performance_pages'][0]['selected_event_status']=='unknown'
     assert all(r['matched'] for r in checks['missing_venue_replays'])
     assert all(e['ticket_status']=='unknown' for e in expired['events'])
+
+def test_missing_venue_accepts_official_www_redirect_with_exact_occurrence():
+    from scripts.event_matching import match_basis
+    event={'title':'A real show','date':'2026-10-19','time':'19:00','venue':'',
+           'url':'https://ufafabrik.de/veranstaltung/123/show','source_url':'https://ufafabrik.de/spielplan.html'}
+    final='https://www.ufafabrik.de/veranstaltung/123/show'
+    candidate=dict(event,url=final,venue='Theatersaal')
+    assert match_basis(event,candidate,final)=='official_canonical_occurrence'
+    assert match_basis(event,dict(candidate,date='2026-10-20'),final) is None
+    assert match_basis(event,candidate,'https://www.ufafabrik.de/veranstaltung/124/other') is None
+    assert match_basis(event,candidate,'https://unrelated.example/veranstaltung/123/show') is None
+
+def test_raus_semantic_detail_discovery_requires_fetched_title_and_occurrence():
+    from scripts.generic_event_scraper import scrape_document
+    html='<main><h1>A real Berlin event</h1><p>18.10.2026 19:00</p><h2>Location</h2><p>Berlin Venue</p><p>Eintritt €12</p></main>'
+    es=scrape_document(html,'https://rausgegangen.de/events/a-real-event/','offline test')
+    assert es[0]['title']=='A real Berlin event' and es[0]['date']=='2026-10-18'
+    assert es[0]['venue']=='Berlin Venue'
+    # A bleached listing with only dates/venues cannot fabricate an event title.
+    assert scrape_document('<p>18.10.2026 19:00 Berlin Venue €12</p>','https://rausgegangen.de/en/berlin/eventsbydate/','offline test')==[]

@@ -915,6 +915,16 @@ def scrape_document(html: str, url: str, label: str) -> List[Dict[str, Any]]:
     adapted = extract_cards(html, url)
     if adapted is not None:
         return _merge(extract_jsonld_events(html, url), adapted)
+    # Cleaned event detail HTML can retain an h1 and literal occurrence evidence
+    # even after listing image labels, classes and JSON-LD are removed.
+    if 'rausgegangen.de' in (urlparse(url).hostname or '') and '/events/' in urlparse(url).path and 'eventsbydate' not in urlparse(url).path:
+        from scripts.event_matching import semantic_candidates
+        soup=BeautifulSoup(html,'lxml')
+        headings=soup.select('h1')
+        if len(headings)==1:
+            semantic=semantic_candidates(html,url,headings[0].get_text(' ',strip=True))
+            if semantic:
+                return _merge(extract_jsonld_events(html,url),semantic)
     jsonld = extract_jsonld_events(html, url)
     timed = extract_time_element_events(html, url)
     heuristic = extract_heuristic_events(html, url)
