@@ -41,7 +41,7 @@ def test_diagnostics_drop_query_credentials_and_key(monkeypatch):
     assert output=={'url':'https://example.org/event','nested':['[REDACTED]']}
 
 
-def test_actual_pipeline_with_real_semantic_responses_and_second_run():
+def test_actual_pipeline_with_real_semantic_responses_and_second_run(tmp_path):
     targets=json.loads(Path('config/tinyfish_qualification_targets.json').read_text())
     documents={}
     for name in ('berlin_buehnen','ufafabrik'):
@@ -56,11 +56,11 @@ def test_actual_pipeline_with_real_semantic_responses_and_second_run():
         def fetch(self,urls): raise AssertionError('No provider transport in offline test')
         def search(self,query): raise AssertionError('No provider transport in offline test')
     sample=[enrich_evidence(e) for e in targets];original=deepcopy(sample)
-    overlay,second,site,expired,checks=integration(sample,datetime(2026,10,17,20,tzinfo=timezone.utc),DEFAULT_POLICY,HTTP(),Provider())
+    overlay,second,site,expired,checks=integration(sample,datetime(2026,10,17,20,tzinfo=timezone.utc),DEFAULT_POLICY,HTTP(),Provider(),tmp_path/'overlay.json')
     assert len(overlay['events'])==2 and overlay==second and original==sample
     assert all(e['outcome']=='matched' for e in overlay['events'].values())
-    assert checks['fresh_second_run_preserved_state'] and checks['ttl_expiration_passed']
-    assert checks['multi_performance_pages'][0]['contains_other_cancellation']
+    assert checks['fresh_second_run_preserved_state'] and checks['ttl_expiration_passed'] and checks['disk_overlay_roundtrip']
+    assert checks['multi_performance_pages'][0]['contains_cancellation_marker']
     assert checks['multi_performance_pages'][0]['selected_event_status']=='unknown'
     assert all(r['matched'] for r in checks['missing_venue_replays'])
     assert all(e['ticket_status']=='unknown' for e in expired['events'])

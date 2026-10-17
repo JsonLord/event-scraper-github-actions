@@ -18,6 +18,7 @@ import shutil
 import subprocess
 import sys
 import time
+from tempfile import TemporaryDirectory
 from urllib.parse import urlsplit, urlunsplit
 from zoneinfo import ZoneInfo
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
@@ -77,7 +78,9 @@ class RecordingTinyFish(TinyFishClient):
         super().__init__(*args,**kwargs);self.documents={}
     def fetch(self,urls):
         result=super().fetch(urls)
-        for url,r in result.items(): self.documents[url]=(r['final_url'],r['html'])
+        for url,r in result.items():
+            self.documents[url]=(r['final_url'],r['html'])
+            self.documents[r['final_url']]=(r['final_url'],r['html'])
         return result
 
 
@@ -136,6 +139,7 @@ def discover(now,http,provider,phase='full'):
                 attempts.append({'transport':method,'outcome':http.reason if not document else 'received','search_candidates':len(candidates)})
                 if document:
                     raw=scrape_document(document[1],document[0],'R1.2 Raus Search candidate')
+                    raw=[e for e in raw if re.search(r'\bBerlin\b',str(e.get('description',''))+' '+str(e.get('venue','')),re.I)]
                     found,_=validate_events(raw,base,today,end,max_price=float('inf'))
                     for e in found: e['observed_at']=now.isoformat()
         if document and not found:
@@ -150,12 +154,17 @@ def discover(now,http,provider,phase='full'):
     return sample,sources
 
 
-def integration(sample,now,policy,http,provider):
+def integration(sample,now,policy,http,provider,overlay_path=None):
     initial={'version':1,'events':{}}
     overlay,usage=run(sample,initial,now,policy,http,provider)
     frozen=deepcopy(overlay)
+    persisted=overlay
+    if overlay_path is not None:
+        overlay_path.write_text(json.dumps(overlay,ensure_ascii=False))
+        persisted=json.loads(overlay_path.read_text())
+        assert persisted==frozen,'Overlay storage round-trip changed observations'
     counters=(http.requests,http.bytes,provider.fetch_urls,provider.search_queries)
-    second,second_usage=run(sample,overlay,now+timedelta(minutes=5),policy,http,provider)
+    second,second_usage=run(sample,persisted,now+timedelta(minutes=5),policy,http,provider)
     preserved=(second==frozen and overlay==frozen and counters==(http.requests,http.bytes,provider.fetch_urls,provider.search_queries))
     if not preserved: raise AssertionError('Fresh second execution mutated observations or made network calls')
     payload={'generated_at':now.isoformat(),'events':sample}
@@ -183,10 +192,10 @@ def integration(sample,now,policy,http,provider):
             section=next((x for x in page.select('hylo-accordion-item') if x.select_one('hylo-accordion-item-header') and x.select_one('hylo-accordion-item-header').get_text(strip=True)=='Termine'),None)
             if section and len(section.select('time'))>1:
                 multi.append({'event_id':eid,'performance_rows':len(section.select('time')),
-                              'contains_other_cancellation':'Abgesagt' in section.get_text(),
+                              'contains_cancellation_marker':'Abgesagt' in section.get_text(),
                               'selected_event_status':fields.get('event_status',{}).get('values',{}).get('event_status','unknown')})
     return overlay,second,materialized,expired,{'first_usage':usage,'second_usage':second_usage,'fresh_second_run_preserved_state':preserved,
-                'ttl_expiration_passed':True,'input_immutability_passed':True,'details':details,'missing_venue_replays':fallback,'multi_performance_pages':multi}
+                'ttl_expiration_passed':True,'disk_overlay_roundtrip':overlay_path is not None,'input_immutability_passed':True,'details':details,'missing_venue_replays':fallback,'multi_performance_pages':multi}
 
 
 def main():
@@ -206,7 +215,8 @@ def main():
     http.provider=provider
     sample,sources=discover(now,http,provider,a.phase)
     data={'generated_at':now.isoformat(),'events':sample}
-    overlay,second,site,expired,checks=integration(sample,now,policy,http,provider)
+    with TemporaryDirectory(prefix='r12-state-',dir=output.parent) as work:
+        overlay,second,site,expired,checks=integration(sample,now,policy,http,provider,Path(work)/'overlay.json')
     network_elapsed=round(time.monotonic()-started,3)
     write_json(output/'sample.json',data);write_json(output/'overlay-first.json',overlay);write_json(output/'overlay-second.json',second)
     write_json(output/'expired-dataset.json',expired)

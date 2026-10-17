@@ -261,3 +261,36 @@ The frozen input datasets and production verification overlay were left
 unchanged. The audit baseline still normalizes 475 → 464 records, quarantining
 nine pseudo-titles and merging two duplicates. Changes are on PR #33's existing
 branch only. The historical credential revoke/rotate finding remains open.
+
+## R1.2 end-to-end staging qualification (2026-10-18)
+
+The current handoff is [R12_QUALIFICATION_REPORT.md](R12_QUALIFICATION_REPORT.md),
+with three committed machine-readable run summaries, bounded direct diagnostics,
+and [release/activation controls](R12_RELEASE_CONTROLS.md). This supersedes the
+R1.1 statement that the daily pipeline had not been exercised end to end.
+
+The production discovery/verifier/overlay/materialization pipeline ran in a
+manual-only `contents: read` workflow with all generated data under runner temporary
+storage. Across the bounded qualification, 56 rows/candidates were observed,
+seven selected, and six matched (85.7%). Three student-offer observations and one
+selected cancellation were confirmed; ticket inventory remained UNKNOWN. The
+second simulated run preserved fresh state with no network calls. Expiry,
+production-data immutability, shared build, search, responsive rendering and ICS
+passed for the six-event cohort. Rausgegangen remained unverified and its empty
+completion builds did not claim a passing browser smoke.
+
+Combined usage was six Fetch URLs, two Search calls and 21 direct HTTP attempts
+including diagnosis, at most eight per host. All provider responses were HTTP
+200 with valid envelopes; useful source evidence was assessed separately.
+No additional Fetch calls were made after the qualification ceiling was reached.
+Original production JSON and overlay files are unchanged.
+
+Source coverage remains **NO-GO** for broad release. Daily integration and
+uncertainty handling are **GO within the exercised staging scope**. Fail-closed
+activation controls are **GO**, but neither feature is enabled or approved for
+activation. Pages production deployment is **NO-GO** pending source coverage and
+explicit review. Merging can no longer auto-publish through the push-triggered
+Pages workflow; its jobs require manual dispatch and a repository flag. Legacy
+weekly data persistence still exists and must be paused by the owner if a future
+merge requires a full production data-write freeze. No merge, deployment,
+production workflow dispatch or repository-variable change was performed.
