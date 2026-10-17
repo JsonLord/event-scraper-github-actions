@@ -4,6 +4,12 @@ name: R1.2 read-only staging qualification
 # or downstream workflow dispatch is needed to execute qualification.
 on:
   workflow_dispatch:
+    inputs:
+      phase:
+        type: choice
+        description: 'Full qualification, or bounded Rausgegangen completion using remaining R1.2 allowance'
+        options: [full, raus-completion]
+        default: full
 permissions:
   contents: read
 concurrency:
@@ -34,8 +40,9 @@ jobs:
       - name: Run production pipeline in temporary staging storage
         env:
           TINYFISH_API_KEY: ${{ secrets.TINYFISH_API_KEY }}
+          QUALIFICATION_PHASE: ${{ inputs.phase }}
         run: |
-          "$RUNNER_TEMP/r12-venv/bin/python" scripts/qualify_r12.py --output "$RUNNER_TEMP/r12-output"
+          "$RUNNER_TEMP/r12-venv/bin/python" scripts/qualify_r12.py --output "$RUNNER_TEMP/r12-output" --phase "$QUALIFICATION_PHASE"
       - name: Confirm checkout has no generated or modified files
         run: test -z "$(git status --porcelain)"
       - uses: actions/upload-artifact@v4

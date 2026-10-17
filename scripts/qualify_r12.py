@@ -89,14 +89,15 @@ def choose_sample(events,now,per_source=3):
     return sorted(upcoming,key=priority)[:per_source]
 
 
-def discover(now,http,provider):
+def discover(now,http,provider,phase='full'):
     today=now.astimezone(ZoneInfo('Europe/Berlin')).date();end=today+timedelta(days=7)
     sample=[];sources={}
-    for name,base in SOURCES.items():
+    selected_sources=SOURCES if phase=='full' else {'rausgegangen':SOURCES['rausgegangen']}
+    for name,base in selected_sources.items():
         urls=[base]
         if name=='berlin_buehnen': urls=[build_date_url(base,today),build_date_url(base,end)]
         if name=='rausgegangen':
-            urls=[base+'?start_date='+today.isoformat()+'&end_date='+end.isoformat()+'&city=berlin']
+            urls=[base+'?geospatial_query_type=CITY&lat=52.5&lng=13.405&city=berlin&active_city_name=Berlin&start_date='+today.isoformat()+'&end_date='+end.isoformat()]
         found=[];attempts=[]
         for url in urls:
             document=http.fetch(url);method='direct_http'
@@ -111,8 +112,12 @@ def discover(now,http,provider):
             cleaned,_=validate_events(raw,url,today,end,max_price=float('inf'))
             for e in cleaned: e['observed_at']=now.isoformat()
             found.extend(cleaned)
+        if document and not found:
+            from bs4 import BeautifulSoup
+            page=BeautifulSoup(document[1],'lxml')
+            attempts[-1]['empty_extraction_structure']={'headings':[h.get_text(' ',strip=True)[:150] for h in page.select('h1,h2,h3')[:12]],'text_excerpt':page.get_text(' ',strip=True)[:1600],'event_links':sum('/events/' in (x.get('href') or '') for x in page.select('a[href]'))}
         found=dedupe_events(found)
-        chosen=choose_sample(found,now)
+        chosen=choose_sample(found,now,per_source=3 if phase=='full' else 1)
         sources[name]={'listing_results':attempts,'discovered_upcoming_window':len(found),'sample_events':len(chosen),
                        'missing_links':sum(not e.get('has_detail_link') for e in chosen),'missing_venues':sum(not e.get('venue') for e in chosen)}
         sample.extend(chosen)
@@ -159,34 +164,40 @@ def integration(sample,now,policy,http,provider):
 
 
 def main():
-    p=argparse.ArgumentParser();p.add_argument('--output',required=True);p.add_argument('--now');a=p.parse_args()
+    p=argparse.ArgumentParser();p.add_argument('--output',required=True);p.add_argument('--now');p.add_argument('--phase',choices=('full','raus-completion'),default='full');a=p.parse_args()
     root=Path(__file__).resolve().parents[1];output=Path(a.output).resolve()
     if output==root or root in output.parents: raise ValueError('Staging outputs must be outside the checkout')
     output.mkdir(parents=True,exist_ok=True)
     original=fingerprints(root);now=utc(a.now or datetime.now(timezone.utc));started=time.monotonic()
     policy=dict(DEFAULT_POLICY,max_events_per_run=9,max_tinyfish_fetch_urls_per_run=6,max_tinyfish_search_queries_per_run=4,max_run_seconds=600)
+    if a.phase=='raus-completion':
+        policy.update(max_events_per_run=1,max_tinyfish_fetch_urls_per_run=2,max_tinyfish_search_queries_per_run=4,max_http_requests_per_run=4,max_requests_per_host=4)
     deadline=time.monotonic()+600
     http=RecordingHTTP(policy,deadline=deadline)
-    provider=RecordingTinyFish(max_fetch=6,max_search=4,deadline=deadline)
-    sample,sources=discover(now,http,provider)
+    provider=RecordingTinyFish(max_fetch=policy['max_tinyfish_fetch_urls_per_run'],max_search=4,deadline=deadline)
+    sample,sources=discover(now,http,provider,a.phase)
     data={'generated_at':now.isoformat(),'events':sample}
     overlay,second,site,expired,checks=integration(sample,now,policy,http,provider)
     network_elapsed=round(time.monotonic()-started,3)
     write_json(output/'sample.json',data);write_json(output/'overlay-first.json',overlay);write_json(output/'overlay-second.json',second)
     write_json(output/'expired-dataset.json',expired)
     subprocess.run([sys.executable,str(root/'scripts/build_page_dataset.py'),'--input',str(output/'sample.json'),'--overlay',str(output/'overlay-first.json'),'--output-dir',str(output/'site'),'--now',now.isoformat()],check=True)
-    subprocess.run([sys.executable,str(root/'scripts/smoke_pages.py'),'--site',str(output/'site'),'--output',str(output/'smoke'),'--now',now.isoformat()],check=True)
+    if site['count']:
+        subprocess.run([sys.executable,str(root/'scripts/smoke_pages.py'),'--site',str(output/'site'),'--output',str(output/'smoke'),'--now',now.isoformat()],check=True)
+        smoke=json.loads((output/'smoke/report.json').read_text())
+    else:
+        smoke={'status':'not_run_empty_materialization'}
     assert fingerprints(root)==original,'Production data changed'
     assert http.requests<=40 and all(n<=8 for n in http.hosts.values()) and http.bytes<=25_000_000
     assert provider.fetch_urls<=6 and provider.search_queries<=4
     matched=sum(x['matched'] for x in checks['details'])
-    report={'version':'R1.2','observed_at':now.isoformat(),'sources':sources,'total_discovered':sum(s['discovered_upcoming_window'] for s in sources.values()),
+    report={'version':'R1.2','phase':a.phase,'observed_at':now.isoformat(),'sources':sources,'total_discovered':sum(s['discovered_upcoming_window'] for s in sources.values()),
             'sample_events':len(sample),'matched_events':matched,'exact_match_rate':matched/len(sample) if sample else None,
             'materialized_events':site['count'],'source_coverage_complete':all(s['sample_events'] for s in sources.values()),
             'checks':checks,'http_attempts':http.requests,'http_bytes':http.bytes,'http_per_host':dict(http.hosts),'http_calls':http.diagnostics,
             'tinyfish_fetch_urls':provider.fetch_urls,'tinyfish_search_calls':provider.search_queries,'tinyfish_calls':provider.diagnostics,
             'network_wall_seconds':network_elapsed,'pipeline_wall_seconds':round(time.monotonic()-started,3),'budgets':policy,'production_files_unchanged':True,
-            'frontend_smoke':json.loads((output/'smoke/report.json').read_text())}
+            'frontend_smoke':smoke}
     write_json(output/'report.json',report)
     # Keep remote check evidence below GitHub's ten-notice-per-step cap.
     summary={k:v for k,v in report.items() if k not in ('checks','http_calls','budgets')}
