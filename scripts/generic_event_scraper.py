@@ -35,6 +35,7 @@ import logging
 import os
 import re
 import sys
+from pathlib import Path
 import time
 from datetime import date, datetime, timedelta
 from typing import Any, Dict, List, Optional
@@ -44,6 +45,8 @@ import requests
 from bs4 import BeautifulSoup
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from event_utils import (  # noqa: E402
     DATE_DE_RE,
@@ -272,20 +275,12 @@ def extract_jsonld_events(html: str, source_url: str) -> List[Dict[str, Any]]:
                 location = location[0] if location else {}
             venue = location.get("name", "") if isinstance(location, dict) else str(location)
 
-            offers = node.get("offers") or {}
-            if isinstance(offers, list):
-                offers = offers[0] if offers else {}
-            price = None
-            if isinstance(offers, dict) and offers.get("price") is not None:
-                try:
-                    price = float(offers["price"])
-                except (TypeError, ValueError):
-                    price = None
-
+            from scripts.ticket_evidence import structured_offers
             start_date = node.get("startDate", "") or ""
-
-            offer_url = offers.get("url") if isinstance(offers, dict) else None
-            event_url = node.get("url") or offer_url or source_url
+            event_url = node.get("url") or source_url
+            offers = structured_offers(node.get("offers") or {}, source_url)
+            prices = [o["amount_eur"] for o in offers if o.get("amount_eur") is not None]
+            price = min(prices) if prices else None
 
             events.append({
                 "title": clean_text(node.get("name")),
@@ -294,6 +289,8 @@ def extract_jsonld_events(html: str, source_url: str) -> List[Dict[str, Any]]:
                 "date": normalize_date(start_date) or "",
                 "time": parse_time(start_date),
                 "price": price,
+                "offers": offers,
+                "event_status": str(node.get("eventStatus", "unknown")).rsplit("/", 1)[-1],
                 "category": clean_text(node.get("eventAttendanceMode") or ""),
                 "description": clean_text(node.get("description"), max_length=400),
                 "url": clean_url(urljoin(source_url, str(event_url))),
