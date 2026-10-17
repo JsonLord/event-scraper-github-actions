@@ -147,8 +147,8 @@ jobs:
           TINYFISH_API_KEY: ${{ secrets.TINYFISH_API_KEY }}
         run: |
           python - <<'PY'
-          import json, os, pathlib
-          for name in ('report.json', 'fetch-1.json', 'fetch-2.json'):
+          import base64, json, os, pathlib
+          for name in ('fetch-1.json',):
               path = pathlib.Path('qualification') / name
               if not path.exists():
                   continue
@@ -156,9 +156,10 @@ jobs:
               key = os.environ.get('TINYFISH_API_KEY', '')
               if key:
                   text = text.replace(key, '[REDACTED]')
-              if len(text.encode()) > 60000:
-                  print('::notice title=Evidence too large::Download the original sanitized artifact for ' + name)
-                  continue
-              text = text.replace('%', '%25').replace('\r', '%0D').replace('\n', '%0A')
-              print('::notice title=TinyFish ' + name + '::' + text)
+              encoded = base64.b64encode(text.encode()).decode()
+              chunks = [encoded[i:i+3200] for i in range(0, len(encoded), 3200)]
+              if len(chunks) > 10:
+                  raise ValueError('Evidence exceeds check annotation limit; use original artifact')
+              for i, chunk in enumerate(chunks, 1):
+                  print(f'::notice title=TinyFish {name} chunk {i}/{len(chunks)}::{chunk}')
           PY
