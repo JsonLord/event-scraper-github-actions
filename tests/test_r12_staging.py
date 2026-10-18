@@ -153,3 +153,65 @@ def test_raus_production_entry_caches_failed_discovery_and_avoids_browser(monkey
     assert scraper.scrape(source.BASE)==[]
     assert scraper.scrape(source.BASE)==[]
     assert calls==[True]
+
+
+def test_raus_captured_occurrence_rejects_other_dates_and_nearby_free_admission():
+    from html import escape
+    from scripts.verify_event_details import observation
+    attempt=json.loads(Path('docs/r13-qualification-phase1.json').read_text())['sources']['rausgegangen']['listing_results'][0]
+    text=attempt['rejected_structure'];parts=text.split(' | ')
+    html='<h1>'+escape(parts[1])+'</h1>'+''.join('<p>'+escape(x)+'</p>' for x in parts[2:])
+    event={'title':'Gavin DeGraw','date':'2026-10-18','time':'20:00','venue':'Metropol Berlin',
+           'url':attempt['destination_url'],'source_url':'https://rausgegangen.de/en/berlin/eventsbydate/'}
+    result=observation(event,html,attempt['destination_url'],'2026-10-18T04:00:00Z')
+    assert result and 'price' not in result and 'status' not in result
+    assert observation(dict(event,date='2026-10-19'),html,attempt['destination_url'],'2026-10-18T04:00:00Z') is None
+    assert observation(dict(event,time='23:45'),html,attempt['destination_url'],'2026-10-18T04:00:00Z') is None
+    assert observation(dict(event,venue='Other Venue'),html,attempt['destination_url'],'2026-10-18T04:00:00Z') is None
+    # Conditional free admission in organizer prose never becomes event pricing.
+    assert 'price' not in observation(event,html+'<p>A companion has free admission</p>',attempt['destination_url'],'2026-10-18T04:00:00Z')
+
+
+def test_raus_berlin_organizer_is_not_berlin_location_evidence():
+    from scripts.rausgegangen_discovery import discover
+    url='https://rausgegangen.de/events/real/'
+    event={'@context':'https://schema.org','@type':'Event','name':'A real event',
+           'startDate':'2026-10-18T19:00:00','url':url,'description':'Organized by a Berlin agency',
+           'location':{'name':'Hamburg Venue','address':{'addressLocality':'Hamburg'}}}
+    html='<script type="application/ld+json">'+json.dumps(event)+'</script>'
+    class HTTP:
+        bytes=0;policy=DEFAULT_POLICY;permitted=True;reason='ok'
+        def fetch(self,u): return u,html
+    class Provider:
+        def search(self,q): return [url]
+    events,attempts=discover(datetime(2026,10,17,20,tzinfo=timezone.utc),HTTP(),Provider())
+    assert events==[] and attempts[0]['extracted_occurrences']==0
+
+
+def test_raus_production_entry_replays_real_capture_through_production_matcher(monkeypatch):
+    from html import escape
+    from scripts import rausgegangen_discovery as source
+    from scripts import verify_event_details, tinyfish_client
+    attempt=json.loads(Path('docs/r13-qualification-phase1.json').read_text())['sources']['rausgegangen']['listing_results'][0]
+    parts=attempt['rejected_structure'].split(' | ')
+    html='<h1>'+escape(parts[1])+'</h1>'+''.join('<p>'+escape(x)+'</p>' for x in parts[2:])
+    class HTTP:
+        bytes=0;policy=DEFAULT_POLICY;permitted=True;reason='ok'
+        def __init__(self,*a,**k): pass
+        def fetch(self,u): return attempt['destination_url'],html
+    class Provider:
+        def __init__(self,*a,**k): pass
+        def search(self,q): return [attempt['candidate_url']]
+    class Clock:
+        @classmethod
+        def now(cls,tz): return datetime(2026,10,17,20,tzinfo=timezone.utc)
+    # Freeze only this module's local datetime import via a discovered now seam.
+    original=source.discover
+    monkeypatch.setattr(source,'discover',lambda now,*a,**k:original(Clock.now(None),*a,**k))
+    monkeypatch.setattr(source,'_RUN_EVENTS',None)
+    monkeypatch.setattr(verify_event_details,'BoundedHTTP',HTTP)
+    monkeypatch.setattr(tinyfish_client,'TinyFishClient',Provider)
+    events=source.scrape_public_listing()
+    assert len(events)==1 and events[0]['title']=='Gavin DeGraw'
+    assert events[0]['url']==attempt['destination_url'] and events[0]['venue']=='Metropol Berlin'
+    assert events[0]['price'] is None

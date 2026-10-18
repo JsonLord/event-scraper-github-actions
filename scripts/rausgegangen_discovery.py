@@ -45,13 +45,15 @@ def discover(now,http,provider,documents=None,max_candidates=3,queries=None,seed
         attempt={'transport':method,'outcome':'received' if document else http.reason,
                  'candidate_url':url,'search_candidates':len(urls)}
         attempts.append(attempt)
+        if method=='tinyfish_fetch' or not document:
+            attempt['provider_outcome']=getattr(provider,'diagnostic','not_called')
         if not document: continue
         # No off-source redirect becomes source evidence.
         if not candidate_urls([document[0]]):
             attempt['outcome']='rejected_destination';continue
         documents[url]=documents[document[0]]=document
         raw=scrape_document(document[1],document[0],'Raus public destination')
-        raw=[e for e in raw if re.search(r'\bBerlin\b',str(e.get('description',''))+' '+str(e.get('venue','')),re.I)]
+        raw=[e for e in raw if re.search(r'\bBerlin\b',str(e.get('location_city',''))+' '+str(e.get('venue','')),re.I)]
         cleaned,_=validate_events(raw,BASE,today,end,max_price=float('inf'))
         for event in cleaned:
             event['observed_at']=now.isoformat();event['url']=document[0]

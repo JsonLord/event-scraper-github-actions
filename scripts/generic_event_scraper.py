@@ -293,6 +293,7 @@ def extract_jsonld_events(html: str, source_url: str) -> List[Dict[str, Any]]:
                 "description": clean_text(node.get("description"), max_length=400),
                 "url": clean_url(urljoin(source_url, str(event_url))),
                 "venue": clean_text(venue),
+                "location_city": clean_text(location.get("address",{}).get("addressLocality", "")) if isinstance(location,dict) and isinstance(location.get("address"),dict) else "",
                 "source_url": source_url,
             })
     return events
@@ -923,8 +924,8 @@ def scrape_document(html: str, url: str, label: str) -> List[Dict[str, Any]]:
         headings=soup.select('h1')
         if len(headings)==1:
             semantic=semantic_candidates(html,url,headings[0].get_text(' ',strip=True))
-            if semantic:
-                return _merge(extract_jsonld_events(html,url),semantic)
+            return _merge(extract_jsonld_events(html,url),semantic)
+        return extract_jsonld_events(html,url)
     jsonld = extract_jsonld_events(html, url)
     timed = extract_time_element_events(html, url)
     heuristic = extract_heuristic_events(html, url)

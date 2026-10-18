@@ -197,6 +197,8 @@ def coverage_metrics(sources, details, published):
         result[name]={
             'listing_discovery_success':any(a.get('outcome')=='received' and 'candidate_url' not in a and 'search_candidates' not in a for a in attempts) and sources.get(name,{}).get('discovered_upcoming_window',0)>0,
             'candidate_url_discovery_success':any(a.get('search_candidates',0)>0 for a in attempts) or bool(rows),
+            'candidate_urls_discovered':max((a.get('search_candidates',0) for a in attempts),default=0),
+            'candidate_destinations_attempted':sum('candidate_url' in a for a in attempts),
             'selected_occurrences':len(rows),'exact_occurrence_matches':matched,
             'exact_occurrence_match_rate':matched/len(rows) if rows else None,
             'verified_source_coverage':matched>0,

@@ -294,3 +294,15 @@ Pages workflow; its jobs require manual dispatch and a repository flag. Legacy
 weekly data persistence still exists and must be paused by the owner if a future
 merge requires a full production data-write freeze. No merge, deployment,
 production workflow dispatch or repository-variable change was performed.
+
+## R1.3 follow-up — 18 October 2026
+
+[R1.3 qualification](R13_QUALIFICATION_REPORT.md) supersedes the earlier zero-Raus
+source-presence result: two independent Raus detail occurrences now match through
+the shared production matcher. Listing discovery and Raus occurrence-bound price
+coverage remain incomplete. Coverage metrics no longer accept candidates as proof.
+The Python suite now has 226 passing tests. Three read-only staging runs preserved
+production files and passed state, TTL, shared build, Chromium, search and ICS
+checks. The release recommendation is conditional technical GO for a separately
+approved fresh Berlin Bühnen + ufaFabrik release, NO-GO for the full three-source
+release, and NO-GO for daily activation now. Draft status and release gates remain.

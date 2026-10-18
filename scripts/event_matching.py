@@ -118,7 +118,7 @@ def raus_semantic_candidates(soup, final_url, expected_title):
     # Prices and statuses are deliberately unknown: shared date-dependent prices
     # and organizer copy are not occurrence-bound inventory or admission evidence.
     return [dict(title=title,date=day,time=intervals[0][0],venue=location[1],
-                 description=location[2],url=final_url,canonical_url=final_url)]
+                 description=location[2],location_city='Berlin',url=final_url,canonical_url=final_url)]
 
 
 def semantic_candidates(html, final_url, expected_title):

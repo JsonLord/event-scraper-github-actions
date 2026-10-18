@@ -59,3 +59,35 @@ Neither the weekly workflow nor repository settings were changed at runtime.
 
 No merge, repository-variable update, production workflow dispatch, production
 JSON write or Pages deployment is performed by qualification or these instructions.
+
+## R1.3 qualification and first-release decision
+
+See [R1.3 report](R13_QUALIFICATION_REPORT.md) and its three committed machine
+summaries. The same read-only staging workflow now offers `r13` and `r13-final`
+phases. Its authority, deadlines, temporary output rules and six-Fetch/four-Search
+per-run caps are unchanged. R1.3 consumed 12 Fetch URLs, six Search calls and 27
+direct attempts across three separate successful qualification runs. No flags or
+production files were changed. Two Raus occurrences now verify, while listing
+coverage and occurrence-bound pricing remain incomplete.
+
+Recommendation: conditional technical GO for an explicitly approved fresh
+Berlin Bühnen + ufaFabrik release; NO-GO for the full three-source release and
+NO-GO for daily activation now. A temporary four-row staging build is not an
+approved release artifact. Unknown Raus prices must not imply affordability.
+
+Final merge-impact review: `.github/workflows/weekly-event-scraper.yml` still has
+`contents: write`, Sunday `0 17 * * 0`, and `git add data/events.json
+data/events_scored.json`, `git commit`, `git push` in aggregation. Neither daily
+nor Pages flag prevents those legacy data writes. The next Sunday invocation on
+18 October 2026 is 19:00 CEST (17:00 UTC); in winter it is 18:00 CET. This branch
+has not changed the repository workflow's enabled/disabled state. An authorized
+owner must inspect that state and pause weekly discovery before merge if the
+release requires a complete automatic-write freeze. Merging alone does not
+trigger that weekly scraper, but subsequent schedules or manual weekly dispatches
+can write canonical data. A later true Pages flag can also permit weekly publishing.
+
+The standalone Pages merge push remains unable to deploy because both jobs also
+require manual dispatch. Daily verification still requires both explicit flags
+and main. No additional publishing route or activation exemption was introduced.
+Actual repository-variable values remain unverified (API read denied); absence
+of a settings change by this PR must not be presented as proof of their values.
