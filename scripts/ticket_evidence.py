@@ -56,7 +56,7 @@ def structured_offers(raw, url='', observed_at=None):
 def enrich_evidence(event, observed_at=None):
     from scripts.event_utils import PRICE_RANGE_RE, PRICE_RE, FREE_RE, format_price_label
     result = dict(event)
-    text = str(event.get('description') or '')
+    text = '' if event.get('claims_policy') == 'verified_overlay_only' else str(event.get('description') or '')
     title = str(event.get('title') or '')
     if title and not re.search(r'€|\d+[,.]\d+', title):
         text = re.sub(re.escape(title), '', text, count=1, flags=re.I).strip()

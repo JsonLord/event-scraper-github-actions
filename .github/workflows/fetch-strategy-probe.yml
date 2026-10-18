@@ -8,7 +8,7 @@ on:
       phase:
         type: choice
         description: 'Full qualification, or bounded Rausgegangen completion using remaining R1.2 allowance'
-        options: [full, raus-completion, raus-search, r13, r13-final]
+        options: [full, raus-completion, raus-search, r13, r13-final, r14-pilot]
         default: full
 permissions:
   contents: read
@@ -42,12 +42,17 @@ jobs:
           TINYFISH_API_KEY: ${{ secrets.TINYFISH_API_KEY }}
           QUALIFICATION_PHASE: ${{ inputs.phase }}
         run: |
-          "$RUNNER_TEMP/r12-venv/bin/python" scripts/qualify_r12.py --output "$RUNNER_TEMP/r12-output" --phase "$QUALIFICATION_PHASE"
+          if [ "$QUALIFICATION_PHASE" = "r14-pilot" ]; then
+            "$RUNNER_TEMP/r12-venv/bin/python" scripts/qualify_r14.py --output "$RUNNER_TEMP/r12-output"
+          else
+            "$RUNNER_TEMP/r12-venv/bin/python" scripts/qualify_r12.py --output "$RUNNER_TEMP/r12-output" --phase "$QUALIFICATION_PHASE"
+          fi
       - name: Confirm checkout has no generated or modified files
         run: test -z "$(git status --porcelain)"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: r12-sanitized-staging-diagnostics
+          name: ${{ inputs.phase == 'r14-pilot' && 'r14-pilot-release-candidate' || 'r12-sanitized-staging-diagnostics' }}
           path: ${{ runner.temp }}/r12-output
+          include-hidden-files: true
           retention-days: 7

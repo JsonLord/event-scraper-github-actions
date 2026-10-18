@@ -12,7 +12,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   verify-build-publish:
-    if: ${{ github.ref == 'refs/heads/main' && vars.DAILY_VERIFICATION_ENABLED == 'true' && vars.PAGES_DEPLOYMENT_ENABLED == 'true' }}
+    if: ${{ github.ref == 'refs/heads/main' && vars.RELEASE_PROFILE == 'unrestricted' && vars.UNRESTRICTED_PUBLICATION_ENABLED == 'true' && vars.DAILY_VERIFICATION_ENABLED == 'true' && vars.PAGES_DEPLOYMENT_ENABLED == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     environment:

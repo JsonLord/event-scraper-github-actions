@@ -24,6 +24,7 @@ on:
 
 jobs:
   scrape:
+    if: ${{ github.ref == 'refs/heads/main' && vars.RELEASE_PROFILE == 'unrestricted' && vars.UNRESTRICTED_PUBLICATION_ENABLED == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 180
     strategy:
@@ -250,7 +251,7 @@ jobs:
     needs: scrape
     # Run even if some scrape legs failed (fail-fast is off) so the pipeline
     # still aggregates, scores and deploys whatever events were collected.
-    if: ${{ always() }}
+    if: ${{ always() && github.ref == 'refs/heads/main' && vars.RELEASE_PROFILE == 'unrestricted' && vars.UNRESTRICTED_PUBLICATION_ENABLED == 'true' && needs.scrape.result != 'skipped' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -384,11 +385,11 @@ jobs:
           touch docs/.nojekyll
 
       - name: Set up GitHub Pages
-        if: ${{ github.ref == 'refs/heads/main' && vars.PAGES_DEPLOYMENT_ENABLED == 'true' }}
+        if: ${{ github.ref == 'refs/heads/main' && vars.RELEASE_PROFILE == 'unrestricted' && vars.UNRESTRICTED_PUBLICATION_ENABLED == 'true' && vars.PAGES_DEPLOYMENT_ENABLED == 'true' }}
         uses: actions/configure-pages@v5
 
       - name: Upload synthesised event findings
-        if: ${{ github.ref == 'refs/heads/main' && vars.PAGES_DEPLOYMENT_ENABLED == 'true' }}
+        if: ${{ github.ref == 'refs/heads/main' && vars.RELEASE_PROFILE == 'unrestricted' && vars.UNRESTRICTED_PUBLICATION_ENABLED == 'true' && vars.PAGES_DEPLOYMENT_ENABLED == 'true' }}
         uses: actions/upload-pages-artifact@v3
         with:
           path: ./docs
@@ -414,7 +415,7 @@ jobs:
           git push
 
   publish-pages:
-    if: ${{ github.ref == 'refs/heads/main' && vars.PAGES_DEPLOYMENT_ENABLED == 'true' }}
+    if: ${{ github.ref == 'refs/heads/main' && vars.RELEASE_PROFILE == 'unrestricted' && vars.UNRESTRICTED_PUBLICATION_ENABLED == 'true' && vars.PAGES_DEPLOYMENT_ENABLED == 'true' }}
     name: Publish weekly event table
     needs: aggregate-and-deploy
     runs-on: ubuntu-latest
