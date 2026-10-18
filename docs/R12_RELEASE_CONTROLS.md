@@ -1,93 +1,75 @@
-# R1.2 production activation controls
+# Release controls — current after R1.4
 
-The staging workflow is `.github/workflows/fetch-strategy-probe.yml`, now named
-**R1.2 read-only staging qualification**. Reusing its registered manual workflow
-allows qualification on the PR branch without merging or dispatching another
-workflow from a workflow. Its only trigger is `workflow_dispatch`, its only
-repository permission is `contents: read`, checkout credentials are not retained,
-and it has no production environment, data commit or Pages step. Dependencies,
-browsers, datasets, overlays, screenshots and reports are stored below
-`RUNNER_TEMP`; the source checkout is read-only during execution. There is a
-20-minute job deadline and one shared 600-second network budget. Quotas cover
-both discovery and verification: at most 40 HTTP attempts including robots,
-redirects and retries, eight per host, 1.5 MB per response, 25 MB total, six Fetch
-URLs and four Search calls. Tests use mock transports and never live providers.
+This document now describes the stricter R1.4 controls. Earlier R1.2/R1.3
+instructions that allowed an unqualified manual shared-data build are superseded.
+See [R1.4 release candidate](R14_RELEASE_CANDIDATE.md) for evidence and the exact
+owner-controlled activation/rollback sequence. Nothing was merged or activated.
 
-## Merge consequences and gating
+## Read-only candidate qualification
 
-Before these changes, merging PR #33 would match the Pages workflow's `main`
-push path filters (`scripts/**`, `data/**`, and its workflow file). The new
-workflow definition is evaluated on that push, but both build and deployment
-jobs now additionally require **manual `workflow_dispatch`**, branch `main`, and
-repository variable `PAGES_DEPLOYMENT_ENABLED` exactly equal to lowercase `true`.
-The merge push therefore cannot publish, even if that variable were pre-set.
+`fetch-strategy-probe.yml` remains manual-only, `contents: read`, with no production
+environment, data write/commit, Pages publishing or downstream dispatch. Its
+`r14-pilot` phase uses fresh Berlin Bühnen and ufaFabrik discovery, the production
+matcher/verifier, normalization/scoring and shared Pages builder. It stores its
+candidate, observation overlay, static preview, checksums, manifest and sanitized
+diagnostics only under runner temporary storage. No historical data fallback is
+available. The artifact is `r14-pilot-release-candidate` with seven-day retention.
 
-The daily workflow's combined verification/persistence/deployment job requires
-branch `main` **and both** repository variables `DAILY_VERIFICATION_ENABLED` and
-`PAGES_DEPLOYMENT_ENABLED` exactly equal to `true`. An unset, false, misspelled or
-non-lowercase variable is not authorization. Its cron can be registered by a
-merge, but it performs no work unless these conditions pass. This PR does not
-set either repository variable. The integration's attempt to inspect repository
-variables returned HTTP 403, so actual current values are not claimed as known.
-The staging job never reads them and cannot activate production.
+R1.2 limits remain: 20-minute job, shared 600-second network deadline, 40 direct
+attempts/eight per host including robots/redirects/retries, 1.5 MB per response,
+25 MB aggregate and six Fetch URLs/four Search calls. R1.4 uses zero Search calls.
+The pilot requires exact known-venue matches and independent Berlin address
+proof, future occurrences within calendar day +7, evidence age below six hours,
+and at least two published occurrences on two dates per source. Unsupported
+price/inventory stays UNKNOWN. Claims and candidate expire no later than six
+hours or the earliest published performance start, including in the frontend.
 
-Weekly Sunday 17:00 UTC discovery, its matrix, per-day horizon, recovery and
-low-aggregate guard are preserved. The legacy weekly job still persists discovery
-and scored JSON on `main`; this existing behavior is **not disabled by the daily
-flag**. Its Pages configuration, artifact upload and deployment now require
-`PAGES_DEPLOYMENT_ENABLED=true` on `main`. Thus a future merge does not immediately
-scrape or publish, but subsequent weekly schedules can still update canonical data.
-If approval requires *no* automatic data writes after merge, the owner must
-pause the existing weekly workflow in repository settings before merging.
-Neither the weekly workflow nor repository settings were changed at runtime.
+## Publication authority and isolation
 
-## Owner-controlled release sequence — not executed
+The standalone `jekyll-gh-pages.yml` now has **only `workflow_dispatch`**, required
+candidate run ID and manifest digest inputs, and no production-data build fallback.
+Both jobs require main, `PAGES_DEPLOYMENT_ENABLED=true` and
+`RELEASE_PROFILE=berlin-ufa-pilot-v1`. It downloads the reviewed candidate from a
+successful manual qualification run built from the exact same main SHA. The gate
+checks profile/config, provenance, freshness, published identity/location coverage,
+complete file checksums and a reproducible dataset rebuild. It verifies again
+after the deployment-environment wait. Only the checked artifact's `site/` can
+publish. The manifest records `authorization_to_release=false`: technical evidence
+is never permission to publish.
 
-1. Review the qualification results and unresolved source/evidence failures.
-2. Before merging, confirm the two variables are unset/false using authorized
-   repository settings, and pause weekly discovery if a data-write freeze is needed.
-3. Merge only with explicit approval. The merge push cannot deploy Pages.
-4. For a separately approved manual Pages deployment, set only
-   `PAGES_DEPLOYMENT_ENABLED=true` and dispatch the Pages workflow on `main`.
-   While enabled, the existing weekly workflow can publish on its next schedule.
-5. Enable daily verification only after separate approval by setting
-   `DAILY_VERIFICATION_ENABLED=true` as well. Daily verification currently persists
-   its overlay and deploys in the same job, avoiding the token-push trigger trap.
-6. Roll back activation by setting either variable false; set the Pages variable
-   false to prevent all three publishing paths. Reverting a flag does not undo
-   a previously completed deployment. Re-enable weekly discovery separately if paused.
+The legacy weekly workflow's scrape, aggregation/data commits and Pages job all
+require main, `RELEASE_PROFILE=unrestricted` and
+`UNRESTRICTED_PUBLICATION_ENABLED=true`. Pages steps additionally retain the
+original Pages flag. **Pilot activation cannot permit legacy automatic data writes
+or publication.** This closes the R1.3 Sunday-write gap at the code level.
 
-No merge, repository-variable update, production workflow dispatch, production
-JSON write or Pages deployment is performed by qualification or these instructions.
+Daily verification retains both original flags (`DAILY_VERIFICATION_ENABLED=true`
+and `PAGES_DEPLOYMENT_ENABLED=true`) and main, and now also requires the explicit
+unrestricted profile/flag. It cannot replace a pilot with a broader dataset.
+Unset, false, mismatched or incorrectly cased controls fail closed. A future
+unrestricted release is a distinct owner decision, outside this pilot scope.
 
-## R1.3 qualification and first-release decision
+## Merge, transition and rollback
 
-See [R1.3 report](R13_QUALIFICATION_REPORT.md) and its three committed machine
-summaries. The same read-only staging workflow now offers `r13` and `r13-final`
-phases. Its authority, deadlines, temporary output rules and six-Fetch/four-Search
-per-run caps are unchanged. R1.3 consumed 12 Fetch URLs, six Search calls and 27
-direct attempts across three separate successful qualification runs. No flags or
-production files were changed. Two Raus occurrences now verify, while listing
-coverage and occurrence-bound pricing remain incomplete.
+Merging does not publish: the standalone publisher has no push trigger. No flags
+or runtime workflow states were changed by this PR. Actual current settings have
+not been verified with the available permissions. Before a release, the owner must
+inspect them, keep all production flags false/unset, and pause/cancel old weekly
+and daily executions that may still use an earlier workflow revision. New guards
+do not retroactively cancel previously admitted jobs.
 
-Recommendation: conditional technical GO for an explicitly approved fresh
-Berlin Bühnen + ufaFabrik release; NO-GO for the full three-source release and
-NO-GO for daily activation now. A temporary four-row staging build is not an
-approved release artifact. Unknown Raus prices must not imply affordability.
+The legacy Sunday trigger remains `0 17 * * 0` (18 October 2026: 19:00 CEST), but
+its jobs now skip unless explicitly authorized for unrestricted operation. No
+schedule was enabled or runtime state changed. Weekly source matrix and
+unrestricted scraper behavior remain separate from pilot artifact production.
 
-Final merge-impact review: `.github/workflows/weekly-event-scraper.yml` still has
-`contents: write`, Sunday `0 17 * * 0`, and `git add data/events.json
-data/events_scored.json`, `git commit`, `git push` in aggregation. Neither daily
-nor Pages flag prevents those legacy data writes. The next Sunday invocation on
-18 October 2026 is 19:00 CEST (17:00 UTC); in winter it is 18:00 CET. This branch
-has not changed the repository workflow's enabled/disabled state. An authorized
-owner must inspect that state and pause weekly discovery before merge if the
-release requires a complete automatic-write freeze. Merging alone does not
-trigger that weekly scraper, but subsequent schedules or manual weekly dispatches
-can write canonical data. A later true Pages flag can also permit weekly publishing.
+After an explicitly approved merge, generate/review a **new main-commit candidate**
+and obtain separate publication approval. Set only the pilot profile and Pages
+flag for the approved manual promotion; leave daily/unrestricted flags false and
+schedules paused. PR-branch and expired candidates cannot be promoted.
 
-The standalone Pages merge push remains unable to deploy because both jobs also
-require manual dispatch. Daily verification still requires both explicit flags
-and main. No additional publishing route or activation exemption was introduced.
-Actual repository-variable values remain unverified (API read denied); absence
-of a settings change by this PR must not be presented as proof of their values.
+For rollback, turn off production flags, cancel active publication jobs and keep
+legacy schedules paused. Flags do not undo a completed deployment. An owner may
+separately unpublish Pages if necessary, or approve a code rollback followed by a
+fresh reviewed pilot build; stale historical datasets are not a rollback shortcut.
+Exact commands and artifact review steps are in the R1.4 report.

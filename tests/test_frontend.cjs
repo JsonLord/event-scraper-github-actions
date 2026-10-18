@@ -2,7 +2,7 @@ const fs = require('fs'), vm = require('vm'), assert = require('assert');
 const html = fs.readFileSync('web/index.html','utf8');
 const script = html.match(/<script>([\s\S]*?)<\/script>/)[1];
 new vm.Script(script); // All frontend JavaScript must parse.
-const functions = ['berlinClock', 'eventIsPast', 'safeLink', 'isoDate', 'icsDateStamp', 'matchesSearch','freshEvidence','priceRank'].map(name => {
+const functions = ['berlinClock', 'eventIsPast', 'safeLink', 'isoDate', 'icsDateStamp', 'matchesSearch','freshEvidence','priceRank','icsEscape','buildICS'].map(name => {
   const start=script.indexOf('  function '+name+'(');
   const end=script.indexOf('\n  }',start)+4;
   assert(start>=0 && end>start); return script.slice(start,end);
@@ -26,3 +26,8 @@ const currentStamp = new Date().toISOString();
 assert(c.freshEvidence({observed_at:currentStamp},"status",12));
 assert(!c.freshEvidence({observed_at:currentStamp,claim_expires_at:"2000-01-01T00:00:00Z"},"status",12));
 assert(c.priceRank({price:12,observed_at:currentStamp,claim_expires_at:"2000-01-01T00:00:00Z"})===Infinity);
+
+const expiredCalendar = c.buildICS([{title:"A show",date:"2026-10-18",time:"19:00",venue:"Berlin hall",description:"Student tickets €12",observed_at:currentStamp,claim_expires_at:"2000-01-01T00:00:00Z"}]);
+assert(expiredCalendar.includes("BEGIN:VEVENT"));
+assert(expiredCalendar.includes("Pilot evidence expired"));
+assert(!expiredCalendar.includes("Student tickets"));

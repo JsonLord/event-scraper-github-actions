@@ -306,3 +306,14 @@ production files and passed state, TTL, shared build, Chromium, search and ICS
 checks. The release recommendation is conditional technical GO for a separately
 approved fresh Berlin Bühnen + ufaFabrik release, NO-GO for the full three-source
 release, and NO-GO for daily activation now. Draft status and release gates remain.
+
+## R1.4 pilot release candidate — 18 October 2026
+
+[R1.4 release evidence](R14_RELEASE_CANDIDATE.md) now qualifies an isolated,
+manifest-gated two-source pilot: five published exact matches from 55 discovered
+occurrences, on two dates per source. Technical GO is not authorization to merge,
+publish or schedule. The new guards require a reviewed, fresh main-commit artifact;
+legacy weekly writes and daily/weekly publishing require a separate unrestricted
+profile/flag and cannot overwrite a pilot. Claim expiry is enforced in the
+preview as well as at promotion. All 252 Python tests pass; production datasets,
+activation settings and draft status remain unchanged.
