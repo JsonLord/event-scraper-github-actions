@@ -34,6 +34,14 @@ def main():
             dl.value.save_as(str(out/'selected.ics'))
             calendar=(out/'selected.ics').read_text()
             assert 'BEGIN:VEVENT' in calendar and 'DTSTART' in calendar and 'END:VCALENDAR' in calendar
+            # Category chips must remain visible and searchable, including derived tags.
+            chips=page.locator('tbody .chip').all_text_contents()
+            assert chips, 'Category chips disappeared'
+            category=next((c for c in chips if c!='general'),None)
+            if category:
+                page.locator('#search').fill(category)
+                assert page.locator('tbody tr:has(input[type=checkbox])').count()>0
+                page.locator('#search').fill('')
             page.locator('#showPast').check()
             all_rows=page.locator('tbody tr:has(input[type=checkbox])').count();assert all_rows>=visible
             page.locator('#search').fill('no-such-event-r1-smoke')
@@ -44,8 +52,15 @@ def main():
             page.locator('#freeOnly').uncheck();page.locator('#showPast').uncheck()
             page.set_viewport_size({'width':390,'height':844})
             page.screenshot(path=str(out/'mobile.png'),full_page=False)
+            pilot=json.loads((Path(a.site)/'events_scored.json').read_text()).get('release_expires_at')
+            if pilot:
+                page.evaluate('(expires) => {Date.now = () => Date.parse(expires) + 1;}',pilot)
+                page.locator('#search').fill('expiry-refresh');page.locator('#search').fill('')
+                assert 'Pilot evidence expired' in page.locator('#subtitle').inner_text()
+                assert all(text=='Check site' for text in page.locator('tbody tr:has(input[type=checkbox]) td:nth-child(8)').all_text_contents())
+                assert not page.locator('tbody td.name a:not(.listing-link)').count()
             assert not errors, errors
-            report=dict(default_upcoming_rows=visible,including_past_rows=all_rows,fresh_verified_free_rows=free_rows,ics_export='passed',search='passed',responsive_render='passed',page_errors=errors)
+            report=dict(default_upcoming_rows=visible,including_past_rows=all_rows,fresh_verified_free_rows=free_rows,ics_export='passed',search='passed',categories='passed' if category else 'general_only',pilot_expiry='passed' if pilot else 'not_applicable',responsive_render='passed',page_errors=errors)
             (out/'report.json').write_text(json.dumps(report,indent=2)+'\n');print(json.dumps(report))
             browser.close()
     finally:

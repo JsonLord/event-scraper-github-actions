@@ -80,7 +80,7 @@ def artifact(tmp_path,monkeypatch):
     site,quality=candidate(data,overlay,NOW)
     assert quality['technical_go']
     (tmp_path/'site').mkdir();(tmp_path/'smoke').mkdir()
-    for name,payload in [('discovery.json',data),('overlay.json',overlay),('site/events_scored.json',site),('smoke/report.json',dict(search='passed',ics_export='passed',responsive_render='passed',page_errors=[]))]:
+    for name,payload in [('discovery.json',data),('overlay.json',overlay),('site/events_scored.json',site),('smoke/report.json',dict(search='passed',ics_export='passed',responsive_render='passed',categories='passed',pilot_expiry='passed',page_errors=[]))]:
         (tmp_path/name).write_text(json.dumps(payload))
     (tmp_path/'site/index.html').write_bytes((ROOT/'web/index.html').read_bytes());(tmp_path/'site/.nojekyll').touch()
     seal(tmp_path,'a'*40,NOW,'123',quality)
@@ -125,3 +125,18 @@ def test_every_legacy_write_or_publish_job_is_isolated_from_pilot():
     build=workflow['jobs']['build']['steps']
     assert any('scripts/pilot_release.py' in s.get('run','') for s in build)
     assert not any('build_page_dataset.py' in s.get('run','') for s in build)
+
+
+def test_manifest_is_revalidated_after_deployment_environment_wait():
+    workflow=yaml.safe_load((ROOT/'.github/workflows/jekyll-gh-pages.yml').read_text())
+    steps=workflow['jobs']['deploy']['steps']
+    guard=next(i for i,s in enumerate(steps) if 'scripts/pilot_release.py' in s.get('run',''))
+    deploy=next(i for i,s in enumerate(steps) if 'actions/deploy-pages@' in s.get('uses',''))
+    assert guard<deploy and workflow['jobs']['deploy']['environment']['name']=='github-pages'
+
+
+@pytest.mark.parametrize('url',['https://www.berlin-buehnen.de/de/spielplan','http://www.berlin-buehnen.de/de/spielplan/show/events/123/','https://www.berlin-buehnen.de/contact/','https://www.berlin-buehnen.de/de/spielplan/show/events/123/?token=secret'])
+def test_pilot_rejects_nonoccurrence_or_unsafe_urls(url):
+    from scripts.pilot_release import assert_event
+    data,_=fixtures();e=data['events'][0];e['url']=url
+    with pytest.raises(AssertionError): assert_event(e,NOW)

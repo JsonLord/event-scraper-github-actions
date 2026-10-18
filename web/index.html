@@ -234,6 +234,7 @@
   // Free first, then ascending by price, with an unstated price last: it
   // cannot be placed on the cheap-to-dear axis, so it does not pretend to be.
   function priceRank(ev) {
+    if (ev.claim_expires_at && !freshEvidence(ev, "price", 48)) return Infinity;
     return (ev.price === null || ev.price === undefined) ? Infinity : ev.price;
   }
 
@@ -353,6 +354,7 @@
   }
 
   function freshEvidence(ev, field, hours) {
+    if (ev.claim_expires_at && !(Date.now() < Date.parse(ev.claim_expires_at))) return false;
     var stamp = (ev.field_observed_at || {})[field] || ev.observed_at;
     var age = Date.now() - Date.parse(stamp || "");
     return Number.isFinite(age) && age >= 0 && age < hours * 3600000;
@@ -456,9 +458,9 @@
     var tdDesc = document.createElement("td");
     tdDesc.className = "desc";
     var descText = document.createElement("span");
-    descText.textContent = ev.description || "";
+    descText.textContent = ev.claim_expires_at && !freshEvidence(ev, "link", 168) ? "Pilot evidence expired · check official event page" : ev.description || "";
     tdDesc.appendChild(descText);
-    if (ev.description) tdDesc.title = ev.description;
+    if (ev.description) tdDesc.title = descText.textContent;
     tr.appendChild(tdDesc);
 
     var tdDate = document.createElement("td");
@@ -477,11 +479,11 @@
     tr.appendChild(tdCat);
 
     var tdPrice = document.createElement("td");
-    tdPrice.textContent = ev.free_admission_confirmed && freshEvidence(ev, "price", 48) ? "Free" : (ev.price_label === "Free" ? "Check site" : ev.price_label || "Check site");
+    tdPrice.textContent = ev.claim_expires_at && !freshEvidence(ev, "price", 48) ? "Check site" : ev.free_admission_confirmed && freshEvidence(ev, "price", 48) ? "Free" : (ev.price_label === "Free" ? "Check site" : ev.price_label || "Check site");
     if (ev.student_discount_status === "explicit" && freshEvidence(ev, "discount", 168)) tdPrice.textContent += " · Student offer (conditions apply)";
     else if (freshEvidence(ev, "discount", 168) && (ev.offers || []).some(function (o) { return o.kind === "reduced"; })) tdPrice.textContent += " · Reduced offer (eligibility applies)";
     if (ev.price == null) tdPrice.className = "muted";
-    tdPrice.title = "Price observed: " + ((ev.field_observed_at || {}).price || ev.observed_at || "unknown") + "\n" + (ev.offers || []).map(function (o) { return o.kind + ": €" + o.amount_eur + " " + (o.eligibility || "") + " (" + (o.observed_at || "unknown time") + ")"; }).join("\n");
+    tdPrice.title = ev.claim_expires_at && !freshEvidence(ev, "price", 48) ? "Pilot evidence expired · check official event page" : "Price observed: " + ((ev.field_observed_at || {}).price || ev.observed_at || "unknown") + "\n" + (ev.offers || []).map(function (o) { return o.kind + ": €" + o.amount_eur + " " + (o.eligibility || "") + " (" + (o.observed_at || "unknown time") + ")"; }).join("\n");
     tr.appendChild(tdPrice);
 
     var tdSource = document.createElement("td");
@@ -493,6 +495,9 @@
   }
 
   function render() {
+    if (state.releaseExpiresAt && !(Date.now() < Date.parse(state.releaseExpiresAt))) {
+      document.getElementById("subtitle").textContent = "Pilot evidence expired · check official pages; prices and availability are unknown.";
+    }
     var host = document.getElementById("sections");
     host.innerHTML = "";
     var anyVisible = false;
@@ -614,7 +619,7 @@
       }
       lines.push("SUMMARY:" + icsEscape(ev.title));
       lines.push("LOCATION:" + icsEscape(ev.venue || ""));
-      var descLine = icsEscape(ev.description || "");
+      var descLine = icsEscape(ev.claim_expires_at && !freshEvidence(ev, "link", 168) ? "Pilot evidence expired; check official event page" : ev.description || "");
       if (ev.url) descLine += "\\n" + icsEscape(ev.url);
       lines.push("DESCRIPTION:" + descLine);
       if (ev.url) lines.push("URL:" + ev.url);
@@ -662,6 +667,7 @@
   fetch("events_scored.json")
     .then(function (r) { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
     .then(function (data) {
+      state.releaseExpiresAt = data.release_expires_at;
       state.events = (data.events || []).map(function (ev, i) {
         ev._id = i;
         return ev;
@@ -671,6 +677,10 @@
         state.events.length + " events" + (window_ ? " (" + window_ + ")" : "") +
         ", grouped by day, free first.";
       render();
+      if (data.release_expires_at) {
+        setTimeout(render, Math.max(0, Date.parse(data.release_expires_at) - Date.now()) + 10);
+        setInterval(render, 30000);
+      }
     })
     .catch(function (err) {
       document.getElementById("subtitle").textContent = "Could not load events_scored.json (" + err.message + ").";

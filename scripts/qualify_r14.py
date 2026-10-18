@@ -16,6 +16,7 @@ from scripts.qualify_r12 import RecordingHTTP, RecordingTinyFish, choose_sample,
 from scripts.generic_event_scraper import build_date_url, scrape_document
 from scripts.event_utils import validate_events, dedupe_events
 from scripts.ticket_evidence import occurrence_id, folded
+from scripts.event_matching import host
 from scripts.verify_event_details import DEFAULT_POLICY, run
 from scripts.pilot_release import PROFILE, ROOT, candidate, seal, digest, validate
 
@@ -41,7 +42,7 @@ def location(event,document,campus,now):
             text=body.get_text(' ',strip=True)
             if not re.search(r'\b\d{5}\s+Berlin\b',text): return None
             return dict(city='Berlin',venue=venue,address=text,evidence_url=document[0],observed_at=now.isoformat(),kind='matched_event_location')
-    elif campus and venue in PROFILE['ufa_campus_venues']:
+    elif campus and host(campus[0])=='ufafabrik.de' and venue in PROFILE['ufa_campus_venues']:
         text=BeautifulSoup(campus[1],'lxml').get_text(' ',strip=True)
         match=re.search(r'Viktoria\s*(?:straße|strasse|str\.)\s*10.{0,100}?12105\s+Berlin',text,re.I)
         if match:
