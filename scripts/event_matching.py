@@ -132,6 +132,7 @@ def semantic_candidates(html, final_url, expected_title):
     if host(final_url)=='rausgegangen.de':
         raus=raus_semantic_candidates(soup,final_url,expected_title)
         if raus: return raus
+        if "In the organizer's words:" in soup.get_text() or "Accessibility information" in soup.get_text(): return []
     if host(final_url)=='berlin-buehnen.de' and soup.select_one('bb-page-detail'):
         return berlin_semantic_candidates(soup,final_url,expected_title)
     scopes=soup.select('article')

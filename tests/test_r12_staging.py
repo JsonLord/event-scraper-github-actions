@@ -131,3 +131,25 @@ def test_captured_raus_text_header_replay_never_imports_shared_prices():
         assert '€' not in candidates[0]['description']
         assert not semantic_candidates(html,attempt['destination_url'],'Wrong title')
         assert not semantic_candidates(html.replace('2026','2025'),attempt['destination_url'],title)[0]['date']=='2026-10-18'
+
+
+def test_raus_candidate_urls_collapse_locale_and_reject_generic_or_unsafe():
+    from scripts.rausgegangen_discovery import candidate_urls
+    assert candidate_urls(['https://rausgegangen.de/events/real/',
+        'https://rausgegangen.de/en/events/real/',
+        'https://rausgegangen.de/locations/venue/',
+        'https://rausgegangen.de.evil.example/events/other/',
+        'https://rausgegangen.de/events/other/?token=secret'])==['https://rausgegangen.de/events/real/']
+
+
+def test_raus_production_entry_caches_failed_discovery_and_avoids_browser(monkeypatch):
+    from scripts import rausgegangen_discovery as source
+    from scripts import generic_event_scraper as scraper
+    calls=[]
+    monkeypatch.setattr(source,'_RUN_EVENTS',None)
+    monkeypatch.setattr(source,'discover',lambda *a,**k:(calls.append(True) or ([],[])))
+    monkeypatch.setattr(scraper,'fetch_plain',lambda *a:(_ for _ in ()).throw(AssertionError('Unbounded HTTP')))
+    monkeypatch.setattr(scraper,'render_with_cloakbrowser',lambda *a:(_ for _ in ()).throw(AssertionError('Browser')))
+    assert scraper.scrape(source.BASE)==[]
+    assert scraper.scrape(source.BASE)==[]
+    assert calls==[True]

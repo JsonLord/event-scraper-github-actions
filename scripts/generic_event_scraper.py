@@ -1135,6 +1135,9 @@ def scrape_date_horizon(url: str, days: int) -> List[Dict[str, Any]]:
 
 
 def scrape(url: str) -> List[Dict[str, Any]]:
+    if (urlparse(url).hostname or '').removeprefix('www.')=='rausgegangen.de' and 'eventsbydate' in urlparse(url).path:
+        from scripts.rausgegangen_discovery import scrape_public_listing
+        return scrape_public_listing()
     html = fetch_plain(url)
     if html and not is_bot_challenge(html):
         events = scrape_document(html, url, "plain HTML")

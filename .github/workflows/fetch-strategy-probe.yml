@@ -8,7 +8,7 @@ on:
       phase:
         type: choice
         description: 'Full qualification, or bounded Rausgegangen completion using remaining R1.2 allowance'
-        options: [full, raus-completion, raus-search, r13]
+        options: [full, raus-completion, raus-search, r13, r13-final]
         default: full
 permissions:
   contents: read
