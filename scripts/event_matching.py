@@ -88,6 +88,39 @@ def berlin_semantic_candidates(soup, final_url, expected_title):
         out.append(dict(title=clean_text(headings[0].get_text(' ',strip=True)),date=day,time=clock,venue=venue_text,description=segment+'\n'+admission,url=final_url))
     return out if len(out)==1 else []
 
+def raus_semantic_candidates(soup, final_url, expected_title):
+    """Raus detail header and literal Location/Venue block only.
+
+    Exclude organizer prose, related cards and date-dependent shared pricing.
+    An end time in the single header interval is not a second performance.
+    """
+    if not re.fullmatch(r'/(?:en/)?events/[^/]+/?',urlsplit(final_url).path): return []
+    headings=soup.select('h1')
+    if len(headings)!=1 or folded(headings[0].get_text(' ',strip=True))!=folded(expected_title): return []
+    lines=[clean_text(x) for x in soup.get_text('\n',strip=True).splitlines() if clean_text(x)]
+    title=clean_text(headings[0].get_text(' ',strip=True))
+    if title not in lines: return []
+    lines=lines[lines.index(title)+1:]
+    stops=[i for i,x in enumerate(lines) if x in ("In the organizer's words:",'In den Worten der Veranstaltenden:','Location','Ort')]
+    if not stops: return []
+    header='\n'.join(lines[:min(stops)])
+    months={'jan':1,'feb':2,'mär':3,'mar':3,'apr':4,'mai':5,'may':5,'jun':6,'jul':7,'aug':8,'sep':9,'okt':10,'oct':10,'nov':11,'dez':12,'dec':12}
+    dates=list(re.finditer(r'(?<!\d)(\d{1,2})\.\s*([A-Za-zÄÖÜäöü]+)\.?\s+(20\d{2})(?!\d)',header))
+    intervals=re.findall(r'(?<![\d:])([0-2]\d:[0-5]\d)\s*[-–]\s*([0-2]\d:[0-5]\d)(?!\d)',header)
+    if len(dates)!=1 or len(intervals)!=1: return []
+    d=dates[0];month=months.get(d[2].lower()[:3])
+    if not month: return []
+    from datetime import date
+    try: day=date(int(d[3]),month,int(d[1])).isoformat()
+    except ValueError: return []
+    location=re.search(r'(?:^|\n)Location\nVenue\n([^\n]+)\n(.+?)(?=\n(?:FOLLOW|Navigate|Artist|Organizer|Our app|You might)|$)','\n'.join(lines),re.S)
+    if not location or not re.search(r'\bBerlin\b',location[2]): return []
+    # Prices and statuses are deliberately unknown: shared date-dependent prices
+    # and organizer copy are not occurrence-bound inventory or admission evidence.
+    return [dict(title=title,date=day,time=intervals[0][0],venue=location[1],
+                 description=location[2],url=final_url,canonical_url=final_url)]
+
+
 def semantic_candidates(html, final_url, expected_title):
     """Read a single event section; reject neighboring headings/performances.
 
@@ -96,6 +129,9 @@ def semantic_candidates(html, final_url, expected_title):
     """
     soup=BeautifulSoup(html,'lxml')
     for tag in soup.select('nav,footer,header,aside,script,style'): tag.decompose()
+    if host(final_url)=='rausgegangen.de':
+        raus=raus_semantic_candidates(soup,final_url,expected_title)
+        if raus: return raus
     if host(final_url)=='berlin-buehnen.de' and soup.select_one('bb-page-detail'):
         return berlin_semantic_candidates(soup,final_url,expected_title)
     scopes=soup.select('article')

@@ -113,3 +113,21 @@ def test_candidate_discovery_never_counts_as_verified_source_coverage():
     assert raus['candidate_url_discovery_success'] and not raus['verified_source_coverage']
     assert raus['exact_occurrence_match_rate']==0 and raus['final_publishable_events']==0
     assert not coverage_metrics({},[],[])['verified_source_coverage_complete']
+
+
+def test_captured_raus_text_header_replay_never_imports_shared_prices():
+    # Literal captured text from run 39080734421, not a fabricated provider body.
+    from html import escape
+    from scripts.event_matching import semantic_candidates
+    capture=json.loads(Path('docs/r13-qualification-phase1.json').read_text())
+    attempts=capture['sources']['rausgegangen']['listing_results']
+    for attempt in attempts[:2]:
+        text=attempt['rejected_structure']
+        title=text.split(' | ')[1]
+        html='<h1>'+escape(title)+'</h1>'+''.join('<p>'+escape(x)+'</p>' for x in text.split(' | ')[2:])
+        candidates=semantic_candidates(html,attempt['destination_url'],title)
+        assert len(candidates)==1 and candidates[0]['date']=='2026-10-18'
+        assert 'Berlin' in candidates[0]['description']
+        assert '€' not in candidates[0]['description']
+        assert not semantic_candidates(html,attempt['destination_url'],'Wrong title')
+        assert not semantic_candidates(html.replace('2026','2025'),attempt['destination_url'],title)[0]['date']=='2026-10-18'
