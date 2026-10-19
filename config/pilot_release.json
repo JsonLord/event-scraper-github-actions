@@ -1,0 +1,13 @@
+{
+  "id": "berlin-ufa-pilot-v1",
+  "sources": {
+    "berlin_buehnen": "https://www.berlin-buehnen.de/de/spielplan",
+    "ufafabrik": "https://ufafabrik.de/spielplan.html"
+  },
+  "window_days": 7,
+  "max_age_hours": 6,
+  "minimum_events_per_source": 2,
+  "minimum_dates_per_source": 2,
+  "ufa_campus_url": "https://ufafabrik.de/",
+  "ufa_campus_venues": ["Theatersaal", "Wolfgang Neuss Salon", "Varieté Salon"]
+}

@@ -1,0 +1,283 @@
+{
+  "version": "R1.2",
+  "observed_at": "2026-10-17T22:37:30.802147+00:00",
+  "sources": {
+    "berlin_buehnen": {
+      "listing_results": [
+        {
+          "transport": "direct_http",
+          "outcome": "received"
+        },
+        {
+          "transport": "direct_http",
+          "outcome": "received"
+        }
+      ],
+      "discovered_upcoming_window": 48,
+      "sample_events": 3,
+      "missing_links": 0,
+      "missing_venues": 0
+    },
+    "ufafabrik": {
+      "listing_results": [
+        {
+          "transport": "direct_http",
+          "outcome": "received"
+        }
+      ],
+      "discovered_upcoming_window": 7,
+      "sample_events": 3,
+      "missing_links": 0,
+      "missing_venues": 0
+    },
+    "rausgegangen": {
+      "listing_results": [
+        {
+          "transport": "tinyfish_fetch",
+          "outcome": "received"
+        }
+      ],
+      "discovered_upcoming_window": 0,
+      "sample_events": 0,
+      "missing_links": 0,
+      "missing_venues": 0
+    }
+  },
+  "total_discovered": 55,
+  "sample_events": 6,
+  "matched_events": 6,
+  "exact_match_rate": 1.0,
+  "materialized_events": 5,
+  "source_coverage_complete": false,
+  "http_attempts": 15,
+  "http_bytes": 1025680,
+  "http_per_host": {
+    "www.berlin-buehnen.de": 8,
+    "ufafabrik.de": 5,
+    "rausgegangen.de": 2
+  },
+  "tinyfish_fetch_urls": 4,
+  "tinyfish_search_calls": 0,
+  "tinyfish_calls": [
+    {
+      "operation": "fetch",
+      "http_status": 200,
+      "schema_valid": true,
+      "result_count": 1,
+      "error_codes": [],
+      "duration_seconds": 6.489,
+      "outcome": "ok"
+    },
+    {
+      "operation": "fetch",
+      "http_status": 200,
+      "schema_valid": true,
+      "result_count": 1,
+      "error_codes": [],
+      "duration_seconds": 4.324,
+      "outcome": "ok"
+    },
+    {
+      "operation": "fetch",
+      "http_status": 200,
+      "schema_valid": true,
+      "result_count": 1,
+      "error_codes": [],
+      "duration_seconds": 1.509,
+      "outcome": "ok"
+    },
+    {
+      "operation": "fetch",
+      "http_status": 200,
+      "schema_valid": true,
+      "result_count": 1,
+      "error_codes": [],
+      "duration_seconds": 0.772,
+      "outcome": "ok"
+    }
+  ],
+  "network_wall_seconds": 25.813,
+  "pipeline_wall_seconds": 44.965,
+  "production_files_unchanged": true,
+  "frontend_smoke": {
+    "default_upcoming_rows": 5,
+    "including_past_rows": 5,
+    "fresh_verified_free_rows": 0,
+    "ics_export": "passed",
+    "search": "passed",
+    "responsive_render": "passed",
+    "page_errors": []
+  },
+  "integration": {
+    "fresh_second_run_preserved_state": true,
+    "ttl_expiration_passed": true,
+    "input_immutability_passed": true,
+    "missing_venue_replays": [
+      {
+        "event_id": "sha256:356d08bbf94ea1131cb9c658922b914872c89bc023adc9c1ad1f04ea6a303812",
+        "counterfactual_missing_venue": true,
+        "matched": true,
+        "match_basis": "official_canonical_occurrence"
+      },
+      {
+        "event_id": "sha256:e330d564e04aabd9c26f6771dbf7de1fb972a53bc9fe2c3e04a12b975064d71f",
+        "counterfactual_missing_venue": true,
+        "matched": true,
+        "match_basis": "official_canonical_occurrence"
+      },
+      {
+        "event_id": "sha256:4f19d97f035fc70542231631e37d923b207c7c9a2edae9c244bab6956780db5e",
+        "counterfactual_missing_venue": true,
+        "matched": true,
+        "match_basis": "official_canonical_occurrence"
+      },
+      {
+        "event_id": "sha256:1bcda06cff7b4ceff16434d39d4a7a2e540ae146e7cbaf0d95f33a14cf1e4b6a",
+        "counterfactual_missing_venue": true,
+        "matched": false,
+        "match_basis": null
+      },
+      {
+        "event_id": "sha256:21d78147521a72015f20c0548c1e1494416e6a8f96eb50b6f580fe6250091f08",
+        "counterfactual_missing_venue": true,
+        "matched": false,
+        "match_basis": null
+      },
+      {
+        "event_id": "sha256:9de61d12bfae5c9b4e9fd670a9517f3ec774f7e050441ef97b650fc9c021d190",
+        "counterfactual_missing_venue": true,
+        "matched": false,
+        "match_basis": null
+      }
+    ],
+    "multi_performance_pages": [
+      {
+        "event_id": "sha256:e330d564e04aabd9c26f6771dbf7de1fb972a53bc9fe2c3e04a12b975064d71f",
+        "performance_rows": 5,
+        "contains_other_cancellation": true,
+        "selected_event_status": "cancelled"
+      },
+      {
+        "event_id": "sha256:4f19d97f035fc70542231631e37d923b207c7c9a2edae9c244bab6956780db5e",
+        "performance_rows": 9,
+        "contains_other_cancellation": false,
+        "selected_event_status": "scheduled"
+      }
+    ]
+  },
+  "second_run_targets": 0,
+  "events": [
+    {
+      "event_id": "sha256:356d08bbf94ea1131cb9c658922b914872c89bc023adc9c1ad1f04ea6a303812",
+      "title": "Helga Schubert: Die Woche danach",
+      "date": "2026-10-18",
+      "time": "13:00",
+      "source_url": "https://www.berlin-buehnen.de/de/spielplan",
+      "matched": true,
+      "outcome": "matched",
+      "match_basis": "title_occurrence_venue",
+      "price": {},
+      "student_discount_status": "unknown",
+      "ticket_status": "unknown",
+      "event_status": "scheduled"
+    },
+    {
+      "event_id": "sha256:e330d564e04aabd9c26f6771dbf7de1fb972a53bc9fe2c3e04a12b975064d71f",
+      "title": "Es war einmal ein Zaubersmann",
+      "date": "2026-10-25",
+      "time": "11:00",
+      "source_url": "https://www.berlin-buehnen.de/de/spielplan",
+      "matched": true,
+      "outcome": "matched",
+      "match_basis": "title_occurrence_venue",
+      "price": {},
+      "student_discount_status": "unknown",
+      "ticket_status": "unknown",
+      "event_status": "cancelled"
+    },
+    {
+      "event_id": "sha256:4f19d97f035fc70542231631e37d923b207c7c9a2edae9c244bab6956780db5e",
+      "title": "Historische Führung",
+      "date": "2026-10-25",
+      "time": "12:00",
+      "source_url": "https://www.berlin-buehnen.de/de/spielplan",
+      "matched": true,
+      "outcome": "matched",
+      "match_basis": "title_occurrence_venue",
+      "price": {
+        "price": 8.0,
+        "price_min": 8.0,
+        "price_max": 8.0,
+        "price_status": "known",
+        "price_label": "€8",
+        "free_admission_confirmed": false
+      },
+      "student_discount_status": "unknown",
+      "ticket_status": "unknown",
+      "event_status": "scheduled"
+    },
+    {
+      "event_id": "sha256:1bcda06cff7b4ceff16434d39d4a7a2e540ae146e7cbaf0d95f33a14cf1e4b6a",
+      "title": "Ella Carina Werner",
+      "date": "2026-10-18",
+      "time": "19:00",
+      "source_url": "https://ufafabrik.de/spielplan.html",
+      "matched": true,
+      "outcome": "matched",
+      "match_basis": "title_occurrence_venue",
+      "price": {
+        "price": 12.0,
+        "price_min": 12.0,
+        "price_max": 22.0,
+        "price_status": "range",
+        "price_label": "From €12 · paid tiers",
+        "free_admission_confirmed": false
+      },
+      "student_discount_status": "explicit",
+      "ticket_status": "unknown",
+      "event_status": "unknown"
+    },
+    {
+      "event_id": "sha256:21d78147521a72015f20c0548c1e1494416e6a8f96eb50b6f580fe6250091f08",
+      "title": "Live-Hörspiel „Schöneberger Allerlei – Fall 4“",
+      "date": "2026-10-18",
+      "time": "19:00",
+      "source_url": "https://ufafabrik.de/spielplan.html",
+      "matched": true,
+      "outcome": "matched",
+      "match_basis": "title_occurrence_venue",
+      "price": {
+        "price": 12.0,
+        "price_min": 12.0,
+        "price_max": 26.0,
+        "price_status": "range",
+        "price_label": "From €12 · paid tiers",
+        "free_admission_confirmed": false
+      },
+      "student_discount_status": "explicit",
+      "ticket_status": "unknown",
+      "event_status": "unknown"
+    },
+    {
+      "event_id": "sha256:9de61d12bfae5c9b4e9fd670a9517f3ec774f7e050441ef97b650fc9c021d190",
+      "title": "Magic Monday Leipzig",
+      "date": "2026-10-19",
+      "time": "20:00",
+      "source_url": "https://ufafabrik.de/spielplan.html",
+      "matched": true,
+      "outcome": "matched",
+      "match_basis": "title_occurrence_venue",
+      "price": {
+        "price": 12.0,
+        "price_min": 12.0,
+        "price_max": 22.0,
+        "price_status": "range",
+        "price_label": "From €12 · paid tiers",
+        "free_admission_confirmed": false
+      },
+      "student_discount_status": "explicit",
+      "ticket_status": "unknown",
+      "event_status": "unknown"
+    }
+  ]
+}

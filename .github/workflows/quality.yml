@@ -1,0 +1,35 @@
+name: Offline quality gates
+on:
+  pull_request:
+  push:
+    branches: [main, codex/berlin-events-r1-quality]
+permissions:
+  contents: read
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: pip install -r requirements.txt
+      - run: python -m pytest -q
+      - run: node tests/test_frontend.cjs
+      - run: python scripts/audit_events.py --input tests/fixtures/events_scored_2026-10-11.json --output /tmp/quality-audit.json
+      - name: Offline Pages build and schema gate
+        run: |
+          python scripts/build_page_dataset.py --output-dir /tmp/r1-site --now 2026-10-17T07:17:00Z
+          python scripts/audit_events.py --input /tmp/r1-site/events_scored.json --gate --output /tmp/build-quality.json
+          python scripts/verify_event_details.py --dry-run --now 2026-10-17T07:17:00Z
+      - name: Validate workflows
+        run: |
+          python - <<'PY'
+          import pathlib, yaml
+          for path in pathlib.Path('.github/workflows').glob('*.yml'):
+              doc = yaml.safe_load(path.read_text())
+              assert isinstance(doc.get('jobs'), dict), path
+          PY

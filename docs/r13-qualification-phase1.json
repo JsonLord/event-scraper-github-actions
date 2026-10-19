@@ -1,0 +1,256 @@
+{
+  "version": "R1.2",
+  "phase": "r13",
+  "observed_at": "2026-10-17T23:54:17.244160+00:00",
+  "sources": {
+    "berlin_buehnen": {
+      "listing_results": [
+        {
+          "transport": "direct_http",
+          "outcome": "received"
+        }
+      ],
+      "discovered_upcoming_window": 24,
+      "sample_events": 1,
+      "missing_links": 0,
+      "missing_venues": 0
+    },
+    "ufafabrik": {
+      "listing_results": [
+        {
+          "transport": "direct_http",
+          "outcome": "received"
+        }
+      ],
+      "discovered_upcoming_window": 7,
+      "sample_events": 1,
+      "missing_links": 0,
+      "missing_venues": 0
+    },
+    "rausgegangen": {
+      "listing_results": [
+        {
+          "transport": "tinyfish_fetch",
+          "outcome": "received",
+          "search_candidates": 20,
+          "candidate_url": "https://rausgegangen.de/events/gavin-degraw-6/",
+          "destination_url": "https://rausgegangen.de/en/events/gavin-degraw-6/",
+          "extracted_occurrences": 0,
+          "rejected_structure": "PHOTO: © Gavin DeGraw | Gavin DeGraw | Tomorrow, 18. Okt 2026 | 20:00 - 23:45 | €\n41,00 € | In the organizer's words: | Gavin DeGraw ist ein Grammy-nominierter Singer-Songwriter, bekannt für seine soulige Stimme, emotionalen Texte und mitreißenden Live-Auftritte. Mit mehreren Platin-Alben und Hits wie „I Don’t Want to Be“ hat er sich einen Sound zwischen Pop und Rock mit viel Gefühl erarbeitet. \"Chariot\" feierte vor Kurzem ein 20-jähriges Jubiläum! Stellt euch auf Nostalgie pur ein! | Hilfe und Kontakt zu diesem Event | Accessibility information | We don't have any accessibility information for this event. | You can find everything about accessibility at Rausgegangen here. | Location | Venue | Metropol Berlin | Nollendorfplatz 5\n10777 Berlin | FOLLOW | Artist | Musician | Gavin DeGraw\n\nMusician\n\n\n\nFOLLOW | Organizer | Booking Agency | Z|ART Agency\n\nPaul-Lincke-Ufer 8B\n10999 Berlin\n\n\n\nFOLLOW | Our app can | do so much more! | APP HERUNTERLADEN (öffnet in neuem Tab)"
+        },
+        {
+          "transport": "tinyfish_fetch",
+          "outcome": "received",
+          "search_candidates": 20,
+          "candidate_url": "https://rausgegangen.de/events/rattleskin-by-danc-5/",
+          "destination_url": "https://rausgegangen.de/en/events/rattleskin-by-danc-5/",
+          "extracted_occurrences": 0,
+          "rejected_structure": "PHOTO: © Kasper Jenhag | Rattleskin By DANCÆ | Tomorrow, 18. Okt 2026 | 18:30 - 20:30 | Cank Berlin | Berlin | €\n35,00 to 52,00 € | Price information | Save | In the organizer's words: | Set within the 2,000 square meters of the abandoned department store, DANCÆ takes over this landmark location for an evening of new works combining ballet, contemporary dance, and large-scale installations. | “Rattleskin” is a new ballet set to electronic music that explores how our desires are shaped by the world we inhabit. Moving between romantic ideals and contemporary discourses on self-improvement, social media, and self-optimization, it asks how our ideas of love, happiness, and a meaningful life are constructed—and how much of what we want is ever truly of our own making. | Conceived as a fully immersive experience, spatialized video installations and a new media work extend throughout the entire space, forming a unified environment through which the audience moves and in which choreography, imagery, and architecture unfold together. | This content has been machine translated. | Price information: | €35.00–€52.00, depending on certain dates. | Hilfe und Kontakt zu diesem Event | Accessibility information | We don't have any accessibility information for this event. | You can find everything about accessibility at Rausgegangen here. | Location | Venue | Cank Berlin | Karl-Marx-Straße 95\n12043 Berlin | Navigate | Our app can | do so much more! | APP HERUNTERLADEN (öffnet in neuem Tab)"
+        },
+        {
+          "transport": "tinyfish_fetch",
+          "outcome": "received",
+          "search_candidates": 20,
+          "candidate_url": "https://rausgegangen.de/events/charlie-jeer-1/",
+          "destination_url": "https://rausgegangen.de/en/events/charlie-jeer-1/",
+          "extracted_occurrences": 0,
+          "rejected_structure": "Charlie Jeer | In the organizer's words: | Presented by Live Nation | Rollstuhlfahrer*innen/Mensch mit Behinderung ('B' - Ausweis) muss ein normales Ticket kaufen. | EINE Begleitperson erhält vor Ort freien Eintritt. Der Ausweis muss am Einlass vorgelegt werden und gültig sein. | Rollstuhlfahrer*innen/Mensch mit Behinderung ('B' - Ausweis) muss ein normales Ticket kaufen. | EINE Begleitperson erhält vor Ort freien Eintritt. Der Ausweis muss am Einlass vorgelegt werden und gültig sein. | Accessibility information | We don't have any accessibility information for this event. | You can find everything about accessibility at Rausgegangen here. | Location | Artist | Venue | You might enjoy this as well? | Noch mehr Events dieser Location-Page | Noch mehr Events von dieser Artist-Page",
+          "empty_extraction_structure": {
+            "headings": [
+              "Charlie Jeer",
+              "In the organizer's words:",
+              "Accessibility information",
+              "Accessibility information",
+              "Location",
+              "Artist | Venue"
+            ],
+            "text_excerpt": "Charlie Jeer In the organizer's words: Presented by Live Nation Rollstuhlfahrer*innen/Mensch mit Behinderung ('B' - Ausweis) muss ein normales Ticket kaufen. EINE Begleitperson erhält vor Ort freien Eintritt. Der Ausweis muss am Einlass vorgelegt werden und gültig sein. Rollstuhlfahrer*innen/Mensch mit Behinderung ('B' - Ausweis) muss ein normales Ticket kaufen. EINE Begleitperson erhält vor Ort freien Eintritt. Der Ausweis muss am Einlass vorgelegt werden und gültig sein. Accessibility information We don't have any accessibility information for this event. You can find everything about accessibility at Rausgegangen here. Location Artist | Venue You might enjoy this as well? Noch mehr Events dieser Location-Page Noch mehr Events von dieser Artist-Page",
+            "event_links": 0
+          }
+        }
+      ],
+      "discovered_upcoming_window": 0,
+      "sample_events": 0,
+      "missing_links": 0,
+      "missing_venues": 0
+    }
+  },
+  "total_discovered": 31,
+  "sample_events": 2,
+  "matched_events": 2,
+  "exact_match_rate": 1.0,
+  "materialized_events": 2,
+  "source_coverage_complete": false,
+  "coverage": {
+    "sources": {
+      "berlin_buehnen": {
+        "listing_discovery_success": true,
+        "candidate_url_discovery_success": true,
+        "selected_occurrences": 1,
+        "exact_occurrence_matches": 1,
+        "exact_occurrence_match_rate": 1.0,
+        "verified_source_coverage": true,
+        "final_publishable_events": 1
+      },
+      "ufafabrik": {
+        "listing_discovery_success": true,
+        "candidate_url_discovery_success": true,
+        "selected_occurrences": 1,
+        "exact_occurrence_matches": 1,
+        "exact_occurrence_match_rate": 1.0,
+        "verified_source_coverage": true,
+        "final_publishable_events": 1
+      },
+      "rausgegangen": {
+        "listing_discovery_success": false,
+        "candidate_url_discovery_success": true,
+        "selected_occurrences": 0,
+        "exact_occurrence_matches": 0,
+        "exact_occurrence_match_rate": null,
+        "verified_source_coverage": false,
+        "final_publishable_events": 0
+      }
+    },
+    "verified_source_coverage_complete": false
+  },
+  "http_attempts": 9,
+  "http_bytes": 494081,
+  "http_per_host": {
+    "www.berlin-buehnen.de": 4,
+    "ufafabrik.de": 3,
+    "rausgegangen.de": 2
+  },
+  "tinyfish_fetch_urls": 4,
+  "tinyfish_search_calls": 2,
+  "tinyfish_calls": [
+    {
+      "operation": "search",
+      "http_status": 200,
+      "schema_valid": true,
+      "result_count": 10,
+      "error_codes": [],
+      "duration_seconds": 1.653,
+      "outcome": "ok"
+    },
+    {
+      "operation": "search",
+      "http_status": 200,
+      "schema_valid": true,
+      "result_count": 10,
+      "error_codes": [],
+      "duration_seconds": 0.911,
+      "outcome": "ok"
+    },
+    {
+      "operation": "fetch",
+      "http_status": 200,
+      "schema_valid": true,
+      "result_count": 1,
+      "error_codes": [],
+      "duration_seconds": 5.622,
+      "outcome": "ok"
+    },
+    {
+      "operation": "fetch",
+      "http_status": 200,
+      "schema_valid": true,
+      "result_count": 1,
+      "error_codes": [],
+      "duration_seconds": 7.908,
+      "outcome": "ok"
+    },
+    {
+      "operation": "fetch",
+      "http_status": 200,
+      "schema_valid": true,
+      "result_count": 1,
+      "error_codes": [],
+      "duration_seconds": 2.759,
+      "outcome": "ok"
+    },
+    {
+      "operation": "fetch",
+      "http_status": 200,
+      "schema_valid": true,
+      "result_count": 1,
+      "error_codes": [],
+      "duration_seconds": 1.19,
+      "outcome": "ok"
+    }
+  ],
+  "network_wall_seconds": 26.89,
+  "pipeline_wall_seconds": 42.822,
+  "production_files_unchanged": true,
+  "frontend_smoke": {
+    "default_upcoming_rows": 2,
+    "including_past_rows": 2,
+    "fresh_verified_free_rows": 0,
+    "ics_export": "passed",
+    "search": "passed",
+    "responsive_render": "passed",
+    "page_errors": []
+  },
+  "integration": {
+    "fresh_second_run_preserved_state": true,
+    "ttl_expiration_passed": true,
+    "disk_overlay_roundtrip": true,
+    "input_immutability_passed": true,
+    "missing_venue_replays": [
+      {
+        "event_id": "sha256:356d08bbf94ea1131cb9c658922b914872c89bc023adc9c1ad1f04ea6a303812",
+        "counterfactual_missing_venue": true,
+        "matched": true,
+        "match_basis": "official_canonical_occurrence"
+      },
+      {
+        "event_id": "sha256:1bcda06cff7b4ceff16434d39d4a7a2e540ae146e7cbaf0d95f33a14cf1e4b6a",
+        "counterfactual_missing_venue": true,
+        "matched": false,
+        "match_basis": null
+      }
+    ],
+    "multi_performance_pages": []
+  },
+  "second_run_targets": 0,
+  "events": [
+    {
+      "event_id": "sha256:356d08bbf94ea1131cb9c658922b914872c89bc023adc9c1ad1f04ea6a303812",
+      "title": "Helga Schubert: Die Woche danach",
+      "date": "2026-10-18",
+      "time": "13:00",
+      "source_url": "https://www.berlin-buehnen.de/de/spielplan",
+      "url": "https://www.berlin-buehnen.de/de/spielplan/helga-schubert-die-woche-danach/events/374730/",
+      "venue": "Berliner Ensemble",
+      "matched": true,
+      "outcome": "matched",
+      "match_basis": "title_occurrence_venue",
+      "price": {},
+      "student_discount_status": "unknown",
+      "ticket_status": "unknown",
+      "event_status": "scheduled"
+    },
+    {
+      "event_id": "sha256:1bcda06cff7b4ceff16434d39d4a7a2e540ae146e7cbaf0d95f33a14cf1e4b6a",
+      "title": "Ella Carina Werner",
+      "date": "2026-10-18",
+      "time": "19:00",
+      "source_url": "https://ufafabrik.de/spielplan.html",
+      "url": "https://ufafabrik.de/veranstaltung/39991/ella-carina-werner",
+      "venue": "Wolfgang Neuss Salon",
+      "matched": true,
+      "outcome": "matched",
+      "match_basis": "title_occurrence_venue",
+      "price": {
+        "price": 12.0,
+        "price_min": 12.0,
+        "price_max": 22.0,
+        "price_status": "range",
+        "price_label": "From €12 · paid tiers",
+        "free_admission_confirmed": false
+      },
+      "student_discount_status": "explicit",
+      "ticket_status": "unknown",
+      "event_status": "unknown"
+    }
+  ]
+}

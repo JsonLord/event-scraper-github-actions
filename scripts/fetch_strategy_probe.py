@@ -10,7 +10,7 @@ anything to extract at all.
 
 This probe runs every strategy against every target and reports how many
 events each actually yields - not how many bytes it returned, which is the
-misleading measure: Jina's default markdown rendering of berlin-buehnen.de
+misleading measure: historical Reader's default markdown rendering of berlin-buehnen.de
 comes back 21k and extracts nothing, while asking the same endpoint for HTML
 comes back 220k and extracts 31 events.
 
@@ -20,6 +20,7 @@ from exactly these sites. Run it, read the table, then wire the winner into
 generic_event_scraper.py and stop paying for the rest.
 """
 
+from generic_event_scraper import fetch_tinyfish_html
 import argparse
 import json
 import logging
@@ -56,24 +57,11 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-JINA_ENDPOINT = "https://r.jina.ai/"
-
-# Each strategy returns (body, is_html). Markdown bodies go through the line
-# scanner; HTML bodies go through the full five-strategy document extractor,
-# which is the whole reason asking Jina for HTML beats its default rendering.
-JINA_VARIANTS: Dict[str, Dict[str, str]] = {
-    "jina_markdown": {},
-    "jina_html": {"X-Return-Format": "html"},
-    "jina_html_nocache": {"X-Return-Format": "html", "X-No-Cache": "true"},
-    "jina_html_browser": {"X-Return-Format": "html", "X-Engine": "browser"},
-    "jina_html_proxy": {"X-Return-Format": "html", "X-Proxy": "auto"},
-}
-
 
 def extract_markdown_events(markdown: str, source_url: str) -> List[Dict[str, Any]]:
-    """Line scanner for Jina's default markdown rendering.
+    """Line scanner for historical Reader's default markdown rendering.
 
-    This lived in generic_event_scraper.py as the Jina tier's extractor until
+    This lived in generic_event_scraper.py as the historical Reader tier's extractor until
     the probe showed it produced zero usable events from every source tried.
     It stays here so the comparison that retired it can be re-run.
     """
@@ -114,29 +102,13 @@ def fetch_cloakbrowser(url: str, timeout: int) -> Tuple[Optional[str], bool]:
     return g.render_with_cloakbrowser(url), True
 
 
-def make_jina_fetcher(extra_headers: Dict[str, str]) -> Callable[[str, int], Tuple[Optional[str], bool]]:
-    is_html = extra_headers.get("X-Return-Format") == "html"
-
-    def fetch(url: str, timeout: int) -> Tuple[Optional[str], bool]:
-        api_key = os.environ.get("JINA_API_KEY")
-        if not api_key:
-            raise RuntimeError("JINA_API_KEY not set")
-        headers = {"Authorization": f"Bearer {api_key}", "Accept": "text/plain"}
-        headers.update(extra_headers)
-        response = requests.get(JINA_ENDPOINT + url, headers=headers, timeout=timeout)
-        response.raise_for_status()
-        return response.text, is_html
-
-    return fetch
-
 
 def build_strategies(names: Optional[List[str]] = None) -> Dict[str, Callable]:
     strategies: Dict[str, Callable] = {
         "direct": fetch_direct,
         "cloakbrowser": fetch_cloakbrowser,
     }
-    for name, headers in JINA_VARIANTS.items():
-        strategies[name] = make_jina_fetcher(headers)
+    strategies["tinyfish_html"] = lambda url, timeout: (fetch_tinyfish_html(url), True)
     if names:
         missing = [n for n in names if n not in strategies]
         if missing:
@@ -248,8 +220,8 @@ def main():
     names = [s.strip() for s in args.strategies.split(",")] if args.strategies else None
     strategies = build_strategies(names)
 
-    if "JINA_API_KEY" not in os.environ:
-        logger.warning("JINA_API_KEY is not set - every jina_* strategy will report an error. "
+    if "TINYFISH_API_KEY" not in os.environ:
+        logger.warning("TINYFISH_API_KEY is not set - every tinyfish_html strategy will report an error. "
                        "Add it as a repository secret to compare them.")
 
     results = []

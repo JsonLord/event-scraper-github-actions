@@ -1,0 +1,54 @@
+name: Daily event verification
+on:
+  schedule:
+    - cron: '17 7 * * *'
+  workflow_dispatch:
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+concurrency:
+  group: pages
+  cancel-in-progress: false
+jobs:
+  verify-build-publish:
+    if: ${{ github.ref == 'refs/heads/main' && vars.RELEASE_PROFILE == 'unrestricted' && vars.UNRESTRICTED_PUBLICATION_ENABLED == 'true' && vars.DAILY_VERIFICATION_ENABLED == 'true' && vars.PAGES_DEPLOYMENT_ENABLED == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install -r requirements.txt
+      - name: Observe public event details
+        env:
+          TINYFISH_API_KEY: ${{ secrets.TINYFISH_API_KEY }}
+        run: python scripts/verify_event_details.py
+      - name: Build and validate shared dataset
+        run: |
+          python scripts/build_page_dataset.py --output-dir _site
+          python scripts/audit_events.py --input _site/events_scored.json --gate --output /tmp/quality.json
+      - name: Persist compact observations
+        run: |
+          git config user.name 'GitHub Actions'
+          git config user.email 'actions@github.com'
+          git add data/event_verifications.json
+          if ! git diff --cached --quiet; then
+            git commit -m 'Update bounded daily event observations'
+            # Reject concurrent external edits; never rebase observation blobs over newer data.
+            git push
+          fi
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+      # GITHUB_TOKEN commits do not trigger push workflows: publish in this run.
+      - name: Deploy updated evidence
+        id: deployment
+        uses: actions/deploy-pages@v5

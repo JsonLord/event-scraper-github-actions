@@ -1,0 +1,21 @@
+{
+  "max_events_per_run": 40,
+  "max_http_requests_per_run": 40,
+  "max_requests_per_host": 8,
+  "max_concurrent_requests": 2,
+  "max_response_bytes": 1500000,
+  "max_total_response_bytes": 25000000,
+  "max_tinyfish_fetch_urls_per_run": 30,
+  "max_tinyfish_search_queries_per_run": 12,
+  "connect_timeout_seconds": 8,
+  "read_timeout_seconds": 12,
+  "ttl_hours": {
+    "available": 12,
+    "sold_out": 24,
+    "price": 48,
+    "discount": 168,
+    "event_status": 24,
+    "link": 168
+  },
+  "max_run_seconds": 900
+}

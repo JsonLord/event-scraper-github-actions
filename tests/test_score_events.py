@@ -110,8 +110,8 @@ def test_results_are_grouped_by_day_then_priced_free_first():
     events = [
         _event(title="Day2 ten", date="2026-08-30", price=10.0, url="https://example.de/events/d2-ten"),
         _event(title="Day1 unknown", date="2026-08-29", price=None, url="https://example.de/events/d1-unknown"),
-        _event(title="Day1 free", date="2026-08-29", price=0.0, url="https://example.de/events/d1-free"),
-        _event(title="Day2 free", date="2026-08-30", price=0.0, url="https://example.de/events/d2-free"),
+        _event(title="Day1 free", description="Free admission", date="2026-08-29", price=0.0, url="https://example.de/events/d1-free"),
+        _event(title="Day2 free", description="Free admission", date="2026-08-30", price=0.0, url="https://example.de/events/d2-free"),
         _event(title="Day1 twelve", date="2026-08-29", price=12.0, url="https://example.de/events/d1-twelve"),
     ]
     ordered = [e["title"] for e in score_and_filter_events(events, today=TODAY)]

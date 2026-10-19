@@ -326,75 +326,11 @@ def test_wordpress_detection():
 
 
 # --------------------------------------------------------------------------
-# The Jina Reader tier
+# The TinyFish Reader tier
 # --------------------------------------------------------------------------
 
-def test_jina_tier_asks_for_html_not_markdown(monkeypatch):
-    """Measured with scripts/fetch_strategy_probe.py against a Cloudflare-
-    challenged source: the default markdown rendering came back 9k and
-    yielded 0 events; the same URL as HTML came back 220k and yielded 31.
-    An HTML body goes through all five document extractors; markdown only
-    ever got a line scanner that produced nothing usable from any source."""
-    from scripts import generic_event_scraper as module
-
-    seen = {}
-
-    class Response:
-        status_code, text = 200, "<html><body>ok</body></html>"
-
-        def raise_for_status(self):
-            return None
-
-    def fake_get(url, headers=None, timeout=None, **kwargs):
-        seen["url"] = url
-        seen["headers"] = headers or {}
-        return Response()
-
-    monkeypatch.setenv("JINA_API_KEY", "test-key")
-    monkeypatch.setattr(module.requests, "get", fake_get, raising=False)
-
-    assert module.fetch_jina_html("https://example.de/programm") == Response.text
-    assert seen["url"] == "https://r.jina.ai/https://example.de/programm"
-    assert seen["headers"]["X-Return-Format"] == "html"
-    assert seen["headers"]["Authorization"] == "Bearer test-key"
-
-
-def test_jina_tier_sends_only_the_header_that_earned_its_place(monkeypatch):
-    """The probe measured the alternatives: X-Engine, X-Proxy and X-Locale
-    matched plain HTML exactly, and X-No-Cache matched it everywhere but one
-    site, which it lost, at double the request time. None are sent."""
-    from scripts import generic_event_scraper as module
-
-    seen = {}
-
-    class Response:
-        text = "<html></html>"
-
-        def raise_for_status(self):
-            return None
-
-    monkeypatch.setenv("JINA_API_KEY", "test-key")
-    monkeypatch.setattr(
-        module.requests, "get",
-        lambda url, headers=None, **kw: (seen.update(headers=headers or {}), Response())[1],
-        raising=False,
-    )
-    module.fetch_jina_html("https://example.de/")
-    for header in ("X-No-Cache", "X-Engine", "X-Proxy", "X-Locale"):
-        assert header not in seen["headers"], header
-
-
-def test_jina_tier_is_skipped_without_a_key(monkeypatch):
-    """Anonymous Jina calls are unreliably blocked by IP reputation, so with
-    no key the tier reports that it is skipping rather than trying."""
-    from scripts import generic_event_scraper as module
-
-    monkeypatch.delenv("JINA_API_KEY", raising=False)
-    assert module.fetch_jina_html("https://example.de/") is None
-
-
-def test_a_challenge_returned_through_jina_is_not_treated_as_content(monkeypatch):
-    """Eventbrite serves its "Human Verification" interstitial to Jina too.
+def test_a_challenge_returned_through_tinyfish_is_not_treated_as_content(monkeypatch):
+    """Eventbrite serves its "Human Verification" interstitial to TinyFish too.
     Extracting from that would publish nothing but produce a misleading
     "the tier worked" reading."""
     from scripts import generic_event_scraper as module
@@ -403,7 +339,7 @@ def test_a_challenge_returned_through_jina_is_not_treated_as_content(monkeypatch
                  '<body>verify</body></html>')
     monkeypatch.setattr(module, "fetch_plain", lambda url, **kw: None)
     monkeypatch.setattr(module, "render_with_cloakbrowser", lambda url: None)
-    monkeypatch.setattr(module, "fetch_jina_html", lambda url, **kw: challenge)
+    monkeypatch.setattr(module, "fetch_tinyfish_html", lambda url, **kw: challenge)
     assert module.scrape("https://www.eventbrite.de/d/germany/berlin/events/") == []
 
 
@@ -411,18 +347,18 @@ def test_eventbrite_interstitial_is_recognised():
     assert is_bot_challenge('<html><head><title>Human Verification</title></head></html>')
 
 
-def test_jina_is_tried_before_the_render_tier(monkeypatch):
+def test_tinyfish_is_tried_before_the_render_tier(monkeypatch):
     """Ordering is a measurement, not a preference. Probe run 34825099038:
     venturecafeberlin.org refused the runner, CloakBrowser got its challenge
-    page and 0 events, the Jina tier got the real page and the event. Across
-    the probe set Jina kept 33 to CloakBrowser's 32 at a twentieth of the
-    time, so a site that fails a plain GET must reach Jina first."""
+    page and 0 events, the TinyFish tier got the real page and the event. Across
+    the probe set TinyFish kept 33 to CloakBrowser's 32 at a twentieth of the
+    time, so a site that fails a plain GET must reach TinyFish first."""
     from scripts import generic_event_scraper as module
 
     order = []
 
-    def jina(url, **kwargs):
-        order.append("jina")
+    def tinyfish(url, **kwargs):
+        order.append("tinyfish")
         return ('<html><body><div class="event-card"><h3>Recovered Show</h3>'
                 '<a href="/event/x">Details</a><span>05.10.2026 20:00</span>'
                 '</div></body></html>')
@@ -432,22 +368,22 @@ def test_jina_is_tried_before_the_render_tier(monkeypatch):
         return "<html></html>"
 
     monkeypatch.setattr(module, "fetch_plain", lambda url, **kw: None)
-    monkeypatch.setattr(module, "fetch_jina_html", jina)
+    monkeypatch.setattr(module, "fetch_tinyfish_html", tinyfish)
     monkeypatch.setattr(module, "render_with_cloakbrowser", render)
 
     events = module.scrape("https://blocked.example/programm")
     assert [e["title"] for e in events] == ["Recovered Show"]
-    # Jina answered, so the slow tier is never reached at all.
-    assert order == ["jina"]
+    # TinyFish answered, so the slow tier is never reached at all.
+    assert order == ["tinyfish"]
 
 
-def test_the_render_tier_still_runs_when_jina_is_unavailable(monkeypatch):
+def test_the_render_tier_still_runs_when_tinyfish_is_unavailable(monkeypatch):
     """No key, no quota, or the service is down: CloakBrowser is what is
     left, which is why it is kept rather than deleted."""
     from scripts import generic_event_scraper as module
 
     monkeypatch.setattr(module, "fetch_plain", lambda url, **kw: None)
-    monkeypatch.setattr(module, "fetch_jina_html", lambda url, **kw: None)
+    monkeypatch.setattr(module, "fetch_tinyfish_html", lambda url, **kw: None)
     monkeypatch.setattr(
         module, "render_with_cloakbrowser",
         lambda url: ('<html><body><div class="event-card"><h3>Rendered Show</h3>'
@@ -552,31 +488,6 @@ def test_one_failing_day_does_not_lose_the_others(monkeypatch):
     events = module.scrape_date_horizon("https://v.example/spielplan", 3)
     assert len(calls) == 4, "every day is still attempted"
     assert len(events) == 3, "the three good days survive the one that raised"
-
-
-def test_the_jina_tier_stops_at_its_fetch_budget(monkeypatch):
-    """Jina bills by returned content and HTML returns whole pages; with a
-    horizon multiplying fetches by eight, an unbounded tier emptied a fresh
-    account inside a day. The budget keeps it a fallback, not a bulk fetcher."""
-    from scripts import generic_event_scraper as module
-
-    class Response:
-        text = "<html></html>"
-
-        def raise_for_status(self):
-            return None
-
-    calls = []
-    monkeypatch.setenv("JINA_API_KEY", "test-key")
-    monkeypatch.setattr(module, "JINA_FETCH_BUDGET", 2)
-    monkeypatch.setattr(module, "_jina_fetches", 0)
-    monkeypatch.setattr(module.requests, "get",
-                        lambda url, **kw: (calls.append(url), Response())[1],
-                        raising=False)
-
-    for _ in range(5):
-        module.fetch_jina_html("https://blocked.example/")
-    assert len(calls) == 2
 
 
 def test_the_horizon_does_not_fake_a_detail_link_on_every_day(monkeypatch):

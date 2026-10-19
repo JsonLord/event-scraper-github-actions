@@ -13,11 +13,7 @@ strategies and keeps the first one that finds anything:
   1. Plain HTTP GET + schema.org JSON-LD ("@type": "Event") extraction.
   2. Plain HTTP GET + generic heuristic scan (elements whose class hints at
      an event/listing row, containing a date or price pattern).
-  3. Jina Reader, asked for HTML and re-run through 1 and 2 (only attempted
-     if JINA_API_KEY is set; anonymous Jina requests are unreliably blocked
-     by IP reputation). This is what gets past an anti-bot interstitial that
-     refuses this network but not Jina's, and it is measurably the better of
-     the two fallbacks - see scripts/fetch_strategy_probe.py.
+  3. Optional TinyFish free Fetch, requesting semantic HTML.
   4. CloakBrowser (stealth headless Chromium) render, then re-run 1 and 2
      against the rendered DOM. Last because it is slower and has not
      uniquely rescued a site in any probe run; kept because it is the only
@@ -35,6 +31,7 @@ import logging
 import os
 import re
 import sys
+from pathlib import Path
 import time
 from datetime import date, datetime, timedelta
 from typing import Any, Dict, List, Optional
@@ -44,6 +41,8 @@ import requests
 from bs4 import BeautifulSoup
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from event_utils import (  # noqa: E402
     DATE_DE_RE,
@@ -272,20 +271,12 @@ def extract_jsonld_events(html: str, source_url: str) -> List[Dict[str, Any]]:
                 location = location[0] if location else {}
             venue = location.get("name", "") if isinstance(location, dict) else str(location)
 
-            offers = node.get("offers") or {}
-            if isinstance(offers, list):
-                offers = offers[0] if offers else {}
-            price = None
-            if isinstance(offers, dict) and offers.get("price") is not None:
-                try:
-                    price = float(offers["price"])
-                except (TypeError, ValueError):
-                    price = None
-
+            from scripts.ticket_evidence import structured_offers
             start_date = node.get("startDate", "") or ""
-
-            offer_url = offers.get("url") if isinstance(offers, dict) else None
-            event_url = node.get("url") or offer_url or source_url
+            event_url = node.get("url") or source_url
+            offers = structured_offers(node.get("offers") or {}, source_url)
+            prices = [o["amount_eur"] for o in offers if o.get("amount_eur") is not None]
+            price = min(prices) if prices else None
 
             events.append({
                 "title": clean_text(node.get("name")),
@@ -294,10 +285,15 @@ def extract_jsonld_events(html: str, source_url: str) -> List[Dict[str, Any]]:
                 "date": normalize_date(start_date) or "",
                 "time": parse_time(start_date),
                 "price": price,
+                "offers": offers,
+                "canonical_url": node.get("url") or "",
+                "official_event_id": node.get("identifier") or node.get("@id") or "",
+                "event_status": str(node.get("eventStatus", "unknown")).rsplit("/", 1)[-1],
                 "category": clean_text(node.get("eventAttendanceMode") or ""),
                 "description": clean_text(node.get("description"), max_length=400),
                 "url": clean_url(urljoin(source_url, str(event_url))),
                 "venue": clean_text(venue),
+                "location_city": clean_text(location.get("address",{}).get("addressLocality", "")) if isinstance(location,dict) and isinstance(location.get("address"),dict) else "",
                 "source_url": source_url,
             })
     return events
@@ -357,7 +353,7 @@ def extract_time_element_events(
             "price": parse_price(card_text),
             "category": "",
             "description": clean_text(card_text, max_length=400),
-            "url": _best_detail_url([card, card.parent], source_url),
+            "url": _best_detail_url([card], source_url),
             "venue": "",
             "source_url": source_url,
         })
@@ -604,7 +600,7 @@ def extract_block_events(
         iso = parse_date(text)
         if not iso:
             continue
-        scopes = [card, card.parent, getattr(card.parent, "parent", None)]
+        scopes = [card]
         event_url = _best_detail_url(scopes, source_url)
         title = _title_from_scopes(scopes, text, event_url)
         events.append({
@@ -668,7 +664,7 @@ def extract_heuristic_events(html: str, source_url: str, max_events: int = MAX_E
         # Titles and links are often siblings of the matched fragment rather
         # than inside it (e.g. a Drupal "views-row" wrapping separate title,
         # image and price fields) - widen the search to nearby ancestors.
-        search_scopes = [el, el.parent, getattr(el.parent, "parent", None)]
+        search_scopes = [el]
 
         event_url = _best_detail_url(search_scopes, source_url)
 
@@ -696,7 +692,7 @@ def extract_heuristic_events(html: str, source_url: str, max_events: int = MAX_E
             if slug_title:
                 title = slug_title
 
-        dedup_key = title.lower()
+        dedup_key = (title.lower(), parse_date(text), parse_time(text))
         if dedup_key in seen_titles:
             continue
         seen_titles.add(dedup_key)
@@ -871,67 +867,18 @@ def render_with_cloakbrowser(url: str) -> Optional[str]:
                 pass
 
 
-# Ask Jina Reader for the page's HTML, not its default markdown rendering.
-# Measured with scripts/fetch_strategy_probe.py against a Cloudflare-challenged
-# source (berlin-buehnen.de) from a blocked network: the markdown rendering
-# came back 9k and yielded 0 events, the same URL as HTML came back 220k and
-# yielded 31. The difference is not the fetch - it is that an HTML body goes
-# through all five document extractors, while markdown only ever got a
-# line scanner that no source ever produced a usable event from.
-#
-# The probe also measured the alternatives and none of them earn their cost:
-# X-Engine: browser, X-Proxy: auto and X-Locale all matched plain HTML
-# exactly, and X-No-Cache matched it on every site but one, which it lost,
-# while doubling the request time. So this sends the one header that matters.
-JINA_ENDPOINT = "https://r.jina.ai/"
-JINA_HEADERS = {"X-Return-Format": "html", "Accept": "text/plain"}
+# Optional free rendered retrieval, shared per process so the cap is retained.
+_TINYFISH = None
 
 
-# Jina bills by the content it returns, and asking for HTML returns the whole
-# page: berlin-buehnen.de comes back as 1.2MB of HTML against 9KB of markdown.
-# That is ~130x the tokens per fetch, and with a date horizon multiplying
-# fetches by eight it emptied a fresh account's balance inside a day
-# (InsufficientBalanceError, regular_balance -4,432,325). This caps how many
-# Jina fetches one scraper process will make; the tier is a fallback for
-# blocked sources, not a bulk fetcher.
-JINA_FETCH_BUDGET = int(os.environ.get("JINA_FETCH_BUDGET", "2"))
-_jina_fetches = 0
-
-
-def fetch_jina_html(url: str, timeout: int = 60) -> Optional[str]:
-    """Fetch a page through Jina Reader, as HTML. None if unavailable.
-
-    This is the last tier, reached only when a direct GET and the rendered-DOM
-    tier have both produced nothing - typically an anti-bot interstitial that
-    Jina's own infrastructure is not subject to.
-    """
-    global _jina_fetches
-    api_key = os.environ.get("JINA_API_KEY")
-    if not api_key:
-        logger.info("No JINA_API_KEY set; skipping the Jina tier "
-                    "(anonymous calls are unreliably blocked by IP reputation)")
-        return None
-    if _jina_fetches >= JINA_FETCH_BUDGET:
-        logger.info(f"Jina fetch budget spent ({JINA_FETCH_BUDGET}); skipping the tier. "
-                    "Raise JINA_FETCH_BUDGET if the account has balance to spare.")
-        return None
-    _jina_fetches += 1
-    headers = dict(JINA_HEADERS)
-    headers["Authorization"] = f"Bearer {api_key}"
-    try:
-        response = requests.get(JINA_ENDPOINT + url, headers=headers, timeout=timeout)
-        response.raise_for_status()
-        return response.text
-    except requests.exceptions.RequestException as e:
-        status = getattr(getattr(e, "response", None), "status_code", None)
-        if status == 402:
-            logger.error(
-                "Jina returned 402 Payment Required - the account balance is "
-                "exhausted, so this tier is unavailable until it is topped up. "
-                "Blocked sources will fall through to CloakBrowser.")
-        else:
-            logger.warning(f"Jina Reader fetch failed for {url}: {e}")
-        return None
+def fetch_tinyfish_html(url: str, timeout: int = 60) -> Optional[str]:
+    global _TINYFISH
+    from scripts.tinyfish_client import TinyFishClient
+    if _TINYFISH is None:
+        _TINYFISH = TinyFishClient(max_fetch=2)
+    result = _TINYFISH.fetch([url]).get(url)
+    logger.info("TinyFish: %s; fetched URLs=%d", _TINYFISH.diagnostic, _TINYFISH.fetch_urls)
+    return result['html'] if result else None
 
 
 def _merge(*batches: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
@@ -946,7 +893,7 @@ def _merge(*batches: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     order: List[str] = []
     for batch in batches:
         for event in batch:
-            key = (event.get("url") or "") + "|" + str(event.get("title", "")).lower()
+            key = "|".join(str(event.get(k) or "") for k in ("url", "title", "date", "time"))
             if key not in merged:
                 merged[key] = event
                 order.append(key)
@@ -965,6 +912,20 @@ def scrape_document(html: str, url: str, label: str) -> List[Dict[str, Any]]:
     page whose JSON-LD described four events never had its remaining fifty
     cards scanned.
     """
+    from scripts.source_adapters import extract_cards
+    adapted = extract_cards(html, url)
+    if adapted is not None:
+        return _merge(extract_jsonld_events(html, url), adapted)
+    # Cleaned event detail HTML can retain an h1 and literal occurrence evidence
+    # even after listing image labels, classes and JSON-LD are removed.
+    if (urlparse(url).hostname or '').removeprefix('www.') == 'rausgegangen.de' and '/events/' in urlparse(url).path and 'eventsbydate' not in urlparse(url).path:
+        from scripts.event_matching import semantic_candidates
+        soup=BeautifulSoup(html,'lxml')
+        headings=soup.select('h1')
+        if len(headings)==1:
+            semantic=semantic_candidates(html,url,headings[0].get_text(' ',strip=True))
+            return _merge(extract_jsonld_events(html,url),semantic)
+        return extract_jsonld_events(html,url)
     jsonld = extract_jsonld_events(html, url)
     timed = extract_time_element_events(html, url)
     heuristic = extract_heuristic_events(html, url)
@@ -1175,6 +1136,9 @@ def scrape_date_horizon(url: str, days: int) -> List[Dict[str, Any]]:
 
 
 def scrape(url: str) -> List[Dict[str, Any]]:
+    if (urlparse(url).hostname or '').removeprefix('www.')=='rausgegangen.de' and 'eventsbydate' in urlparse(url).path:
+        from scripts.rausgegangen_discovery import scrape_public_listing
+        return scrape_public_listing()
     html = fetch_plain(url)
     if html and not is_bot_challenge(html):
         events = scrape_document(html, url, "plain HTML")
@@ -1191,25 +1155,17 @@ def scrape(url: str) -> List[Dict[str, Any]]:
     else:
         logger.info("Plain GET returned a bot challenge or failed; escalating")
 
-    # Jina before CloakBrowser, on measurement rather than taste. Probe run
-    # 34825099038 on a hosted runner: venturecafeberlin.org refused the
-    # runner that day (169 bytes) and CloakBrowser got its challenge page
-    # (11.8k, 0 events), while this tier came back with the real page and the
-    # event. Across the probe set it kept 33 events to CloakBrowser's 32,
-    # won two sites to CloakBrowser's none, and took 0.5-1.7s per site
-    # against 5-24s. Note the same site answered the *previous* runner
-    # normally - the block is intermittent, which is precisely what makes a
-    # second route worth having rather than a nice-to-have.
-    via_jina = fetch_jina_html(url)
-    if via_jina and not is_bot_challenge(via_jina):
-        events = scrape_document(via_jina, url, "Jina Reader HTML")
+    # Direct HTTP first, optional free Fetch, existing browser fallback last.
+    via_tinyfish = fetch_tinyfish_html(url)
+    if via_tinyfish and not is_bot_challenge(via_tinyfish):
+        events = scrape_document(via_tinyfish, url, "TinyFish Fetch HTML")
         if events:
-            logger.info(f"Found {len(events)} candidate events via the Jina Reader tier")
+            logger.info(f"Found {len(events)} candidate events via the TinyFish Fetch tier")
             return events
 
     # Last resort, and the only one that needs no third party. It has not
     # uniquely rescued a single site in any probe run so far, but it is what
-    # remains if the Jina key is missing, out of quota, or the service is
+    # remains if the TinyFish key is missing, out of quota, or the service is
     # down, so it stays.
     rendered = render_with_cloakbrowser(url)
     if rendered:

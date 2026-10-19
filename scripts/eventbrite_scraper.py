@@ -50,8 +50,8 @@ def scrape_eventbrite(url: str, price_max: float = DEFAULT_MAX_PRICE, date_range
     Scrape events from Eventbrite.
     """
     if not CLOAKBROWSER_AVAILABLE:
-        logger.warning("CloakBrowser not available; using Jina Reader fallback")
-        return scrape_eventbrite_with_jina(url, price_max)
+        logger.warning("CloakBrowser not available; using TinyFish Fetch fallback")
+        return scrape_eventbrite_with_tinyfish(url, price_max)
     
     logger.info(f"Scraping Eventbrite: {url}")
     
@@ -131,26 +131,20 @@ def scrape_eventbrite(url: str, price_max: float = DEFAULT_MAX_PRICE, date_range
         if events:
             return events
 
-        logger.warning("CloakBrowser produced 0 Eventbrite events; using Jina Reader fallback")
-        return scrape_eventbrite_with_jina(url, price_max)
+        logger.warning("CloakBrowser produced 0 Eventbrite events; using TinyFish Fetch fallback")
+        return scrape_eventbrite_with_tinyfish(url, price_max)
 
     except Exception as e:
         logger.error(f"Error scraping Eventbrite with CloakBrowser: {e}")
-        return scrape_eventbrite_with_jina(url, price_max)
+        return scrape_eventbrite_with_tinyfish(url, price_max)
     finally:
         if context: context.close()
         if browser: browser.close()
 
 
-def fetch_jina_content(url: str) -> str:
-    """Fetch a readable page snapshot via Jina Reader."""
-    jina_url = f"https://r.jina.ai/{url}"
-    headers = {}
-    if os.environ.get("JINA_API_KEY"):
-        headers["Authorization"] = f"Bearer {os.environ['JINA_API_KEY']}"
-    response = requests.get(jina_url, headers=headers, timeout=30)
-    response.raise_for_status()
-    return response.text
+def fetch_tinyfish_content(url: str) -> str:
+    from generic_event_scraper import fetch_tinyfish_html
+    return fetch_tinyfish_html(url) or ""
 
 
 def parse_price(price_text: str) -> float:
@@ -161,7 +155,7 @@ def parse_price(price_text: str) -> float:
 
 
 def clean_event_title(title: str) -> str:
-    """Remove Jina's image labels from an Eventbrite event title."""
+    """Remove historical image labels from an Eventbrite event title."""
     title = re.sub(r'^!?\s*Image\s+\d+\s*:\s*', '', title, flags=re.IGNORECASE)
     title = re.sub(
         r'^(?:Hauptbild\s+f(?:ü|u)r|main\s+image(?:\s+for)?|event\s+image(?:\s+for)?)\s*',
@@ -173,7 +167,7 @@ def clean_event_title(title: str) -> str:
 
 
 def extract_markdown_event(text: str, fallback_url: str) -> tuple[str, str]:
-    """Extract a clean title and destination from a Jina markdown line.
+    """Extract a clean title and destination from a legacy markdown line.
 
     Eventbrite cards are commonly represented as a linked image.  In that
     form the first Markdown URL is the CDN image, while the outer URL is the
@@ -198,49 +192,11 @@ def extract_markdown_event(text: str, fallback_url: str) -> tuple[str, str]:
     return clean_event_title(re.sub(r'[#*>-]', '', plain_text)), fallback_url
 
 
-def scrape_eventbrite_with_jina(url: str, price_max: float = DEFAULT_MAX_PRICE) -> List[Dict[str, Any]]:
-    """Fallback parser for GitHub Actions when browser automation is blocked."""
-    markdown = fetch_jina_content(url)
-    events = []
-    seen = set()
-
-    for line in markdown.splitlines():
-        text = line.strip()
-        if not text or len(text) < 8:
-            continue
-        if not re.search(r'eventbrite|tickets?|free|gratis|€|berlin|\d{1,2}:\d{2}', text, re.IGNORECASE):
-            continue
-
-        title, event_url = extract_markdown_event(text, url)
-
-        # Jina prefixes its output with "URL Source: <url>"; that header line
-        # matched the keyword filter and shipped as two published "events".
-        if len(title) < 5 or title.lower() in seen or looks_synthetic_title(title):
-            continue
-
-        price = parse_price_or_none(text)
-        if price is not None and price > price_max:
-            continue
-
-        seen.add(title.lower())
-        events.append({
-            "title": clean_text(title, max_length=180),
-            # Stamping every row with today's date and a "social" category
-            # gave junk rows a full price and category score.
-            "date": parse_date(text) or "",
-            "time": parse_time(text),
-            "price": price,
-            "category": "",
-            "description": clean_text(text, max_length=400),
-            "url": clean_url(event_url),
-            "venue": "",
-            "source_url": url
-        })
-
-        if len(events) >= 40:
-            break
-
-    return events
+def scrape_eventbrite_with_tinyfish(url: str, price_max: float = DEFAULT_MAX_PRICE) -> List[Dict[str, Any]]:
+    """Optional semantic HTML fallback; never interpret it as Markdown."""
+    from generic_event_scraper import scrape_document
+    html = fetch_tinyfish_content(url)
+    return [e for e in scrape_document(html, url, "TinyFish Fetch") if e.get("price") is None or e["price"] <= price_max] if html else []
 
 
 def main():
@@ -263,7 +219,7 @@ def main():
             os.makedirs(os.path.dirname(html_output), exist_ok=True)
             try:
                 with open(html_output, "w") as f:
-                    f.write(fetch_jina_content(args.url))
+                    f.write(fetch_tinyfish_content(args.url))
             except Exception as e:
                 logger.warning(f"Could not save Eventbrite HTML snapshot: {e}")
         
