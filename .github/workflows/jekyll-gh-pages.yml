@@ -3,13 +3,18 @@ on:
   workflow_dispatch:
     inputs:
       candidate_run_id:
-        description: 'Successful R1.4 candidate run built from this exact main commit'
+        description: 'Successful R1.4 candidate run built from this exact deployment commit'
         required: true
         type: string
       manifest_sha256:
         description: 'SHA-256 of the reviewed release-manifest.json'
         required: true
         type: string
+      branch_release:
+        description: 'Explicitly publish the reviewed PR-33 branch candidate to live Pages'
+        required: false
+        default: false
+        type: boolean
 permissions:
   contents: read
 concurrency:
@@ -17,7 +22,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   build:
-    if: ${{ github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && vars.PAGES_DEPLOYMENT_ENABLED == 'true' && vars.RELEASE_PROFILE == 'berlin-ufa-pilot-v1' }}
+    if: ${{ github.event_name == 'workflow_dispatch' && ((github.ref == 'refs/heads/main' && vars.PAGES_DEPLOYMENT_ENABLED == 'true' && vars.RELEASE_PROFILE == 'berlin-ufa-pilot-v1') || (github.ref == 'refs/heads/codex/berlin-events-r1-quality' && inputs.branch_release == true)) }}
     permissions:
       contents: read
       actions: read
@@ -36,6 +41,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           CANDIDATE_RUN: ${{ inputs.candidate_run_id }}
           EXPECTED_SHA: ${{ github.sha }}
+          EXPECTED_BRANCH: ${{ github.ref_name }}
         run: |
           python - <<'PY'
           import json, os, re, subprocess
@@ -43,7 +49,7 @@ jobs:
           assert re.fullmatch(r'[0-9]+',run), 'Invalid run ID'
           record=json.loads(subprocess.check_output(['gh','api',f'repos/{os.environ["GITHUB_REPOSITORY"]}/actions/runs/{run}']))
           assert record['conclusion']=='success' and record['event']=='workflow_dispatch'
-          assert record['head_branch']=='main' and record['head_sha']==os.environ['EXPECTED_SHA']
+          assert record['head_branch']==os.environ['EXPECTED_BRANCH'] and record['head_sha']==os.environ['EXPECTED_SHA']
           assert record['path']=='.github/workflows/fetch-strategy-probe.yml'
           PY
       - uses: actions/download-artifact@v4
@@ -64,7 +70,7 @@ jobs:
         with:
           path: ${{ runner.temp }}/pilot/site
   deploy:
-    if: ${{ github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && vars.PAGES_DEPLOYMENT_ENABLED == 'true' && vars.RELEASE_PROFILE == 'berlin-ufa-pilot-v1' }}
+    if: ${{ github.event_name == 'workflow_dispatch' && ((github.ref == 'refs/heads/main' && vars.PAGES_DEPLOYMENT_ENABLED == 'true' && vars.RELEASE_PROFILE == 'berlin-ufa-pilot-v1') || (github.ref == 'refs/heads/codex/berlin-events-r1-quality' && inputs.branch_release == true)) }}
     permissions:
       contents: read
       actions: read

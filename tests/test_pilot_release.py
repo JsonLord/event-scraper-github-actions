@@ -149,3 +149,18 @@ def test_matched_detail_silence_never_erases_fresh_listing_sold_out():
  site,_=candidate(data,overlay,NOW)
  row=next(e for e in site['events'] if e['source_url']==data['events'][0]['source_url'])
  assert row['ticket_status']=='sold_out' and not row['community_eligible']
+
+
+def test_branch_publication_requires_explicit_manual_opt_in_and_same_branch_provenance():
+    workflow=yaml.safe_load((ROOT/'.github/workflows/jekyll-gh-pages.yml').read_text())
+    trigger=workflow.get('on',workflow.get(True))
+    assert set(trigger)=={'workflow_dispatch'}
+    switch=trigger['workflow_dispatch']['inputs']['branch_release']
+    assert switch['type']=='boolean' and switch['default'] is False
+    for job in workflow['jobs'].values():
+        assert "github.event_name == 'workflow_dispatch'" in job['if']
+        assert "github.ref == 'refs/heads/codex/berlin-events-r1-quality' && inputs.branch_release == true" in job['if']
+        assert any('scripts/pilot_release.py' in s.get('run','') for s in job['steps'])
+    provenance=next(s for s in workflow['jobs']['build']['steps'] if s.get('name')=='Validate candidate workflow provenance')
+    assert "record['head_branch']==os.environ['EXPECTED_BRANCH']" in provenance['run']
+    assert "record['head_sha']==os.environ['EXPECTED_SHA']" in provenance['run']

@@ -73,3 +73,21 @@ legacy schedules paused. Flags do not undo a completed deployment. An owner may
 separately unpublish Pages if necessary, or approve a code rollback followed by a
 fresh reviewed pilot build; stale historical datasets are not a rollback shortcut.
 Exact commands and artifact review steps are in the R1.4 report.
+
+## Explicitly authorized PR-33 branch publication — 28 October 2026
+
+The owner explicitly requested deployment of the branch build to live Pages.
+The manual publisher now has a `branch_release` boolean, default false. Only the
+exact `codex/berlin-events-r1-quality` branch can use this opt-in; other branches
+remain rejected. Main publication retains its existing flags. No push or schedule
+trigger is added. The branch route requires the same successful two-source pilot
+candidate, exact deployment SHA/branch provenance, reviewed manifest digest,
+checksums, freshness, source/venue guards and post-environment-wait validation.
+The unqualified full three-source staging output cannot be substituted.
+
+This is an explicit publication path, not automatic activation: repository
+variables and daily/weekly scheduling remain unchanged. The Pages environment's
+branch policy must admit the named branch for the authorized deployment. Any
+one-off environment-policy addition should be removed after the job completes.
+Future branch publication still requires a fresh manual opt-in and pinned candidate;
+main-only statements earlier in this document describe the original default path.
