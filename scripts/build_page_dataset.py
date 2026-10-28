@@ -72,13 +72,18 @@ def build(data, overlay, now):
     return dict(generated_at=data.get('generated_at'),built_at=utc(now).isoformat(),count=len(events),quarantined_count=len(q),events=events)
 
 
+def newsletter_payload(data,overlay,now):
+    from scripts.newsletter_pipeline import build_newsletter
+    return build_newsletter(data,overlay,now)
+
+
 def main():
     p=argparse.ArgumentParser();p.add_argument('--input',default='data/events.json');p.add_argument('--overlay',default='data/event_verifications.json');p.add_argument('--output-dir',default='_site');p.add_argument('--now');a=p.parse_args()
     data=json.loads(Path(a.input).read_text()); overlay=json.loads(Path(a.overlay).read_text()) if Path(a.overlay).exists() else dict(events={})
     payload=build(data,overlay,a.now or datetime.now(timezone.utc));output=Path(a.output_dir);output.mkdir(parents=True,exist_ok=True)
     (output/'events_scored.json').write_text(json.dumps(payload,ensure_ascii=False,indent=2)+'\n')
     from scripts.community_events import newsletter
-    (output/'newsletter.json').write_text(json.dumps(newsletter(payload['events'],a.now or datetime.now(timezone.utc)),ensure_ascii=False,indent=2)+'\n')
+    (output/'newsletter.json').write_text(json.dumps(newsletter_payload(data,overlay,a.now or datetime.now(timezone.utc)),ensure_ascii=False,indent=2)+'\n')
     shutil.copyfile(Path(__file__).resolve().parents[1]/'web/index.html',output/'index.html')
     (output/'.nojekyll').touch()
     print(f"Built {len(payload['events'])} events; quarantined {payload['quarantined_count']}")

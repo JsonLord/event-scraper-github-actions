@@ -44,7 +44,7 @@ def main():
                 page.locator('#search').fill('')
             data=json.loads((Path(a.site)/'events_scored.json').read_text())
             newsletter=json.loads((Path(a.site)/'newsletter.json').read_text())
-            expected=sum(bool(e.get('community_eligible')) for e in data['events'])
+            expected=newsletter['count']
             page.locator('#communityOnly').check()
             assert page.locator('tbody tr:has(input[type=checkbox])').count()==expected
             assert newsletter['count']==expected

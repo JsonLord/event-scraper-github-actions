@@ -293,6 +293,7 @@ def extract_jsonld_events(html: str, source_url: str) -> List[Dict[str, Any]]:
                 "description": clean_text(node.get("description"), max_length=400),
                 "url": clean_url(urljoin(source_url, str(event_url))),
                 "venue": clean_text(venue),
+                "location_types": ([location.get("@type")] if isinstance(location.get("@type"),str) else location.get("@type",[])) if isinstance(location,dict) else [],
                 "location_city": clean_text(location.get("address",{}).get("addressLocality", "")) if isinstance(location,dict) and isinstance(location.get("address"),dict) else "",
                 "source_url": source_url,
             })

@@ -161,7 +161,7 @@ def validate(root,expected_digest,expected_commit,expected_run,now):
     files=manifest['files']
     actual={p.relative_to(root).as_posix() for p in root.rglob('*') if p.is_file() and p!=path}
     assert not any(p.is_symlink() for p in root.rglob('*')), 'Symlink in artifact'
-    assert set(files)==actual and {'site/newsletter.json','site/index.html','site/events_scored.json','site/.nojekyll','discovery.json','overlay.json','smoke/report.json'}<=actual, 'Missing or unexpected artifact file'
+    assert set(files)==actual and {'newsletter-discovery.json','newsletter-overlay.json','site/newsletter.json','site/index.html','site/events_scored.json','site/.nojekyll','discovery.json','overlay.json','smoke/report.json'}<=actual, 'Missing or unexpected artifact file'
     for name,sha in files.items():
         assert not Path(name).is_absolute() and '..' not in Path(name).parts and digest(root/name)==sha, 'Artifact checksum mismatch'
     data=json.loads((root/'discovery.json').read_text());overlay=json.loads((root/'overlay.json').read_text())
@@ -176,8 +176,12 @@ def validate(root,expected_digest,expected_commit,expected_run,now):
         assert_event(event,now)
         for stamp in event.get('field_observed_at',{}).values():
             assert fresh(stamp,now,PROFILE['max_age_hours']), 'Expired claim'
-    from scripts.community_events import newsletter
-    assert json.loads((root/'site/newsletter.json').read_text())==newsletter(site['events'],manifest['created_at']), 'Newsletter differs from validated occurrences'
+    from scripts.newsletter_pipeline import build_newsletter
+    discovery=json.loads((root/'newsletter-discovery.json').read_text());observations=json.loads((root/'newsletter-overlay.json').read_text())
+    expected=build_newsletter(discovery,observations,manifest['created_at'])
+    assert json.loads((root/'site/newsletter.json').read_text())==expected, 'Newsletter differs from full-corpus validated occurrences'
+    from scripts.community_events import decision
+    assert all(decision(e,now)[0] for e in expected['events']), 'Newsletter occurrence evidence expired'
     return manifest
 
 

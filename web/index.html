@@ -368,6 +368,10 @@
     catch (_) { return false; }
   }
 
+  function eventPool() {
+    return document.getElementById("communityOnly").checked ? (state.newsletterEvents || []) : state.events;
+  }
+
   function passesFilters(ev) {
     if (document.getElementById("communityOnly").checked && (ev.community_eligible !== true || !freshEvidence(ev, "price", 6) || !freshEvidence(ev, "link", 6))) return false;
     if (!document.getElementById("showPast").checked && eventIsPast(ev, new Date())) return false;
@@ -376,7 +380,7 @@
   }
 
   function visibleFor(streamKey) {
-    return state.events.filter(function (ev) {
+    return eventPool().filter(function (ev) {
       return (ev.stream || "main") === streamKey && passesFilters(ev);
     });
   }
@@ -508,7 +512,7 @@
 
     STREAMS.forEach(function (streamDef) {
       var key = streamDef[0];
-      var inStream = state.events.filter(function (ev) { return (ev.stream || "main") === key; });
+      var inStream = eventPool().filter(function (ev) { return (ev.stream || "main") === key; });
       // A stream with no events at all this week is left out entirely; one
       // emptied only by the current filters says so, so the table does not
       // look broken.
@@ -562,7 +566,7 @@
       host.appendChild(built.wrap);
     });
 
-    document.getElementById("emptyMsg").hidden = anyVisible || !state.events.length;
+    document.getElementById("emptyMsg").hidden = anyVisible || !eventPool().length;
   }
 
   // State the range actually present in the data instead of asserting "the
@@ -634,7 +638,7 @@
   }
 
   function exportSelected() {
-    var chosen = state.events.filter(function (ev) { return state.selected.has(ev._id); });
+    var chosen = eventPool().filter(function (ev) { return state.selected.has(ev._id); });
     if (!chosen.length) return;
     var undatable = chosen.filter(function (ev) { return !icsDateStamp(ev); });
     if (undatable.length) {
@@ -673,6 +677,14 @@
   fetch("events_scored.json")
     .then(function (r) { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
     .then(function (data) {
+      return fetch("newsletter.json").then(function (r) {if (!r.ok) throw new Error("Newsletter unavailable"); return r.json();})
+        .then(function (newsletter) {data.newsletter= newsletter; return data;})
+        .catch(function () {data.newsletter={events:[]}; return data;});
+    })
+    .then(function (data) {
+      state.newsletterEvents = ((data.newsletter || {}).events || []).map(function (ev, i) {
+        ev._id = "newsletter:" + (ev.event_id || i); return ev;
+      });
       state.releaseExpiresAt = data.release_expires_at;
       state.events = (data.events || []).map(function (ev, i) {
         ev._id = i;

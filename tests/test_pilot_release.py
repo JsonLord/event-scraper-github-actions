@@ -83,8 +83,10 @@ def artifact(tmp_path,monkeypatch):
     for name,payload in [('discovery.json',data),('overlay.json',overlay),('site/events_scored.json',site),('smoke/report.json',dict(search='passed',ics_export='passed',responsive_render='passed',categories='passed',pilot_expiry='passed',page_errors=[]))]:
         (tmp_path/name).write_text(json.dumps(payload))
     (tmp_path/'site/index.html').write_bytes((ROOT/'web/index.html').read_bytes());(tmp_path/'site/.nojekyll').touch()
-    from scripts.community_events import newsletter
-    (tmp_path/'site/newsletter.json').write_text(json.dumps(newsletter(site['events'],NOW)))
+    from scripts.newsletter_pipeline import build_newsletter
+    (tmp_path/'newsletter-discovery.json').write_text(json.dumps(data))
+    (tmp_path/'newsletter-overlay.json').write_text(json.dumps(overlay))
+    (tmp_path/'site/newsletter.json').write_text(json.dumps(build_newsletter(data,overlay,NOW)))
     seal(tmp_path,'a'*40,NOW,'123',quality)
     return digest(tmp_path/'release-manifest.json')
 

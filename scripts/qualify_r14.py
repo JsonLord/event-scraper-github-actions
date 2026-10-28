@@ -109,8 +109,12 @@ def main():
     site,quality=candidate(data,overlay,now)
     site_dir=output/'site';site_dir.mkdir()
     (site_dir/'events_scored.json').write_text(json.dumps(site,ensure_ascii=False,indent=2)+'\n')
-    from scripts.community_events import newsletter
-    write_json(site_dir/'newsletter.json',newsletter(site['events'],now))
+    from scripts.newsletter_pipeline import collect,build_newsletter
+    newsletter_data,newsletter_overlay,newsletter_diagnostics=collect(data,overlay,now,http,provider,documents)
+    write_json(output/'newsletter-discovery.json',newsletter_data);write_json(output/'newsletter-overlay.json',newsletter_overlay)
+    write_json(output/'newsletter-diagnostics.json',newsletter_diagnostics)
+    newsletter_data=json.loads((output/'newsletter-discovery.json').read_text());newsletter_overlay=json.loads((output/'newsletter-overlay.json').read_text())
+    write_json(site_dir/'newsletter.json',build_newsletter(newsletter_data,newsletter_overlay,now))
     shutil.copyfile(ROOT/'web/index.html',site_dir/'index.html');(site_dir/'.nojekyll').touch()
     if site['count']:
         subprocess.run([sys.executable,str(ROOT/'scripts/smoke_pages.py'),'--site',str(site_dir),'--output',str(output/'smoke'),'--now',now.isoformat()],check=True)
