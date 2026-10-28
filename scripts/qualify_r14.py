@@ -50,6 +50,27 @@ def location(event,document,campus,now):
     return None
 
 
+def choose_release_sample(events,now,limit=3):
+    """Prefer publishable candidates and distinct dates, never cancellations."""
+    from scripts.score_events import exclusion_reason
+    from scripts.pilot_release import future
+    pool=[e for e in events if future(e,now) and not exclusion_reason(e)
+          and (e.get('price') is None or e['price']<=20)
+          and not re.search(r'\b(abgesagt|fällt aus|cancelled|verschoben)\b',e.get('description',''),re.I)]
+    def priority(e):
+        price=e.get('price')
+        return (not (price is not None and price<=5),e['date'],e.get('time',''),e['title'])
+    pool.sort(key=priority);picked=[];dates=set()
+    for e in pool:
+        if e['date'] not in dates:
+            picked.append(e);dates.add(e['date'])
+            if len(picked)==limit: return picked
+    for e in pool:
+        if e not in picked: picked.append(e)
+        if len(picked)==limit: break
+    return picked
+
+
 def main():
     p=argparse.ArgumentParser();p.add_argument('--output',required=True);a=p.parse_args()
     output=Path(a.output).resolve()
@@ -72,7 +93,7 @@ def main():
             for e in rows: e.update(source_url=base,observed_at=now.isoformat())
             events.extend(rows)
         events=dedupe_events(events);all_events.extend(events)
-        selected.extend(choose_sample(events,now,per_source=3))
+        selected.extend(choose_release_sample(events,now))
     campus=document(PROFILE['ufa_campus_url'],http,provider)
     initial={'version':1,'events':{}}
     overlay,usage=run(selected,initial,now,policy,http,provider)
@@ -87,6 +108,8 @@ def main():
     site,quality=candidate(data,overlay,now)
     site_dir=output/'site';site_dir.mkdir()
     (site_dir/'events_scored.json').write_text(json.dumps(site,ensure_ascii=False,indent=2)+'\n')
+    from scripts.community_events import newsletter
+    write_json(site_dir/'newsletter.json',newsletter(site['events'],now))
     shutil.copyfile(ROOT/'web/index.html',site_dir/'index.html');(site_dir/'.nojekyll').touch()
     if site['count']:
         subprocess.run([sys.executable,str(ROOT/'scripts/smoke_pages.py'),'--site',str(site_dir),'--output',str(output/'smoke'),'--now',now.isoformat()],check=True)
@@ -101,6 +124,7 @@ def main():
                      tinyfish_fetch_urls=provider.fetch_urls,tinyfish_search_calls=provider.search_queries,
                      pipeline_seconds=round(time.monotonic()-started,3),production_files_unchanged=True)
     write_json(output/'diagnostics.json',diagnostics)
+    write_json(output/'source-evidence.json',[dict(url=e['url'],title=e['title'],date=e['date'],time=e.get('time'),document=documents.get(e['url'])) for e in selected])
     commit=subprocess.check_output(['git','rev-parse','HEAD'],cwd=ROOT,text=True).strip()
     run_id=__import__('os').environ.get('GITHUB_RUN_ID','0')
     manifest=seal(output,commit,now,run_id,quality)

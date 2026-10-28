@@ -71,7 +71,7 @@ def enrich_evidence(event, observed_at=None):
         else:
             for match in PRICE_RE.finditer(text):
                 prefix = text[max(0, match.start()-55):match.start()]
-                kind = 'student' if re.search(r'(?:student\w*|studierende\w*)[^€]*$', prefix, re.I) else 'reduced' if re.search(r'(?:ermäßigt|reduced)[^€]*$', prefix, re.I) else 'regular'
+                kind = 'child' if re.search(r'(?:kinder|children)[^€]*$', prefix, re.I) else 'student' if re.search(r'(?:student\w*|studierende\w*)[^€]*$', prefix, re.I) else 'reduced' if re.search(r'(?:ermäßigt|reduced)[^€]*$', prefix, re.I) else 'regular'
                 n = amount(next(g for g in match.groups() if g))
                 offers.append(dict(kind=kind, amount_eur=n, price_max=n, eligibility=prefix.strip() if kind != 'regular' else '', availability='unknown', evidence_url=url, observed_at=stamp, source='listing_card'))
     values = [o['amount_eur'] for o in offers if o.get('amount_eur') is not None]

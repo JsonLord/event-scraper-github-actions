@@ -66,6 +66,9 @@ def build(data, overlay, now):
     scored=score_and_filter_events(normalized,today=utc(now).date())
     events=merge_overlay(scored,overlay,now)
     gate(events)
+    from scripts.community_events import decision
+    for event in events:
+        event['community_eligible'],event['community_reason']=decision(event,now)
     return dict(generated_at=data.get('generated_at'),built_at=utc(now).isoformat(),count=len(events),quarantined_count=len(q),events=events)
 
 
@@ -74,6 +77,8 @@ def main():
     data=json.loads(Path(a.input).read_text()); overlay=json.loads(Path(a.overlay).read_text()) if Path(a.overlay).exists() else dict(events={})
     payload=build(data,overlay,a.now or datetime.now(timezone.utc));output=Path(a.output_dir);output.mkdir(parents=True,exist_ok=True)
     (output/'events_scored.json').write_text(json.dumps(payload,ensure_ascii=False,indent=2)+'\n')
+    from scripts.community_events import newsletter
+    (output/'newsletter.json').write_text(json.dumps(newsletter(payload['events'],a.now or datetime.now(timezone.utc)),ensure_ascii=False,indent=2)+'\n')
     shutil.copyfile(Path(__file__).resolve().parents[1]/'web/index.html',output/'index.html')
     (output/'.nojekyll').touch()
     print(f"Built {len(payload['events'])} events; quarantined {payload['quarantined_count']}")

@@ -194,6 +194,8 @@
   <input type="search" id="search" placeholder="Search title, venue, category, description…">
   <label class="toggle"><input type="checkbox" id="freeOnly"> Verified free only</label>
   <label class="toggle"><input type="checkbox" id="showPast"> Include past events</label>
+  <label class="toggle"><input type="checkbox" id="communityOnly"> Community · validated €0–5</label>
+  <a href="newsletter.json" download="newsletter.json">Newsletter JSON</a>
   <button id="exportBtn" class="primary" disabled>Add selected to calendar (.ics)</button>
 </div>
 
@@ -201,6 +203,7 @@
 <div class="empty" id="emptyMsg" hidden>No events match your filters.</div>
 
 <footer>
+  Community includes validated regular admission up to €5 at reviewed public cultural/community hosts. Student-only prices and small cafés, bars and lounges do not qualify. Unknown inventory is not a promise of admission.<br>
   Berlin events, filtered to max 20 EUR (or price unknown) and to the coming week. Entrepreneurship and
   sport sit in their own tables, because a running club and an opera are not alternatives to each other.
   Each table is grouped by day, and
@@ -366,6 +369,7 @@
   }
 
   function passesFilters(ev) {
+    if (document.getElementById("communityOnly").checked && (ev.community_eligible !== true || !freshEvidence(ev, "price", 6) || !freshEvidence(ev, "link", 6))) return false;
     if (!document.getElementById("showPast").checked && eventIsPast(ev, new Date())) return false;
     if (state.freeOnly && (ev.free_admission_confirmed !== true || !freshEvidence(ev, "price", 48))) return false;
     return matchesSearch(ev, state.search);
@@ -661,6 +665,8 @@
   });
 
   document.getElementById("exportBtn").addEventListener("click", exportSelected);
+
+  document.getElementById("communityOnly").addEventListener("change", render);
 
   document.getElementById("showPast").addEventListener("change", render);
 

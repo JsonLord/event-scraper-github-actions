@@ -111,6 +111,9 @@ def candidate(data,overlay,now):
     expires=min([now+timedelta(hours=PROFILE['max_age_hours'])]+[datetime.combine(datetime.strptime(e['date'],'%Y-%m-%d').date(),datetime.strptime(e['time'],'%H:%M').time(),tzinfo=ZoneInfo('Europe/Berlin')).astimezone(timezone.utc) for e in site['events']])
     site.update(release_profile=PROFILE['id'],release_expires_at=expires.isoformat())
     for event in site['events']: event['claim_expires_at']=expires.isoformat()
+    from scripts.community_events import decision
+    for event in site['events']:
+        event['community_eligible'],event['community_reason']=decision(event,now)
     counts=Counter(source_name(e) for e in site['events'])
     dates={name:sorted({e['date'] for e in site['events'] if source_name(e)==name}) for name in PROFILE['sources']}
     ready=all(counts[name]>=PROFILE['minimum_events_per_source'] and len(dates[name])>=PROFILE['minimum_dates_per_source'] for name in PROFILE['sources'])
@@ -167,6 +170,8 @@ def validate(root,expected_digest,expected_commit,expected_run,now):
         assert_event(event,now)
         for stamp in event.get('field_observed_at',{}).values():
             assert fresh(stamp,now,PROFILE['max_age_hours']), 'Expired claim'
+    from scripts.community_events import newsletter
+    assert json.loads((root/'site/newsletter.json').read_text())==newsletter(site['events'],manifest['created_at']), 'Newsletter differs from validated occurrences'
     return manifest
 
 
