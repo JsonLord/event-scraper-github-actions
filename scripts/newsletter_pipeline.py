@@ -74,7 +74,9 @@ def collect(data,overlay,now,http,provider,documents):
         host_hint=folded(e.get('venue','')) in CULTURAL_VENUES|PUBLIC_SPACES or bool(set(e.get('location_types',[])) & CULTURAL_TYPES)
         cheap=price is not None and price<=5
         return (0 if cheap and host_hint else 1 if host_hint else 2 if cheap else 3,e['date'],e.get('time',''),e.get('title',''))
-    candidates=[e for e in rows if occurrence_id(e) not in overlay.get('events',{}) and e.get('ticket_status')!='sold_out' and (e.get('price') is None or e['price']<=5)]
+    from scripts.pilot_release import future
+    from scripts.event_matching import event_url
+    candidates=[e for e in rows if future(e,now) and event_url(e.get('url','')) and event_url(e.get('url',''))!=event_url(e.get('source_url','')) and e.get('event_status') not in ('cancelled','postponed') and occurrence_id(e) not in overlay.get('events',{}) and e.get('ticket_status')!='sold_out' and (e.get('price') is None or e['price']<=5)]
     candidates.sort(key=priority)
     # Fairly spread scarce verification slots across sources, not just the pilot.
     from collections import defaultdict,deque
