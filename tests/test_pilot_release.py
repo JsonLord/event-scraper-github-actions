@@ -62,7 +62,7 @@ def test_pilot_rejects_wrong_occurrence_or_location(change):
 
 def test_stale_status_and_unsupported_body_claims_cannot_reappear():
     data,overlay=fixtures();e=data['events'][0]
-    e.update(description='Free admission. Sold out. Student tickets €1.',price=0,offers=[],ticket_status='sold_out')
+    e.update(description='Free admission. Sold out. Student tickets €1.',price=0,offers=[],ticket_status='unknown')
     entry=overlay['events'][occurrence_id(e)]
     entry['fields'].pop('price',None);entry['fields'].pop('discount',None)
     entry['fields']['status']={'values':{'ticket_status':'available'},'observed_at':(NOW-timedelta(hours=13)).isoformat()}

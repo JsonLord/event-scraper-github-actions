@@ -161,7 +161,7 @@ def validate(root,expected_digest,expected_commit,expected_run,now):
     files=manifest['files']
     actual={p.relative_to(root).as_posix() for p in root.rglob('*') if p.is_file() and p!=path}
     assert not any(p.is_symlink() for p in root.rglob('*')), 'Symlink in artifact'
-    assert set(files)==actual and {'site/index.html','site/events_scored.json','site/.nojekyll','discovery.json','overlay.json','smoke/report.json'}<=actual, 'Missing or unexpected artifact file'
+    assert set(files)==actual and {'site/newsletter.json','site/index.html','site/events_scored.json','site/.nojekyll','discovery.json','overlay.json','smoke/report.json'}<=actual, 'Missing or unexpected artifact file'
     for name,sha in files.items():
         assert not Path(name).is_absolute() and '..' not in Path(name).parts and digest(root/name)==sha, 'Artifact checksum mismatch'
     data=json.loads((root/'discovery.json').read_text());overlay=json.loads((root/'overlay.json').read_text())

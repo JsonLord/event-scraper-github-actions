@@ -11,7 +11,7 @@ UFA_ROOMS={folded(x) for x in ('Theatersaal','Wolfgang Neuss Salon','Varieté Sa
 
 
 def unconditional(offer):
-    return folded(offer.get('eligibility','')) in {'','eintritt','standard','normalpreis','regular','adult','erwachsene','freierEintritt'.lower(),'freeadmission'}
+    return folded(offer.get('eligibility','')) in {'','eintritt','standard','normalpreis','regular','adult','erwachsene','freiereintritt','freeadmission'}
 
 
 def decision(event,now):
