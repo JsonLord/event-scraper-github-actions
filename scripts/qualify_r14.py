@@ -59,7 +59,8 @@ def choose_release_sample(events,now,limit=3):
           and not re.search(r'\b(abgesagt|fällt aus|cancelled|verschoben)\b',e.get('description',''),re.I)]
     def priority(e):
         price=e.get('price')
-        return (not (price is not None and price<=5),e['date'],e.get('time',''),e['title'])
+        hint=bool(re.search(r'eintritt frei|kostenlos|vor[- ]?führung|einführung|öffentliche probe',e['title']+' '+e.get('description',''),re.I))
+        return (not (price is not None and price<=5),not hint,e['date'],e.get('time',''),e['title'])
     pool.sort(key=priority);picked=[];dates=set()
     for e in pool:
         if e['date'] not in dates:
@@ -124,7 +125,17 @@ def main():
                      tinyfish_fetch_urls=provider.fetch_urls,tinyfish_search_calls=provider.search_queries,
                      pipeline_seconds=round(time.monotonic()-started,3),production_files_unchanged=True)
     write_json(output/'diagnostics.json',diagnostics)
-    write_json(output/'source-evidence.json',[dict(url=e['url'],title=e['title'],date=e['date'],time=e.get('time'),document=documents.get(e['url'])) for e in selected])
+    evidence=[]
+    for event in selected:
+        doc=documents.get(event['url'])
+        if doc:
+            soup=BeautifulSoup(doc[1],'lxml')
+            section=soup.select_one('article,bb-page-detail') or soup
+            for tag in section.select('script,style,form,input,img,nav,footer'): tag.decompose()
+            for tag in section.find_all(True): tag.attrs={k:v for k,v in tag.attrs.items() if k in ('class','datetime')}
+            doc=(doc[0],str(section))
+        evidence.append(dict(url=event['url'],title=event['title'],date=event['date'],time=event.get('time'),document=doc,representation='Sanitized event DOM; scripts, forms and URL attributes removed'))
+    write_json(output/'source-evidence.json',evidence)
     commit=subprocess.check_output(['git','rev-parse','HEAD'],cwd=ROOT,text=True).strip()
     run_id=__import__('os').environ.get('GITHUB_RUN_ID','0')
     manifest=seal(output,commit,now,run_id,quality)

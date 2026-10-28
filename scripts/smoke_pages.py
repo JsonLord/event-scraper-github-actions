@@ -42,6 +42,13 @@ def main():
                 page.locator('#search').fill(category)
                 assert page.locator('tbody tr:has(input[type=checkbox])').count()>0
                 page.locator('#search').fill('')
+            data=json.loads((Path(a.site)/'events_scored.json').read_text())
+            newsletter=json.loads((Path(a.site)/'newsletter.json').read_text())
+            expected=sum(bool(e.get('community_eligible')) for e in data['events'])
+            page.locator('#communityOnly').check()
+            assert page.locator('tbody tr:has(input[type=checkbox])').count()==expected
+            assert newsletter['count']==expected
+            page.locator('#communityOnly').uncheck()
             page.locator('#showPast').check()
             all_rows=page.locator('tbody tr:has(input[type=checkbox])').count();assert all_rows>=visible
             page.locator('#search').fill('no-such-event-r1-smoke')
@@ -60,7 +67,7 @@ def main():
                 assert all(text=='Check site' for text in page.locator('tbody tr:has(input[type=checkbox]) td:nth-child(8)').all_text_contents())
                 assert not page.locator('tbody td.name a:not(.listing-link)').count()
             assert not errors, errors
-            report=dict(default_upcoming_rows=visible,including_past_rows=all_rows,fresh_verified_free_rows=free_rows,ics_export='passed',search='passed',categories='passed' if category else 'general_only',pilot_expiry='passed' if pilot else 'not_applicable',responsive_render='passed',page_errors=errors)
+            report=dict(default_upcoming_rows=visible,including_past_rows=all_rows,fresh_verified_free_rows=free_rows,ics_export='passed',search='passed',categories='passed' if category else 'general_only',community_filter='passed',newsletter_count=newsletter['count'],pilot_expiry='passed' if pilot else 'not_applicable',responsive_render='passed',page_errors=errors)
             (out/'report.json').write_text(json.dumps(report,indent=2)+'\n');print(json.dumps(report))
             browser.close()
     finally:

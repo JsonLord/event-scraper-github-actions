@@ -18,7 +18,7 @@ def test_unvalidated_restricted_expensive_or_small_host_events_do_not_qualify(pa
  e=event();e.update(patch);assert not decision(e,NOW)[0]
 
 def test_free_requires_independent_proof():
- e=event();e.update(price_max=0,offers=[],free_admission_confirmed=True);assert decision(e,NOW)[0]
+ e=event();e.update(price_max=0,offers=[dict(kind="regular",amount_eur=0,source="jsonld_offer",eligibility="")],free_admission_confirmed=True);assert decision(e,NOW)[0]
  e['free_admission_confirmed']=False;assert not decision(e,NOW)[0]
 
 def test_sample_does_not_waste_budget_on_cancelled_or_ineligible_events():
@@ -27,3 +27,28 @@ def test_sample_does_not_waste_budget_on_cancelled_or_ineligible_events():
   e=event();e.update(title='Show '+str(i),date=day,description=desc,price=price);pool.append(e)
  selected=choose_release_sample(pool,NOW)
  assert len(selected)==2 and {e['date'] for e in selected}=={'2026-10-29','2026-11-04'}
+
+def test_newsletter_uses_public_price_not_student_minimum():
+ e=event();e.update(price_min=1,price_label='From €1',offers=e['offers']+[dict(kind='student',amount_eur=1)])
+ row=newsletter([e],NOW)['events'][0]
+ assert row['price_min']==5 and row['price_label']=='€5 regular public admission'
+
+def test_conditional_free_words_are_not_enough():
+ e=event();e.update(free_admission_confirmed=True,price_max=0,offers=[])
+ assert not decision(e,NOW)[0]
+
+def test_real_ufa_declared_multi_performance_schedule_has_isolated_evidence():
+ from pathlib import Path
+ from scripts.event_matching import semantic_candidates
+ from scripts.verify_event_details import observation
+ html=Path('tests/fixtures/ufa_gardizero_2026-10-28.html').read_text()
+ url='https://ufafabrik.de/veranstaltung/39876/gardizero'
+ rows=semantic_candidates(html,url,'GardiZero')
+ assert {(r['date'],r['time']) for r in rows}=={('2026-10-30','20:00'),('2026-10-31','20:00')}
+ for row in rows:
+  result=observation(dict(row,source_url='https://ufafabrik.de/spielplan.html'),html,url,NOW.isoformat())
+  assert result['price']['values']['price_min']==12 and result['price']['values']['price_max']==25
+  assert 'status' not in result
+  assert observation(dict(row,date='2026-11-01',source_url='https://ufafabrik.de/spielplan.html'),html,url,NOW.isoformat()) is None
+ assert semantic_candidates(html,url,'Wrong show')==[]
+ assert semantic_candidates(html.replace('Fr.-Sa. 20:00 Uhr','20:00 Uhr'),url,'GardiZero')==[]

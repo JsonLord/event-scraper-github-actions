@@ -121,6 +121,35 @@ def raus_semantic_candidates(soup, final_url, expected_title):
                  description=location[2],location_city='Berlin',url=final_url,canonical_url=final_url)]
 
 
+def ufa_structured_candidates(soup,final_url,expected_title):
+    """Bind explicit date range and weekday/time/price rows, never body prose."""
+    from datetime import date,timedelta
+    articles=soup.select('article.node--type-event')
+    if len(articles)!=1: return []
+    article=articles[0];headings=article.select('h1')
+    venue=article.select_one('.field--name-field-venue')
+    dates=article.select('.field--name-field-date-range time')
+    if len(headings)!=1 or folded(headings[0].get_text(' ',strip=True))!=folded(expected_title) or not venue or not 1<=len(dates)<=2: return []
+    days=[parse_date(t.get_text(' ',strip=True)) for t in dates]
+    if not all(days): return []
+    first=date.fromisoformat(days[0]);last=date.fromisoformat(days[-1])
+    if not 0<=(last-first).days<=7: return []
+    weekday={'Mo':0,'Di':1,'Mi':2,'Do':3,'Fr':4,'Sa':5,'So':6}
+    rows=article.select('.field--name-field-days > div');out=[]
+    for row in rows:
+        clock=row.select_one('.time-info');prices=row.select_one('.price-info')
+        if not clock or not prices: return []
+        match=re.fullmatch(r'(Mo|Di|Mi|Do|Fr|Sa|So)\.?(?:[-–](Mo|Di|Mi|Do|Fr|Sa|So)\.?)?\s+((?:[01]\d|2[0-3]):[0-5]\d)\s+Uhr',clock.get_text(' ',strip=True))
+        if not match: return []
+        start=weekday[match[1]];end=weekday[match[2] or match[1]]
+        allowed={(start+i)%7 for i in range((end-start)%7+1)}
+        for offset in range((last-first).days+1):
+            day=first+timedelta(days=offset)
+            if day.weekday() not in allowed: continue
+            out.append(dict(title=expected_title,date=day.isoformat(),time=match[3],venue=venue.get_text(' ',strip=True),description=prices.get_text(' ',strip=True),url=final_url))
+    return out if len({(e['date'],e['time']) for e in out})==len(out) else []
+
+
 def semantic_candidates(html, final_url, expected_title):
     """Read a single event section; reject neighboring headings/performances.
 
@@ -129,6 +158,8 @@ def semantic_candidates(html, final_url, expected_title):
     """
     soup=BeautifulSoup(html,'lxml')
     for tag in soup.select('nav,footer,header,aside,script,style'): tag.decompose()
+    if host(final_url)=='ufafabrik.de' and soup.select_one('article.node--type-event .field--name-field-days'):
+        return ufa_structured_candidates(soup,final_url,expected_title)
     if host(final_url)=='rausgegangen.de':
         raus=raus_semantic_candidates(soup,final_url,expected_title)
         if raus: return raus
