@@ -134,7 +134,9 @@ def test_manifest_is_revalidated_after_deployment_environment_wait():
     steps=workflow['jobs']['deploy']['steps']
     guard=next(i for i,s in enumerate(steps) if 'scripts/pilot_release.py' in s.get('run',''))
     deploy=next(i for i,s in enumerate(steps) if 'actions/deploy-pages@' in s.get('uses',''))
-    assert guard<deploy and workflow['jobs']['deploy']['environment']['name']=='github-pages'
+    assert guard<deploy
+    environment=workflow['jobs']['deploy']['environment']['name']
+    assert "github.ref == 'refs/heads/main' && 'github-pages' || 'runner branch'" in environment
 
 
 @pytest.mark.parametrize('url',['https://www.berlin-buehnen.de/de/spielplan','http://www.berlin-buehnen.de/de/spielplan/show/events/123/','https://www.berlin-buehnen.de/contact/','https://www.berlin-buehnen.de/de/spielplan/show/events/123/?token=secret'])

@@ -91,3 +91,9 @@ branch policy must admit the named branch for the authorized deployment. Any
 one-off environment-policy addition should be removed after the job completes.
 Future branch publication still requires a fresh manual opt-in and pinned candidate;
 main-only statements earlier in this document describe the original default path.
+
+The owner subsequently enabled the existing **runner branch** environment for
+branch deployment. The explicit PR-33 publication route uses that environment;
+main deployments continue to use **github-pages** and its existing protections.
+The workflow's fixed branch/manual opt-in and all manifest/source/freshness
+checks remain mandatory. No environment-policy update is performed by the agent.
