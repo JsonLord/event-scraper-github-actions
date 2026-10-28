@@ -19,7 +19,7 @@ def destination_proof(event,html,url,now):
         if not match_basis(event,candidate,url) or folded(candidate.get('location_city',''))!='berlin': continue
         types={t.rsplit('/',1)[-1] for t in candidate.get('location_types',[]) if isinstance(t,str)}
         if types & EXCLUDED_TYPES: return None
-        return dict(city='Berlin',venue=event['venue'],observed_at=utc(now).isoformat(),evidence_url=url,
+        return dict(city='Berlin',venue=event.get('venue') or candidate.get('venue',''),observed_at=utc(now).isoformat(),evidence_url=url,
                     kind='matched_event_jsonld_location',host_types=sorted(types))
     return None
 
@@ -76,7 +76,15 @@ def collect(data,overlay,now,http,provider,documents):
         return (0 if cheap and host_hint else 1 if host_hint else 2 if cheap else 3,e['date'],e.get('time',''),e.get('title',''))
     candidates=[e for e in rows if occurrence_id(e) not in overlay.get('events',{}) and e.get('ticket_status')!='sold_out' and (e.get('price') is None or e['price']<=5)]
     candidates.sort(key=priority)
-    selected=candidates[:6]
+    # Fairly spread scarce verification slots across sources, not just the pilot.
+    from collections import defaultdict,deque
+    groups=defaultdict(deque)
+    for event in candidates: groups[urlsplit(event.get('source_url','')).hostname].append(event)
+    selected=[]
+    while any(groups.values()) and len(selected)<6:
+        for queue in sorted((q for q in groups.values() if q),key=lambda q:priority(q[0])):
+            selected.append(queue.popleft())
+            if len(selected)==6: break
     addition,usage=run(selected,{'version':1,'events':{}},now,dict(http.policy,max_events_per_run=6),http,provider)
     combined=deepcopy(overlay);combined.setdefault('events',{}).update(addition.get('events',{}))
     cached=dict(getattr(provider,'documents',{}));cached.update(getattr(http,'documents',{}));cached.update(documents)
@@ -84,5 +92,7 @@ def collect(data,overlay,now,http,provider,documents):
         doc=cached.get(event.get('url'))
         if doc:
             proof=destination_proof(event,doc[1],doc[0],now)
-            if proof: event['location_evidence']=proof
-    return dict(generated_at=utc(now).isoformat(),events=rows,source_diagnostics=diagnostics,source_catalog=[dict(name=s['name'],url=s['url']) for s in catalog]),combined,dict(sources=diagnostics,additional_verification=usage)
+            if proof:
+                event['location_evidence']=proof
+                event['venue']=event.get('venue') or proof['venue']
+    return dict(generated_at=utc(now).isoformat(),events=rows,source_diagnostics=diagnostics,source_catalog=[dict(name=s['name'],url=s['url']) for s in catalog]),combined,dict(sources=diagnostics,additional_verification=usage,selected_candidates=[dict(title=e['title'],url=e['url'],source_url=e['source_url'],outcome=addition.get('events',{}).get(occurrence_id(e),{}).get('outcome','not_selected')) for e in selected])
