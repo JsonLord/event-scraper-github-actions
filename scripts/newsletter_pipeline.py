@@ -72,7 +72,8 @@ def collect(data,overlay,now,http,provider,documents):
     def priority(e):
         price=e.get('price')
         host_hint=folded(e.get('venue','')) in CULTURAL_VENUES|PUBLIC_SPACES or bool(set(e.get('location_types',[])) & CULTURAL_TYPES)
-        return (not (price is not None and price<=5),not host_hint,e['date'],e.get('time',''),e.get('title',''))
+        cheap=price is not None and price<=5
+        return (0 if cheap and host_hint else 1 if host_hint else 2 if cheap else 3,e['date'],e.get('time',''),e.get('title',''))
     candidates=[e for e in rows if occurrence_id(e) not in overlay.get('events',{}) and e.get('ticket_status')!='sold_out' and (e.get('price') is None or e['price']<=5)]
     candidates.sort(key=priority)
     selected=candidates[:6]

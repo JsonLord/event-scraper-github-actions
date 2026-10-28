@@ -149,6 +149,8 @@ def main():
                  diagnostics=diagnostics,events=[{k:e.get(k) for k in ('title','date','time','venue','url','source_url','price_min','price_max','price_status','student_discount_status','ticket_status','event_status','matched_categories')} for e in site['events']])
     # Check evidence contains no artifact signed URLs or credentials.
     from scripts.qualify_r12 import safe_artifact
+    summary['diagnostics']={k:v for k,v in diagnostics.items() if k!='http_calls'}
+    summary['newsletter']={k:v for k,v in json.loads((site_dir/'newsletter.json').read_text()).items() if k not in ('events','source_diagnostics','source_catalog')}
     summary=safe_artifact(summary)
     encoded=__import__('base64').b64encode(json.dumps(summary,ensure_ascii=False).encode()).decode()
     chunks=[encoded[i:i+3000] for i in range(0,len(encoded),3000)]

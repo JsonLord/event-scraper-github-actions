@@ -48,6 +48,12 @@ def main():
             page.locator('#communityOnly').check()
             assert page.locator('tbody tr:has(input[type=checkbox])').count()==expected
             assert newsletter['count']==expected
+            if expected:
+                page.locator('tbody input[type=checkbox]').first.check()
+                with page.expect_download() as community_download: page.locator('#exportBtn').click()
+                community_download.value.save_as(str(out/'community-selected.ics'))
+                community_calendar=(out/'community-selected.ics').read_text()
+                assert 'BEGIN:VEVENT' in community_calendar and any(e['url'] in community_calendar for e in newsletter['events'])
             page.locator('#communityOnly').uncheck()
             page.locator('#showPast').check()
             all_rows=page.locator('tbody tr:has(input[type=checkbox])').count();assert all_rows>=visible

@@ -52,3 +52,18 @@ def test_generic_location_proof_must_belong_to_exact_performance():
  html='<script type="application/ld+json">'+json.dumps(node)+'</script>'
  assert destination_proof(e,html,e['url'],NOW)['host_types']==['CommunityCenter']
  assert destination_proof(dict(e,date='2026-10-30'),html,e['url'],NOW) is None
+
+
+def test_full_catalog_coverage_does_not_claim_success_for_unvisited_sources():
+ data,overlay=corpus()
+ data['source_catalog']=[{'name':'outside_pilot','url':'https://events.example.org/list'},{'name':'budget_limited','url':'https://other.example/list'}]
+ data['source_diagnostics']=[{'outcome':'discovered'},{'outcome':'listing_budget_reserved_for_verification'}]
+ result=build_newsletter(data,overlay,NOW)
+ assert result['count']==1 and result['source_coverage_complete'] is False
+ assert len(result['source_catalog'])==2
+
+
+def test_cafe_name_cannot_inherit_park_eligibility():
+ data,overlay=corpus();e=data['events'][0]
+ e['venue']='Park Café';e['location_evidence'].update(venue='Park Café',host_types=['Park'])
+ assert build_newsletter(data,overlay,NOW)['count']==0

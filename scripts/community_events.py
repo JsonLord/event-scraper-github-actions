@@ -34,6 +34,7 @@ def decision(event,now):
     import re
     if re.search(r'\b(?:ausverkauft|sold out|abgesagt|cancelled|fällt aus)\b',event.get('description',''),re.I): return False,'negative_source_evidence'
     if re.search(r'\b(?:members? only|invitation only|private event|geschlossene veranstaltung|nur für mitglieder|nur auf einladung|nur für schulklassen)\b',event.get('title','')+' '+event.get('description',''),re.I): return False,'restricted_access'
+    if re.search(r'\b(?:caf[eé]|coffee shop|bar|lounge)\b',event.get('venue',''),re.I): return False,'excluded_hospitality_venue'
     source=host(event.get('source_url',''));venue=folded(event.get('venue',''))
     from scripts.newsletter_pipeline import CULTURAL_TYPES,EXCLUDED_TYPES
     types=set(proof.get('host_types',[]))
@@ -60,6 +61,9 @@ def newsletter(events,now):
             included.append({k:event.get(k) for k in ('event_id','title','date','time','venue','url','source_url','description','category','matched_categories','price_min','price_max','price_label','ticket_status','event_status','field_observed_at','claim_expires_at','evidence','pilot_location','location_evidence','offers','verification_outcome','detail_link_status','last_verified_at','observed_at','verification_checked_at','stream','score')})
             regular=[o for o in event.get('offers',[]) if o.get('kind')=='regular' and unconditional(o) and o.get('amount_eur') is not None]
             low=min(o['amount_eur'] for o in regular);high=max(o.get('price_max',o['amount_eur']) for o in regular)
+            expiry=min(utc(event['field_observed_at'][k])+timedelta(hours=6) for k in ('price','link'))
+            if event.get('claim_expires_at'): expiry=min(expiry,utc(event['claim_expires_at']))
+            included[-1]['claim_expires_at']=expiry.isoformat()
             included[-1].update(community_eligible=True,price=low,free_admission_confirmed=high==0,price_min=low,price_max=high,price_label='Free public admission' if high==0 else f'€{low:g} regular public admission' if low==high else f'€{low:g}–{high:g} regular public admission',currency='EUR')
             included[-1].update(community_reason=reason,availability_note='Ticket inventory unknown' if event.get('ticket_status')=='unknown' else 'Check official ticket page')
     return dict(version=1,generated_at=utc(now).isoformat(),maximum_regular_admission_eur=5,count=len(included),events=included,exclusion_counts=dict(reasons),eligibility_policy='Public cultural/community hosts; regular public admission only; no student-only qualification. An empty export means no validated eligible events.')

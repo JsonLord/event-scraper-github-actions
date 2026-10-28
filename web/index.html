@@ -503,9 +503,12 @@
   }
 
   function render() {
-    if (state.releaseExpiresAt && !(Date.now() < Date.parse(state.releaseExpiresAt))) {
+    if (document.getElementById("communityOnly").checked) {
+      document.getElementById("subtitle").textContent = "Community · " + eventPool().filter(passesFilters).length + " validated events from the full source catalog · regular public admission €0–5";
+    } else if (state.releaseExpiresAt && !(Date.now() < Date.parse(state.releaseExpiresAt))) {
       document.getElementById("subtitle").textContent = "Pilot evidence expired · check official pages; prices and availability are unknown.";
     }
+    else if (state.mainSubtitle) document.getElementById("subtitle").textContent=state.mainSubtitle;
     var host = document.getElementById("sections");
     host.innerHTML = "";
     var anyVisible = false;
@@ -670,7 +673,7 @@
 
   document.getElementById("exportBtn").addEventListener("click", exportSelected);
 
-  document.getElementById("communityOnly").addEventListener("change", render);
+  document.getElementById("communityOnly").addEventListener("change", function () {state.selected.clear(); render(); updateExportButton();});
 
   document.getElementById("showPast").addEventListener("change", render);
 
@@ -694,6 +697,7 @@
       document.getElementById("subtitle").textContent =
         state.events.length + " events" + (window_ ? " (" + window_ + ")" : "") +
         ", grouped by day, free first.";
+      state.mainSubtitle=document.getElementById("subtitle").textContent;
       render();
       if (data.release_expires_at) {
         setTimeout(render, Math.max(0, Date.parse(data.release_expires_at) - Date.now()) + 10);
