@@ -52,3 +52,13 @@ def test_real_ufa_declared_multi_performance_schedule_has_isolated_evidence():
   assert observation(dict(row,date='2026-11-01',source_url='https://ufafabrik.de/spielplan.html'),html,url,NOW.isoformat()) is None
  assert semantic_candidates(html,url,'Wrong show')==[]
  assert semantic_candidates(html.replace('Fr.-Sa. 20:00 Uhr','20:00 Uhr'),url,'GardiZero')==[]
+
+def test_reviewed_public_square_event_and_named_regular_admission():
+ e=event();e['venue']='Bebelplatz';e['pilot_location']['venue']='Bebelplatz';e['offers'][0]['eligibility']='Standard'
+ assert decision(e,NOW)[0]
+ e['offers'][0]['eligibility']='Members only';assert not decision(e,NOW)[0]
+
+def test_listing_sold_out_warning_prevents_newsletter_despite_silent_detail():
+ e=event();e.update(listing_ticket_status='sold_out',ticket_status='unknown')
+ assert not decision(e,NOW)[0]
+ e.pop('listing_ticket_status');e['description']='Ausverkauft';assert not decision(e,NOW)[0]

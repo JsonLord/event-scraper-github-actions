@@ -142,3 +142,10 @@ def test_pilot_rejects_nonoccurrence_or_unsafe_urls(url):
     from scripts.pilot_release import assert_event
     data,_=fixtures();e=data['events'][0];e['url']=url
     with pytest.raises(AssertionError): assert_event(e,NOW)
+
+def test_matched_detail_silence_never_erases_fresh_listing_sold_out():
+ data,overlay=fixtures();data['events'][0]['ticket_status']='sold_out'
+ overlay['events'][occurrence_id(data['events'][0])]['fields'].pop('status',None)
+ site,_=candidate(data,overlay,NOW)
+ row=next(e for e in site['events'] if e['source_url']==data['events'][0]['source_url'])
+ assert row['ticket_status']=='sold_out' and not row['community_eligible']

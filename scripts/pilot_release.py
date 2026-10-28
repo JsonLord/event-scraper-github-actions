@@ -87,6 +87,7 @@ def candidate(data,overlay,now):
             assert link.get('match_basis')=='title_occurrence_venue', 'Pilot requires known matching venue'
             assert event_url(link.get('values',{}).get('url',''))==event_url(e['url']), 'Verified URL mismatch'
             assert fields.get('event_status',{}).get('values',{}).get('event_status') not in ('cancelled','postponed'), 'Cancelled/postponed occurrence'
+            e['listing_ticket_status']=e.get('ticket_status','unknown')
             # No listing/body inference may silently recreate unsupported claims.
             e.update(claims_policy='verified_overlay_only',price=None,price_min=None,price_max=None,
                      price_status='unknown',price_label='Check site',offers=[],student_discount_status='unknown',
@@ -100,6 +101,11 @@ def candidate(data,overlay,now):
             rejected.append({'event_id':occurrence_id(e),'source':source_name(e),'reason':str(error)})
     site=build(dict(generated_at=data['generated_at'],events=eligible),overlay,now)
     for event in site['events']:
+        if event.get('listing_ticket_status')=='sold_out' and fresh(event.get('observed_at'),now,PROFILE['max_age_hours']):
+            # A detail page's silence cannot erase an exact fresh card warning.
+            event['ticket_status']='sold_out'
+            event.setdefault('field_observed_at',{})['status']=event['observed_at']
+            event.setdefault('evidence',{})['status']=dict(source='fresh_exact_listing_card',observed_at=event['observed_at'],evidence_url=event['source_url'])
         assert_event(event,now)
         assert event['detail_link_status']=='verified' and event['verification_outcome']=='matched'
         assert fresh(event.get('field_observed_at',{}).get('link'),now,PROFILE['max_age_hours'])

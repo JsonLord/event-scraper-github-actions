@@ -54,7 +54,7 @@ def choose_release_sample(events,now,limit=3):
     """Prefer publishable candidates and distinct dates, never cancellations."""
     from scripts.score_events import exclusion_reason
     from scripts.pilot_release import future
-    pool=[e for e in events if future(e,now) and not exclusion_reason(e)
+    pool=[e for e in events if future(e,now) and not exclusion_reason(e) and e.get('ticket_status')!='sold_out'
           and (e.get('price') is None or e['price']<=20)
           and not re.search(r'\b(abgesagt|fällt aus|cancelled|verschoben)\b',e.get('description',''),re.I)]
     def priority(e):
