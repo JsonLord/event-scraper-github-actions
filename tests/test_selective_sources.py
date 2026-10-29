@@ -122,3 +122,27 @@ def test_real_raw_voice_lab_detail_matches_correct_room_and_rejects_subtitle_or_
  assert sample_one(e,Direct())['matched'] is True
  assert sample_one(dict(e,venue='mit Sarmen Almond Workshop'),Direct())['matched'] is False
  assert sample_one(dict(e,date='2026-10-31'),Direct())['matched'] is False
+
+
+def test_museum_status_badge_is_not_title_and_negative_listing_evidence_survives():
+ from scripts.event_utils import validate_events
+ from datetime import date
+ rows=scrape_document((FIXTURES/'berlin_museum_listing_2026-10-29.html').read_text(),'https://www.berlin.museum/programm','fixture')
+ e=next(e for e in rows if 'Niewiedervereinigung' in e['title'])
+ assert e['title']=='„Niewiedervereinigung“' and 'Ausverkauft' in e['description']
+ normalized,_=validate_events([e],e['source_url'],date(2026,10,29),date(2026,11,5))
+ assert normalized[0]['ticket_status']=='sold_out'
+ html=(FIXTURES/'museum_niewiedervereinigung_detail_2026-10-30.html').read_text()
+ class Direct:
+  aliases={};reason='fixture'
+  def fetch(self,target):return e['url'],html
+ assert sample_one(e,Direct())['matched'] is True
+
+
+def test_destination_sold_out_excludes_only_its_exact_performance():
+ from scripts.qualify_restored_branch import publication_observations
+ event=dict(date='2026-10-30',time='19:00',url=RAUS,ticket_status='unknown')
+ sample=dict(event,matched=True,ticket_status='sold_out')
+ assert publication_observations(event,[sample])[1] is True
+ assert publication_observations(dict(event,date='2026-10-31'),[sample])[1] is False
+ assert publication_observations(event,[dict(sample,matched=False)])[1] is False

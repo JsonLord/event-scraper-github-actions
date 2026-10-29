@@ -19,3 +19,15 @@ must not turn that prose into normal public admission. Volksbühne's 15:00 local
 performance has `1400` in the URL; the displayed datetime, not the slug, determines
 the local start. The third row's ticket warning must not bleed into the first row.
 These are discovery fixtures; they do not independently qualify a newsletter item.
+
+Additional targeted detail fixtures, captured by robots-checked direct HTTP on
+29 October 2026:
+
+- `volksbuehne_raw_voice_lab_detail_2026-10-30.html`: JSON-LD and literal activity
+  rows from https://www.volksbuehne-berlin.de/produktionen/raw-voice-lab/20261030-1200/
+- `museum_niewiedervereinigung_detail_2026-10-30.html`: JSON-LD from
+  https://www.berlin.museum/veranstaltungen/niewiedervereinigung-paula-fuerstenberg
+
+The museum listing's `Ausverkauft:` span is a status badge, not part of its
+structured event name. Tests retain that negative evidence while matching the
+actual title. No event facts were fabricated.

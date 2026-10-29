@@ -37,7 +37,13 @@ def official_programme_cards(html, source_url):
             price=None
         if not re.search(r'\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}',stamp): continue
         if (urlsplit(url).hostname or '').removeprefix('www.')!=host: continue
-        title=clean_text(heading.get_text(' ',strip=True))
+        title_heading=BeautifulSoup(str(heading),'lxml')
+        if host=='berlin.museum':
+            # Availability badges are not part of the Event's name. Keep the
+            # untouched card text below so negative evidence is retained.
+            for badge in title_heading.select('span'):
+                if re.fullmatch(r'(?:Ausverkauft|Abgesagt)\s*:',badge.get_text(' ',strip=True),re.I):badge.decompose()
+        title=clean_text(title_heading.get_text(' ',strip=True))
         if looks_synthetic_title(title): continue
         out.append(dict(title=title,date=normalize_date(stamp),time=parse_time(stamp),
                         venue=clean_text(venue.get_text(' ',strip=True)) if venue else '',

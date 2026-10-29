@@ -54,6 +54,7 @@ class HTTP:
  def __init__(self,limit,deadline,byte_limit=2_000_000):
   self.limit=limit;self.deadline=deadline;self.byte_limit=byte_limit
   self.requests=0;self.bytes=0;self.calls=[];self.robots={};self.aliases={};self.blocked=set();self.documents={};self.reason='not_attempted'
+  self.robot_evidence={}
   self.session=requests.Session()
  def get(self,url,robots=False):
   while public(url):
@@ -103,6 +104,8 @@ class HTTP:
    policy=self.get(base+'/robots.txt',robots=True)
    parser=None
    if policy:
+    if base=='https://rausgegangen.de':
+     self.robot_evidence[base]=dict(url=policy[0],sha256=hashlib.sha256(policy[1].encode()).hexdigest(),policy_excerpt=policy[1][:4000],agent=AGENT)
     parser=RobotFileParser();parser.parse(policy[1].splitlines())
     if origin(policy[0])!=base:
      self.aliases[base]=origin(policy[0]);self.robots[origin(policy[0])]=parser
@@ -143,7 +146,7 @@ def listing_worker(task):
   except Exception as exc:
    report=dict(name=source['name'],url=url,listing_received=False,raw_candidates=0,window_occurrences=0,under_twenty=0,thirty_day_occurrences=0,events=[],detail_samples=[],outcome='extractor_exception_'+type(exc).__name__)
   report.update(http_attempts=http.requests-start,seconds=round(time.monotonic()-began,3));reports.append(report)
- return reports,dict(robots=http.robots,aliases=http.aliases,blocked=http.blocked,documents=http.documents,calls=http.calls,requests=http.requests,bytes=http.bytes,capacity=capacity)
+ return reports,dict(robots=http.robots,robot_evidence=http.robot_evidence,aliases=http.aliases,blocked=http.blocked,documents=http.documents,calls=http.calls,requests=http.requests,bytes=http.bytes,capacity=capacity)
 
 
 def canonical(url,http):
@@ -172,6 +175,12 @@ def sample_one(event,http):
  return result
 
 
+def publication_observations(event,samples):
+ matches=[s for s in samples if s.get('matched') and (s.get('date'),s.get('time'),s.get('url'))==(event.get('date'),event.get('time'),event.get('url'))]
+ negative=lambda e:e.get('ticket_status')=='sold_out' or e.get('event_status') in ('cancelled','postponed')
+ return matches,negative(event) or any(negative(s) for s in matches)
+
+
 def fingerprints():
  return {str(p.relative_to(ROOT)):hashlib.sha256(p.read_bytes()).hexdigest() for p in (ROOT/'data').glob('*.json')}
 
@@ -190,6 +199,7 @@ def main():
  http=HTTP(40,deadline,25_000_000)
  for state in states:
   http.robots.update(state['robots']);http.aliases.update(state['aliases']);http.blocked.update(state['blocked']);http.documents.update(state['documents'])
+  http.robot_evidence.update(state['robot_evidence'])
  provider_diagnostics=dict(enabled=False,search_calls=0,fetch_urls=0,provider_calls=[])
  if a.raus_tinyfish:
   from scripts.raus_selective import discover
@@ -226,7 +236,7 @@ def main():
  summary=dict(commit=subprocess.check_output(['git','rev-parse','HEAD'],cwd=ROOT,text=True).strip(),scraper_baseline='70787edd3d4b99124e38a179b7737f27c60ba229',
               generated_at=now.isoformat(),window_end=(local.date()+timedelta(days=7)).isoformat(),environment='GitHub Actions' if os.getenv('GITHUB_ACTIONS') else 'cloud executor',
               sources=results,listing_http_attempts=sum(s['requests'] for s in states),listing_http_limit=sum(s['capacity'] for s in states),detail_http_attempts=http.requests,detail_http_limit=40,
-              response_bytes=sum(s['bytes'] for s in states)+http.bytes,seconds=round(time.monotonic()-start,3),tinyfish_calls=len(provider_diagnostics['provider_calls']),tinyfish=provider_diagnostics,other_provider_calls=0,browser_calls=0,production_data_unchanged=True,
+              response_bytes=sum(s['bytes'] for s in states)+http.bytes,seconds=round(time.monotonic()-start,3),tinyfish_calls=len(provider_diagnostics['provider_calls']),tinyfish=provider_diagnostics,robots_evidence=http.robot_evidence,other_provider_calls=0,browser_calls=0,production_data_unchanged=True,
               caveats=['Direct HTTP for all sources; optional free Fetch/Search allowlisted to Raus destinations only.','Source-adapter repair and Raus detail matching do not qualify the complete corpus.','Counts are date-window candidates, not guaranteed upcoming verified events.','At most two occurrence samples per source; exact matches never imply all source records are verified.','Unknown prices/inventory remain unsupported; no Community/newsletter eligibility is asserted.'],
               calls=[c for s in states for c in s['calls']]+http.calls)
  (output/'results.json').write_text(json.dumps(sanitized(summary),ensure_ascii=False,indent=2)+'\n')
@@ -245,10 +255,10 @@ def main():
  for report in results:
   for original in report['events']:
    event=deepcopy(original)
-   # The review build must not erase explicit negative source evidence.
-   if event.get('ticket_status')=='sold_out' or event.get('event_status') in ('cancelled','postponed'):
+   matches,negative=publication_observations(event,report['detail_samples'])
+   # Neither listing warnings nor exact destination warnings may be erased.
+   if negative:
     continue
-   matches=[s for s in report['detail_samples'] if s['matched'] and (s['date'],s['time'],s['url'])==(event['date'],event.get('time'),event['url'])]
    regular=[o for s in matches for o in s.get('regular_offers',[]) if o.get('amount_eur') is not None and folded(o.get('eligibility','')) in ('','standard','normalpreis','regular','adult','erwachsene')]
    proven_free=bool(regular) and all(o.get('amount_eur')==0 and o.get('price_max',0)==0 for o in regular)
    event['_qualification_free_proven']=proven_free
