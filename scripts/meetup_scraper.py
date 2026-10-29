@@ -57,8 +57,8 @@ def scrape_meetup(url: str, price_max: float = DEFAULT_MAX_PRICE, date_range_day
         List of extracted events
     """
     if not CLOAKBROWSER_AVAILABLE:
-        logger.warning("CloakBrowser not available; using Jina Reader fallback")
-        return scrape_meetup_with_jina(url, price_max)
+        logger.warning("CloakBrowser not available; using TinyFish Fetch fallback")
+        return scrape_meetup_with_tinyfish(url, price_max)
     
     logger.info(f"Scraping Meetup: {url}")
     
@@ -156,12 +156,12 @@ def scrape_meetup(url: str, price_max: float = DEFAULT_MAX_PRICE, date_range_day
         if events:
             return events
 
-        logger.warning("CloakBrowser produced 0 Meetup events; using Jina Reader fallback")
-        return scrape_meetup_with_jina(url, price_max)
+        logger.warning("CloakBrowser produced 0 Meetup events; using TinyFish Fetch fallback")
+        return scrape_meetup_with_tinyfish(url, price_max)
         
     except Exception as e:
         logger.error(f"Error scraping Meetup with CloakBrowser: {e}")
-        return scrape_meetup_with_jina(url, price_max)
+        return scrape_meetup_with_tinyfish(url, price_max)
     finally:
         if context:
             context.close()
@@ -169,60 +169,16 @@ def scrape_meetup(url: str, price_max: float = DEFAULT_MAX_PRICE, date_range_day
             browser.close()
 
 
-def fetch_jina_content(url: str) -> str:
-    """Fetch a readable page snapshot via Jina Reader."""
-    jina_url = f"https://r.jina.ai/{url}"
-    headers = {}
-    if os.environ.get("JINA_API_KEY"):
-        headers["Authorization"] = f"Bearer {os.environ['JINA_API_KEY']}"
-    response = requests.get(jina_url, headers=headers, timeout=30)
-    response.raise_for_status()
-    return response.text
+def fetch_tinyfish_content(url: str) -> str:
+    from generic_event_scraper import fetch_tinyfish_html
+    return fetch_tinyfish_html(url) or ""
 
 
-def scrape_meetup_with_jina(url: str, price_max: float = DEFAULT_MAX_PRICE) -> List[Dict[str, Any]]:
-    """Fallback parser for GitHub Actions when browser automation is blocked."""
-    markdown = fetch_jina_content(url)
-    events = []
-    seen = set()
-
-    for line in markdown.splitlines():
-        text = line.strip()
-        if not text or len(text) < 8:
-            continue
-        if not re.search(r'meetup|rsvp|online|free|gratis|€|berlin|\d{1,2}:\d{2}', text, re.IGNORECASE):
-            continue
-
-        link_match = re.search(r'\[([^\]]{5,160})\]\((https?://[^)]+)\)', text)
-        title = link_match.group(1).strip() if link_match else re.sub(r'[#*_`>-]', '', text).strip()
-        event_url = link_match.group(2) if link_match else url
-
-        if len(title) < 5 or title.lower() in seen:
-            continue
-
-        price = parse_price(text)
-        if price is not None and price > price_max:
-            continue
-
-        seen.add(title.lower())
-        events.append({
-            "title": clean_text(title, max_length=180),
-            "date": parse_meetup_date(text) or "",
-            "time": parse_time(text),
-            "price": price,
-            "category": "",
-            "description": clean_text(text, max_length=400),
-            "url": clean_url(event_url),
-            # "Berlin" as a blanket venue was how San Francisco meetups
-            # acquired a Berlin address in the published table.
-            "venue": "",
-            "source_url": url,
-        })
-
-        if len(events) >= 50:
-            break
-
-    return events
+def scrape_meetup_with_tinyfish(url: str, price_max: float = DEFAULT_MAX_PRICE) -> List[Dict[str, Any]]:
+    """Optional semantic HTML fallback; never interpret it as Markdown."""
+    from generic_event_scraper import scrape_document
+    html = fetch_tinyfish_content(url)
+    return [e for e in scrape_document(html, url, "TinyFish Fetch") if e.get("price") is None or e["price"] <= price_max] if html else []
 
 
 def parse_meetup_date(date_text: str) -> Optional[str]:
@@ -316,7 +272,7 @@ def main():
             os.makedirs(os.path.dirname(html_output), exist_ok=True)
             try:
                 with open(html_output, "w") as f:
-                    f.write(fetch_jina_content(args.url))
+                    f.write(fetch_tinyfish_content(args.url))
             except Exception as e:
                 logger.warning(f"Could not save Meetup HTML snapshot: {e}")
         

@@ -1,0 +1,143 @@
+{
+  "evidence_kind": "qualification_metadata_only_not_a_production_dataset",
+  "runs": [
+    {
+      "run_id": "39094362722",
+      "commit_sha": "e598fb981318723dae3132a769cd14d488e56514",
+      "manifest_sha256": "1ee1e5494d7ac6feef74cac59d7fdf6be9638883b89560d4be24b87fad27eb4f",
+      "created_at": "2026-10-18T03:39:40.219022+00:00",
+      "expires_at": "2026-10-18T09:39:40.219022+00:00",
+      "profile": "berlin-ufa-pilot-v1",
+      "quality": {
+        "discovered_occurrences": 55,
+        "verified_eligible": 5,
+        "published_occurrences": 5,
+        "published_exact_matches": 5,
+        "exact_publication_coverage": 1.0,
+        "discovery_to_publication_rate": 0.09090909090909091,
+        "source_counts": {
+          "berlin_buehnen": 2,
+          "ufafabrik": 3
+        },
+        "source_dates": {
+          "berlin_buehnen": [
+            "2026-10-18",
+            "2026-10-25"
+          ],
+          "ufafabrik": [
+            "2026-10-18",
+            "2026-10-19"
+          ]
+        },
+        "unknown_prices": 2,
+        "explicit_student_discounts": 3,
+        "unknown_inventory": 5,
+        "scoring_exclusions": 0,
+        "technical_go": true
+      },
+      "rejected_reason_counts": {
+        "Missing Berlin venue evidence": 49,
+        "Cancelled/postponed occurrence": 1
+      },
+      "http_attempts": 14,
+      "http_per_host": {
+        "www.berlin-buehnen.de": 8,
+        "ufafabrik.de": 6
+      },
+      "http_bytes": 1056712,
+      "tinyfish_fetch_urls": 3,
+      "tinyfish_search_calls": 0,
+      "pipeline_seconds": 32.143,
+      "second_execution_targets": 0,
+      "production_files_unchanged": true,
+      "artifact_file_checksums": {
+        "diagnostics.json": "299cff329ed49b4aa3dfb5c7d203441682fa24523f33ff6ad6d79bf4f21fb7f0",
+        "discovery.json": "248ccb620f39745a8f69f764b9cd8e87a129af796b3fabc6907b0b3c68f038a4",
+        "overlay.json": "1da0df46900417366522a768ce7c5e3ccac15a30688095ef24d6be07c9fe0ea2",
+        "site/.nojekyll": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "site/events_scored.json": "1d321a765ffaf0bb9610dbd5ace3a629ff8167f7f08379e24773d9ff73e8f16f",
+        "site/index.html": "5c788c81cc54271dcbb8d284299091e4b62579da0d68b113e8cbe9508a4bc494",
+        "smoke/desktop.png": "517760af3817593d32c27f1cd5d31a588644cf9f3361ee43acf0c0ef55c75e57",
+        "smoke/mobile.png": "e953f2206ba5aee0c311450ce65b0a82f21e06b84c21228a59d21215ea7a4735",
+        "smoke/rendered.html": "7d4e2cb90c4430aa3f89d6c88a13a06c4f6db58d778c7f13c3baa1e6b5c7e6b1",
+        "smoke/report.json": "3abb2ff1137411a807e5dc5b5ec65286cd6dac0c8938d8a6b76d162398a6afdf",
+        "smoke/selected.ics": "5e6f5c7204e730ae3801a9b011f1d7e8faf422bf7413c09ae64f7ba0d1bed7eb"
+      },
+      "artifact": {
+        "name": "r14-pilot-release-candidate",
+        "id": 12124151193,
+        "size_in_bytes": 240367,
+        "archive_sha256": "dc3702c6fcff1862cdd22482ae011c4c4dcedbe8f6ce5718ea66af3251e0eb18"
+      }
+    },
+    {
+      "run_id": "39094611434",
+      "commit_sha": "c1a153b934433288694aa7c78b7934b76472b7dd",
+      "manifest_sha256": "8c3d4d9e3c97dcf22763ff356a39a508f38489b5453628567ee05aaa57c326cd",
+      "created_at": "2026-10-18T03:44:01.481909+00:00",
+      "expires_at": "2026-10-18T09:44:01.481909+00:00",
+      "profile": "berlin-ufa-pilot-v1",
+      "quality": {
+        "discovered_occurrences": 55,
+        "verified_eligible": 5,
+        "published_occurrences": 5,
+        "published_exact_matches": 5,
+        "exact_publication_coverage": 1.0,
+        "discovery_to_publication_rate": 0.09090909090909091,
+        "source_counts": {
+          "berlin_buehnen": 2,
+          "ufafabrik": 3
+        },
+        "source_dates": {
+          "berlin_buehnen": [
+            "2026-10-18",
+            "2026-10-25"
+          ],
+          "ufafabrik": [
+            "2026-10-18",
+            "2026-10-19"
+          ]
+        },
+        "unknown_prices": 2,
+        "explicit_student_discounts": 3,
+        "unknown_inventory": 5,
+        "scoring_exclusions": 0,
+        "technical_go": true
+      },
+      "rejected_reason_counts": {
+        "Missing Berlin venue evidence": 49,
+        "Cancelled/postponed occurrence": 1
+      },
+      "http_attempts": 14,
+      "http_per_host": {
+        "www.berlin-buehnen.de": 8,
+        "ufafabrik.de": 6
+      },
+      "http_bytes": 1056712,
+      "tinyfish_fetch_urls": 3,
+      "tinyfish_search_calls": 0,
+      "pipeline_seconds": 28.702,
+      "second_execution_targets": 0,
+      "production_files_unchanged": true,
+      "artifact_file_checksums": {
+        "diagnostics.json": "19e0060c21f614669feaff14b388493ef871ca646225d1782bea2304ca2a8ecd",
+        "discovery.json": "93451d09ff9827b298d0ef1b86c245dcd66df45897efd98932f1ec073d4b9b32",
+        "overlay.json": "3138879e5f47ea88272e3fde542e4e4153e68e363f748e6c634aa631367b6343",
+        "site/.nojekyll": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "site/events_scored.json": "9b033b0f3c96ce5aba20f94ffda167fc5dc7560fdc1c68865008796f173bd8f1",
+        "site/index.html": "adaee9d34debbd9c653f0190a2bec462f5faa611e2869381946afbe9bac6dc71",
+        "smoke/desktop.png": "bc5cfd45d1bb0a622e21ab9e1aef1932863e134197cd9d1997aeac76d475cc9a",
+        "smoke/mobile.png": "8da73c6cab04c37e29e5806656e1fe9533324904115afca1c5181a7e9d163276",
+        "smoke/rendered.html": "800ccc7208ee3bc4210b0608a0256697a81bb2452b9f916e810bc7645f2f0f64",
+        "smoke/report.json": "ada59bbe6aedc405750bd587db5b5bf766345de99dab6e0b1e9291f701ca4e10",
+        "smoke/selected.ics": "5e6f5c7204e730ae3801a9b011f1d7e8faf422bf7413c09ae64f7ba0d1bed7eb"
+      },
+      "artifact": {
+        "name": "r14-pilot-release-candidate",
+        "id": 12123753898,
+        "size_in_bytes": 242860,
+        "archive_sha256": "174539e75ce04c45a64ec2d04f34ecb914d71ff7919638f8654d21f4c943e3e9"
+      }
+    }
+  ]
+}

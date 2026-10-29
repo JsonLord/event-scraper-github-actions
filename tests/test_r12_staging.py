@@ -1,0 +1,217 @@
+from copy import deepcopy
+from datetime import datetime, timezone
+import json
+from pathlib import Path
+from types import SimpleNamespace
+import yaml
+from scripts.qualify_r12 import integration, safe_artifact, choose_sample
+from scripts.ticket_evidence import enrich_evidence
+from scripts.verify_event_details import DEFAULT_POLICY
+
+
+def test_staging_workflow_has_no_production_authority():
+    doc=yaml.safe_load(Path('.github/workflows/fetch-strategy-probe.yml').read_text())
+    trigger=doc.get('on',doc.get(True))
+    assert set(trigger)=={'workflow_dispatch'}
+    assert doc['permissions']=={'contents':'read'}
+    for job in doc['jobs'].values():
+        assert 'environment' not in job and 'permissions' not in job
+        for step in job['steps']:
+            assert not any(x in step.get('uses','') for x in ('deploy-pages','upload-pages','configure-pages'))
+            assert not any(x in step.get('run','') for x in ('git push','git commit','gh workflow','gh api'))
+    assert 'runner.temp' in doc['jobs']['qualify']['steps'][-1]['with']['path']
+
+
+def test_production_jobs_fail_closed_without_activation_flags():
+    daily=yaml.safe_load(Path('.github/workflows/daily-event-verification.yml').read_text())
+    condition=daily['jobs']['verify-build-publish']['if']
+    assert "vars.DAILY_VERIFICATION_ENABLED == 'true'" in condition
+    assert "vars.PAGES_DEPLOYMENT_ENABLED == 'true'" in condition
+    manual=yaml.safe_load(Path('.github/workflows/jekyll-gh-pages.yml').read_text())
+    for job in manual['jobs'].values():
+        assert "github.event_name == 'workflow_dispatch'" in job['if']
+        assert "vars.PAGES_DEPLOYMENT_ENABLED == 'true'" in job['if']
+    weekly=yaml.safe_load(Path('.github/workflows/weekly-event-scraper.yml').read_text())
+    assert "vars.PAGES_DEPLOYMENT_ENABLED == 'true'" in weekly['jobs']['publish-pages']['if']
+
+
+def test_diagnostics_drop_query_credentials_and_key(monkeypatch):
+    monkeypatch.setenv('TINYFISH_API_KEY','fixture-key')
+    output=safe_artifact({'url':'https://user:pass@example.org/event?token=secret#fragment','nested':['fixture-key']})
+    assert output=={'url':'https://example.org/event','nested':['[REDACTED]']}
+
+
+def test_actual_pipeline_with_real_semantic_responses_and_second_run(tmp_path):
+    targets=json.loads(Path('config/tinyfish_qualification_targets.json').read_text())
+    documents={}
+    for name in ('berlin_buehnen','ufafabrik'):
+        result=json.loads(Path(f'tests/fixtures/tinyfish_live/{name}_fetch.json').read_text())['results'][0]
+        documents[result['url']]=(result['final_url'],result['text'])
+    class HTTP:
+        requests=bytes=0;permitted=True;reason='ok'
+        def __init__(self): self.documents=documents
+        def fetch(self,url): self.requests+=1;return self.documents[url]
+    class Provider:
+        fetch_urls=search_queries=0;diagnostic='offline_fixture';documents={}
+        def fetch(self,urls): raise AssertionError('No provider transport in offline test')
+        def search(self,query): raise AssertionError('No provider transport in offline test')
+    sample=[enrich_evidence(e) for e in targets];original=deepcopy(sample)
+    overlay,second,site,expired,checks=integration(sample,datetime(2026,10,17,20,tzinfo=timezone.utc),DEFAULT_POLICY,HTTP(),Provider(),tmp_path/'overlay.json')
+    assert len(overlay['events'])==2 and overlay==second and original==sample
+    assert all(e['outcome']=='matched' for e in overlay['events'].values())
+    assert checks['fresh_second_run_preserved_state'] and checks['ttl_expiration_passed'] and checks['disk_overlay_roundtrip']
+    assert checks['multi_performance_pages'][0]['contains_cancellation_marker']
+    assert checks['multi_performance_pages'][0]['selected_event_status']=='unknown'
+    assert all(r['matched'] for r in checks['missing_venue_replays'])
+    assert all(e['ticket_status']=='unknown' for e in expired['events'])
+
+def test_missing_venue_accepts_official_www_redirect_with_exact_occurrence():
+    from scripts.event_matching import match_basis
+    event={'title':'A real show','date':'2026-10-19','time':'19:00','venue':'',
+           'url':'https://ufafabrik.de/veranstaltung/123/show','source_url':'https://ufafabrik.de/spielplan.html'}
+    final='https://www.ufafabrik.de/veranstaltung/123/show'
+    candidate=dict(event,url=final,venue='Theatersaal')
+    assert match_basis(event,candidate,final)=='official_canonical_occurrence'
+    assert match_basis(event,dict(candidate,date='2026-10-20'),final) is None
+    assert match_basis(event,candidate,'https://www.ufafabrik.de/veranstaltung/124/other') is None
+    assert match_basis(event,candidate,'https://unrelated.example/veranstaltung/123/show') is None
+
+def test_raus_semantic_detail_discovery_requires_fetched_title_and_occurrence():
+    from scripts.generic_event_scraper import scrape_document
+    html='<main><h1>A real Berlin event</h1><p>18.10.2026 19:00</p><h2>Location</h2><p>Berlin Venue</p><p>Eintritt €12</p></main>'
+    es=scrape_document(html,'https://rausgegangen.de/events/a-real-event/','offline test')
+    assert es[0]['title']=='A real Berlin event' and es[0]['date']=='2026-10-18'
+    assert es[0]['venue']=='Berlin Venue'
+    # A bleached listing with only dates/venues cannot fabricate an event title.
+    assert scrape_document('<p>18.10.2026 19:00 Berlin Venue €12</p>','https://rausgegangen.de/en/berlin/eventsbydate/','offline test')==[]
+
+def test_search_discovery_rejects_lookalike_hosts_and_snippet_facts():
+    from scripts.qualify_r12 import discover
+    good='https://rausgegangen.de/events/a-real-event/'
+    bad='https://rausgegangen.de.unrelated.example/events/a-real-event/'
+    html='<main><h1>A real Berlin event</h1><p>18.10.2026 19:00</p><h2>Location</h2><p>Berlin Venue</p><p>Eintritt €12</p></main>'
+    class HTTP:
+        permitted=True;reason='ok';bytes=0;policy=DEFAULT_POLICY
+        def __init__(self): self.urls=[]
+        def fetch(self,url): self.urls.append(url);return url,html
+    class Provider:
+        def search(self,query): return [bad,good]
+        def fetch(self,urls): raise AssertionError('Direct content should suffice')
+    http=HTTP()
+    sample,sources=discover(datetime(2026,10,17,20,tzinfo=timezone.utc),http,Provider(),'raus-search')
+    assert http.urls==[good] and len(sample)==1
+    assert sample[0]['title']=='A real Berlin event' and sample[0]['price']==12
+
+
+def test_candidate_discovery_never_counts_as_verified_source_coverage():
+    from scripts.qualify_r12 import coverage_metrics, SOURCES
+    details=[{'source_url':url,'matched':name!='rausgegangen'} for name,url in SOURCES.items()]
+    sources={name:{'sample_events':1,'discovered_upcoming_window':1,'listing_results':[{'outcome':'received','search_candidates':10}]} for name in SOURCES}
+    result=coverage_metrics(sources,details,[])
+    assert not result['verified_source_coverage_complete']
+    raus=result['sources']['rausgegangen']
+    assert raus['candidate_url_discovery_success'] and not raus['verified_source_coverage']
+    assert raus['exact_occurrence_match_rate']==0 and raus['final_publishable_events']==0
+    assert not coverage_metrics({},[],[])['verified_source_coverage_complete']
+
+
+def test_captured_raus_text_header_replay_never_imports_shared_prices():
+    # Literal captured text from run 39080734421, not a fabricated provider body.
+    from html import escape
+    from scripts.event_matching import semantic_candidates
+    capture=json.loads(Path('docs/r13-qualification-phase1.json').read_text())
+    attempts=capture['sources']['rausgegangen']['listing_results']
+    for attempt in attempts[:2]:
+        text=attempt['rejected_structure']
+        title=text.split(' | ')[1]
+        html='<h1>'+escape(title)+'</h1>'+''.join('<p>'+escape(x)+'</p>' for x in text.split(' | ')[2:])
+        candidates=semantic_candidates(html,attempt['destination_url'],title)
+        assert len(candidates)==1 and candidates[0]['date']=='2026-10-18'
+        assert 'Berlin' in candidates[0]['description']
+        assert '€' not in candidates[0]['description']
+        assert not semantic_candidates(html,attempt['destination_url'],'Wrong title')
+        assert not semantic_candidates(html.replace('2026','2025'),attempt['destination_url'],title)[0]['date']=='2026-10-18'
+
+
+def test_raus_candidate_urls_collapse_locale_and_reject_generic_or_unsafe():
+    from scripts.rausgegangen_discovery import candidate_urls
+    assert candidate_urls(['https://rausgegangen.de/events/real/',
+        'https://rausgegangen.de/en/events/real/',
+        'https://rausgegangen.de/locations/venue/',
+        'https://rausgegangen.de.evil.example/events/other/',
+        'https://rausgegangen.de/events/other/?token=secret'])==['https://rausgegangen.de/events/real/']
+
+
+def test_raus_production_entry_caches_failed_discovery_and_avoids_browser(monkeypatch):
+    from scripts import rausgegangen_discovery as source
+    from scripts import generic_event_scraper as scraper
+    calls=[]
+    monkeypatch.setattr(source,'_RUN_EVENTS',None)
+    monkeypatch.setattr(source,'discover',lambda *a,**k:(calls.append(True) or ([],[])))
+    monkeypatch.setattr(scraper,'fetch_plain',lambda *a:(_ for _ in ()).throw(AssertionError('Unbounded HTTP')))
+    monkeypatch.setattr(scraper,'render_with_cloakbrowser',lambda *a:(_ for _ in ()).throw(AssertionError('Browser')))
+    assert scraper.scrape(source.BASE)==[]
+    assert scraper.scrape(source.BASE)==[]
+    assert calls==[True]
+
+
+def test_raus_captured_occurrence_rejects_other_dates_and_nearby_free_admission():
+    from html import escape
+    from scripts.verify_event_details import observation
+    attempt=json.loads(Path('docs/r13-qualification-phase1.json').read_text())['sources']['rausgegangen']['listing_results'][0]
+    text=attempt['rejected_structure'];parts=text.split(' | ')
+    html='<h1>'+escape(parts[1])+'</h1>'+''.join('<p>'+escape(x)+'</p>' for x in parts[2:])
+    event={'title':'Gavin DeGraw','date':'2026-10-18','time':'20:00','venue':'Metropol Berlin',
+           'url':attempt['destination_url'],'source_url':'https://rausgegangen.de/en/berlin/eventsbydate/'}
+    result=observation(event,html,attempt['destination_url'],'2026-10-18T04:00:00Z')
+    assert result and 'price' not in result and 'status' not in result
+    assert observation(dict(event,date='2026-10-19'),html,attempt['destination_url'],'2026-10-18T04:00:00Z') is None
+    assert observation(dict(event,time='23:45'),html,attempt['destination_url'],'2026-10-18T04:00:00Z') is None
+    assert observation(dict(event,venue='Other Venue'),html,attempt['destination_url'],'2026-10-18T04:00:00Z') is None
+    # Conditional free admission in organizer prose never becomes event pricing.
+    assert 'price' not in observation(event,html+'<p>A companion has free admission</p>',attempt['destination_url'],'2026-10-18T04:00:00Z')
+
+
+def test_raus_berlin_organizer_is_not_berlin_location_evidence():
+    from scripts.rausgegangen_discovery import discover
+    url='https://rausgegangen.de/events/real/'
+    event={'@context':'https://schema.org','@type':'Event','name':'A real event',
+           'startDate':'2026-10-18T19:00:00','url':url,'description':'Organized by a Berlin agency',
+           'location':{'name':'Hamburg Venue','address':{'addressLocality':'Hamburg'}}}
+    html='<script type="application/ld+json">'+json.dumps(event)+'</script>'
+    class HTTP:
+        bytes=0;policy=DEFAULT_POLICY;permitted=True;reason='ok'
+        def fetch(self,u): return u,html
+    class Provider:
+        def search(self,q): return [url]
+    events,attempts=discover(datetime(2026,10,17,20,tzinfo=timezone.utc),HTTP(),Provider())
+    assert events==[] and attempts[0]['extracted_occurrences']==0
+
+
+def test_raus_production_entry_replays_real_capture_through_production_matcher(monkeypatch):
+    from html import escape
+    from scripts import rausgegangen_discovery as source
+    from scripts import verify_event_details, tinyfish_client
+    attempt=json.loads(Path('docs/r13-qualification-phase1.json').read_text())['sources']['rausgegangen']['listing_results'][0]
+    parts=attempt['rejected_structure'].split(' | ')
+    html='<h1>'+escape(parts[1])+'</h1>'+''.join('<p>'+escape(x)+'</p>' for x in parts[2:])
+    class HTTP:
+        bytes=0;policy=DEFAULT_POLICY;permitted=True;reason='ok'
+        def __init__(self,*a,**k): pass
+        def fetch(self,u): return attempt['destination_url'],html
+    class Provider:
+        def __init__(self,*a,**k): pass
+        def search(self,q): return [attempt['candidate_url']]
+    class Clock:
+        @classmethod
+        def now(cls,tz): return datetime(2026,10,17,20,tzinfo=timezone.utc)
+    # Freeze only this module's local datetime import via a discovered now seam.
+    original=source.discover
+    monkeypatch.setattr(source,'discover',lambda now,*a,**k:original(Clock.now(None),*a,**k))
+    monkeypatch.setattr(source,'_RUN_EVENTS',None)
+    monkeypatch.setattr(verify_event_details,'BoundedHTTP',HTTP)
+    monkeypatch.setattr(tinyfish_client,'TinyFishClient',Provider)
+    events=source.scrape_public_listing()
+    assert len(events)==1 and events[0]['title']=='Gavin DeGraw'
+    assert events[0]['url']==attempt['destination_url'] and events[0]['venue']=='Metropol Berlin'
+    assert events[0]['price'] is None

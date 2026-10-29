@@ -1,0 +1,92 @@
+{
+  "version": "R1.2",
+  "phase": "raus-search",
+  "observed_at": "2026-10-17T22:44:58.619393+00:00",
+  "sources": {
+    "rausgegangen": {
+      "listing_results": [
+        {
+          "transport": "tinyfish_fetch",
+          "outcome": "received",
+          "search_candidates": 20
+        }
+      ],
+      "discovered_upcoming_window": 1,
+      "sample_events": 1,
+      "missing_links": 0,
+      "missing_venues": 0
+    }
+  },
+  "total_discovered": 1,
+  "sample_events": 1,
+  "matched_events": 0,
+  "exact_match_rate": 0.0,
+  "materialized_events": 0,
+  "source_coverage_complete": true,
+  "http_attempts": 2,
+  "http_bytes": 1765,
+  "http_per_host": {
+    "rausgegangen.de": 2
+  },
+  "tinyfish_fetch_urls": 1,
+  "tinyfish_search_calls": 2,
+  "tinyfish_calls": [
+    {
+      "operation": "search",
+      "http_status": 200,
+      "schema_valid": true,
+      "result_count": 10,
+      "error_codes": [],
+      "duration_seconds": 0.927,
+      "outcome": "ok"
+    },
+    {
+      "operation": "search",
+      "http_status": 200,
+      "schema_valid": true,
+      "result_count": 10,
+      "error_codes": [],
+      "duration_seconds": 1.645,
+      "outcome": "ok"
+    },
+    {
+      "operation": "fetch",
+      "http_status": 200,
+      "schema_valid": true,
+      "result_count": 1,
+      "error_codes": [],
+      "duration_seconds": 2.432,
+      "outcome": "ok"
+    }
+  ],
+  "network_wall_seconds": 5.499,
+  "pipeline_wall_seconds": 5.657,
+  "production_files_unchanged": true,
+  "frontend_smoke": {
+    "status": "not_run_empty_materialization"
+  },
+  "integration": {
+    "fresh_second_run_preserved_state": true,
+    "ttl_expiration_passed": true,
+    "input_immutability_passed": true,
+    "missing_venue_replays": [],
+    "multi_performance_pages": []
+  },
+  "second_run_targets": 0,
+  "events": [
+    {
+      "event_id": "sha256:af7920362c419235ed93199fa00508cdd9e9173eb07773e46ac53f95b7014dfe",
+      "title": "Gavin DeGraw",
+      "date": "2026-10-18",
+      "time": "20:00",
+      "source_url": "https://rausgegangen.de/en/berlin/eventsbydate/",
+      "matched": false,
+      "outcome": "http_budget_or_host_blocked",
+      "match_basis": null,
+      "price": {},
+      "student_discount_status": "unknown",
+      "ticket_status": "unknown",
+      "event_status": "unknown"
+    }
+  ]
+}

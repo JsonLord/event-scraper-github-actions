@@ -1,0 +1,21 @@
+{
+  "http_attempts": 2,
+  "http_bytes": 195,
+  "http_calls": [
+    {
+      "host": "rausgegangen.de",
+      "operation": "robots",
+      "http_status": 200,
+      "duration_seconds": 0.73,
+      "response_bytes": 195
+    },
+    {
+      "host": "rausgegangen.de",
+      "operation": "page",
+      "http_status": 403,
+      "duration_seconds": 0.253,
+      "response_bytes": 0
+    }
+  ],
+  "outcome": "http_403"
+}

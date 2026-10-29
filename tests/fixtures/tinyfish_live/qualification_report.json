@@ -1,0 +1,88 @@
+{
+  "captured_at": "2026-10-17T20:07:48.396953+00:00",
+  "key_present": true,
+  "targets": [
+    {
+      "target": {
+        "title": "Es war einmal ein Zaubersmann",
+        "date": "2026-10-18",
+        "time": "11:00",
+        "venue": "Pfefferberg Theater"
+      },
+      "requested_url": "https://www.berlin-buehnen.de/de/spielplan/es-war-einmal-zaubersmann-3/events/347405/",
+      "search_candidate_count": 10,
+      "search_contains_target": false,
+      "robots_allowed": true,
+      "final_url": "https://www.berlin-buehnen.de/de/spielplan/es-war-einmal-zaubersmann-3/events/347405/",
+      "semantic_html_bytes": 19165,
+      "has_script": false,
+      "has_datetime": false,
+      "matched": false,
+      "observed_fields": [],
+      "match_basis": null
+    },
+    {
+      "target": {
+        "title": "Live-Hörspiel „Schöneberger Allerlei – Fall 4“",
+        "date": "2026-10-18",
+        "time": "19:00",
+        "venue": "Theatersaal"
+      },
+      "requested_url": "https://ufafabrik.de/veranstaltung/39888/live-hoerspiel-schoeneberger-allerlei-fall-4",
+      "search_candidate_count": 1,
+      "search_contains_target": true,
+      "robots_allowed": true,
+      "final_url": "https://ufafabrik.de/veranstaltung/39888/live-hoerspiel-schoeneberger-allerlei-fall-4",
+      "semantic_html_bytes": 3431,
+      "has_script": false,
+      "has_datetime": false,
+      "matched": true,
+      "observed_fields": [
+        "discount",
+        "link",
+        "price"
+      ],
+      "match_basis": "official_canonical_occurrence"
+    }
+  ],
+  "provider_calls": [
+    {
+      "operation": "search",
+      "http_status": 200,
+      "schema_valid": true,
+      "result_count": 10,
+      "error_codes": [],
+      "duration_seconds": 1.393,
+      "outcome": "ok"
+    },
+    {
+      "operation": "fetch",
+      "http_status": 200,
+      "schema_valid": true,
+      "result_count": 1,
+      "error_codes": [],
+      "duration_seconds": 2.043,
+      "outcome": "ok"
+    },
+    {
+      "operation": "search",
+      "http_status": 200,
+      "schema_valid": true,
+      "result_count": 1,
+      "error_codes": [],
+      "duration_seconds": 1.855,
+      "outcome": "ok"
+    },
+    {
+      "operation": "fetch",
+      "http_status": 200,
+      "schema_valid": true,
+      "result_count": 1,
+      "error_codes": [],
+      "duration_seconds": 1.522,
+      "outcome": "ok"
+    }
+  ],
+  "fetch_urls": 2,
+  "search_requests": 2
+}

@@ -34,10 +34,13 @@ import json
 import os
 import re
 import sys
+from pathlib import Path
 from datetime import date
 from typing import Any, Dict, List, Optional
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from event_utils import (  # noqa: E402
     DEFAULT_MAX_PRICE,
@@ -461,6 +464,8 @@ def category_score(primary: List[str], secondary: List[str],
 
 
 def score_event(event: Dict[str, Any], today: Optional[date] = None) -> Dict[str, Any]:
+    from scripts.ticket_evidence import enrich_evidence
+    event = enrich_evidence(event)
     price = event.get("price")
     primary, secondary, near = split_categories(event)
     content_categories = primary + secondary
@@ -481,7 +486,8 @@ def score_event(event: Dict[str, Any], today: Optional[date] = None) -> Dict[str
     scored = dict(event)
     scored["stream"] = event_stream(primary, secondary)
     scored["price"] = price
-    scored["price_label"] = format_price_label(price)
+    from scripts.ticket_evidence import enrich_evidence
+    scored.update(enrich_evidence(scored))
     scored["matched_categories"] = matched
     scored["category"] = ", ".join(content_categories) if content_categories else (event.get("category") or "general")
     scored["score"] = max(0, min(100, score))

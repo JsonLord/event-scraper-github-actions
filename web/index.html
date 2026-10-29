@@ -192,7 +192,10 @@
 
 <div class="controls">
   <input type="search" id="search" placeholder="Search title, venue, category, description…">
-  <label class="toggle"><input type="checkbox" id="freeOnly"> Free only</label>
+  <label class="toggle"><input type="checkbox" id="freeOnly"> Verified free only</label>
+  <label class="toggle"><input type="checkbox" id="showPast"> Include past events</label>
+  <label class="toggle"><input type="checkbox" id="communityOnly"> Community · validated €0–5</label>
+  <a href="newsletter.json" download="newsletter.json">Newsletter JSON</a>
   <button id="exportBtn" class="primary" disabled>Add selected to calendar (.ics)</button>
 </div>
 
@@ -200,6 +203,7 @@
 <div class="empty" id="emptyMsg" hidden>No events match your filters.</div>
 
 <footer>
+  Community includes validated regular admission up to €5 at reviewed public cultural/community hosts. Student-only prices and small cafés, bars and lounges do not qualify. Unknown inventory is not a promise of admission.<br>
   Berlin events, filtered to max 20 EUR (or price unknown) and to the coming week. Entrepreneurship and
   sport sit in their own tables, because a running club and an opera are not alternatives to each other.
   Each table is grouped by day, and
@@ -233,6 +237,7 @@
   // Free first, then ascending by price, with an unstated price last: it
   // cannot be placed on the cheap-to-dear axis, so it does not pretend to be.
   function priceRank(ev) {
+    if (ev.claim_expires_at && !freshEvidence(ev, "price", 48)) return Infinity;
     return (ev.price === null || ev.price === undefined) ? Infinity : ev.price;
   }
 
@@ -340,13 +345,42 @@
     return { wrap: wrap, tbody: tbody, thead: thead };
   }
 
+  function berlinClock(now) {
+    var parts = new Intl.DateTimeFormat("en-GB", {timeZone:"Europe/Berlin", year:"numeric", month:"2-digit", day:"2-digit", hour:"2-digit", minute:"2-digit", hourCycle:"h23"}).formatToParts(now);
+    var p = {}; parts.forEach(function (x) { p[x.type] = x.value; });
+    return {date:p.year + "-" + p.month + "-" + p.day, time:p.hour + ":" + p.minute};
+  }
+
+  function eventIsPast(ev, now) {
+    var clock = berlinClock(now), day = String(ev.date || "").slice(0,10);
+    return day && (day < clock.date || (day === clock.date && ev.time && ev.time < clock.time));
+  }
+
+  function freshEvidence(ev, field, hours) {
+    if (ev.claim_expires_at && !(Date.now() < Date.parse(ev.claim_expires_at))) return false;
+    var stamp = (ev.field_observed_at || {})[field] || ev.observed_at;
+    var age = Date.now() - Date.parse(stamp || "");
+    return Number.isFinite(age) && age >= 0 && age < hours * 3600000;
+  }
+
+  function safeLink(url) {
+    try { var parsed = new URL(url); return /^https?:$/.test(parsed.protocol) && !parsed.username && !parsed.password; }
+    catch (_) { return false; }
+  }
+
+  function eventPool() {
+    return document.getElementById("communityOnly").checked ? (state.newsletterEvents || []) : state.events;
+  }
+
   function passesFilters(ev) {
-    if (state.freeOnly && ev.price !== 0) return false;
+    if (document.getElementById("communityOnly").checked && (ev.community_eligible !== true || !freshEvidence(ev, "price", 6) || !freshEvidence(ev, "link", 6))) return false;
+    if (!document.getElementById("showPast").checked && eventIsPast(ev, new Date())) return false;
+    if (state.freeOnly && (ev.free_admission_confirmed !== true || !freshEvidence(ev, "price", 48))) return false;
     return matchesSearch(ev, state.search);
   }
 
   function visibleFor(streamKey) {
-    return state.events.filter(function (ev) {
+    return eventPool().filter(function (ev) {
       return (ev.stream || "main") === streamKey && passesFilters(ev);
     });
   }
@@ -392,7 +426,7 @@
     // the listing it came from. Linking those to the listing looked like a
     // working link and led nowhere useful, so they render as plain text
     // with the listing offered separately.
-    if (ev.has_detail_link !== false && (ev.url || ev.source_url)) {
+    if (ev.detail_link_status === "verified" && freshEvidence(ev, "link", 168) && safeLink(ev.url)) {
       var titleLink = document.createElement("a");
       titleLink.className = "site-link";
       titleLink.href = ev.url || ev.source_url;
@@ -402,17 +436,26 @@
       tdName.appendChild(titleLink);
     } else {
       tdName.appendChild(document.createTextNode(ev.title || "Untitled event"));
-      if (ev.source_url) {
+      if (safeLink(ev.source_url)) {
         var listing = document.createElement("a");
         listing.className = "site-link listing-link";
         listing.href = ev.source_url;
         listing.target = "_blank";
         listing.rel = "noopener noreferrer";
-        listing.textContent = "on listing page";
+        listing.textContent = "Source listing · event link unverified";
         tdName.appendChild(document.createElement("br"));
         tdName.appendChild(listing);
       }
     }
+    var status = document.createElement("small");
+    var ticketState = freshEvidence(ev, "status", ev.ticket_status === "available" ? 12 : 24) ? ev.ticket_status : "unknown";
+    var ticket = ticketState === "sold_out" ? "Reported sold out" : ticketState === "available" ? "Reported available" : "Availability unknown";
+    var eventState = freshEvidence(ev, "event_status", 24) ? ev.event_status : "unknown";
+    status.textContent = (eventState === "cancelled" ? "Reported cancelled · " : eventState === "postponed" ? "Reported postponed · " : "") + ticket;
+    tdName.appendChild(document.createElement("br")); tdName.appendChild(status);
+    var checked = document.createElement("small");
+    checked.textContent = "Last verified: " + (ev.last_verified_at || "never") + " · Last observed: " + (ev.observed_at || "unknown") + " · Last checked: " + (ev.verification_checked_at || "never");
+    tdName.appendChild(document.createElement("br")); tdName.appendChild(checked);
     tr.appendChild(tdName);
 
     var tdVenue = document.createElement("td");
@@ -423,9 +466,9 @@
     var tdDesc = document.createElement("td");
     tdDesc.className = "desc";
     var descText = document.createElement("span");
-    descText.textContent = ev.description || "";
+    descText.textContent = ev.claim_expires_at && !freshEvidence(ev, "link", 168) ? "Pilot evidence expired · check official event page" : ev.description || "";
     tdDesc.appendChild(descText);
-    if (ev.description) tdDesc.title = ev.description;
+    if (ev.description) tdDesc.title = descText.textContent;
     tr.appendChild(tdDesc);
 
     var tdDate = document.createElement("td");
@@ -444,8 +487,11 @@
     tr.appendChild(tdCat);
 
     var tdPrice = document.createElement("td");
-    tdPrice.textContent = ev.price_label || (ev.price === 0 ? "Free" : (ev.price != null ? "€" + ev.price : "Check site"));
+    tdPrice.textContent = ev.claim_expires_at && !freshEvidence(ev, "price", 48) ? "Check site" : ev.free_admission_confirmed && freshEvidence(ev, "price", 48) ? "Free" : (ev.price_label === "Free" ? "Check site" : ev.price_label || "Check site");
+    if (ev.student_discount_status === "explicit" && freshEvidence(ev, "discount", 168)) tdPrice.textContent += " · Student offer (conditions apply)";
+    else if (freshEvidence(ev, "discount", 168) && (ev.offers || []).some(function (o) { return o.kind === "reduced"; })) tdPrice.textContent += " · Reduced offer (eligibility applies)";
     if (ev.price == null) tdPrice.className = "muted";
+    tdPrice.title = ev.claim_expires_at && !freshEvidence(ev, "price", 48) ? "Pilot evidence expired · check official event page" : "Price observed: " + ((ev.field_observed_at || {}).price || ev.observed_at || "unknown") + "\n" + (ev.offers || []).map(function (o) { return o.kind + ": €" + o.amount_eur + " " + (o.eligibility || "") + " (" + (o.observed_at || "unknown time") + ")"; }).join("\n");
     tr.appendChild(tdPrice);
 
     var tdSource = document.createElement("td");
@@ -457,13 +503,19 @@
   }
 
   function render() {
+    if (document.getElementById("communityOnly").checked) {
+      document.getElementById("subtitle").textContent = "Community · " + eventPool().filter(passesFilters).length + " validated events from the full source catalog · regular public admission €0–5";
+    } else if (state.releaseExpiresAt && !(Date.now() < Date.parse(state.releaseExpiresAt))) {
+      document.getElementById("subtitle").textContent = "Pilot evidence expired · check official pages; prices and availability are unknown.";
+    }
+    else if (state.mainSubtitle) document.getElementById("subtitle").textContent=state.mainSubtitle;
     var host = document.getElementById("sections");
     host.innerHTML = "";
     var anyVisible = false;
 
     STREAMS.forEach(function (streamDef) {
       var key = streamDef[0];
-      var inStream = state.events.filter(function (ev) { return (ev.stream || "main") === key; });
+      var inStream = eventPool().filter(function (ev) { return (ev.stream || "main") === key; });
       // A stream with no events at all this week is left out entirely; one
       // emptied only by the current filters says so, so the table does not
       // look broken.
@@ -517,7 +569,7 @@
       host.appendChild(built.wrap);
     });
 
-    document.getElementById("emptyMsg").hidden = anyVisible || !state.events.length;
+    document.getElementById("emptyMsg").hidden = anyVisible || !eventPool().length;
   }
 
   // State the range actually present in the data instead of asserting "the
@@ -570,15 +622,15 @@
       var stamp = icsDateStamp(ev);
       if (!stamp) return;
       lines.push("BEGIN:VEVENT");
-      lines.push("UID:" + Date.now() + "-" + i + "@berlin-events");
+      lines.push("UID:" + (ev.event_id || (Date.now() + "-" + i)) + "@berlin-events");
       if (stamp.allDay) {
         lines.push("DTSTART;VALUE=DATE:" + stamp.start);
       } else {
-        lines.push("DTSTART:" + stamp.start);
+        lines.push("DTSTART;TZID=Europe/Berlin:" + stamp.start);
       }
       lines.push("SUMMARY:" + icsEscape(ev.title));
       lines.push("LOCATION:" + icsEscape(ev.venue || ""));
-      var descLine = icsEscape(ev.description || "");
+      var descLine = icsEscape(ev.claim_expires_at && !freshEvidence(ev, "link", 168) ? "Pilot evidence expired; check official event page" : ev.description || "");
       if (ev.url) descLine += "\\n" + icsEscape(ev.url);
       lines.push("DESCRIPTION:" + descLine);
       if (ev.url) lines.push("URL:" + ev.url);
@@ -589,7 +641,7 @@
   }
 
   function exportSelected() {
-    var chosen = state.events.filter(function (ev) { return state.selected.has(ev._id); });
+    var chosen = eventPool().filter(function (ev) { return state.selected.has(ev._id); });
     if (!chosen.length) return;
     var undatable = chosen.filter(function (ev) { return !icsDateStamp(ev); });
     if (undatable.length) {
@@ -621,9 +673,22 @@
 
   document.getElementById("exportBtn").addEventListener("click", exportSelected);
 
+  document.getElementById("communityOnly").addEventListener("change", function () {state.selected.clear(); render(); updateExportButton();});
+
+  document.getElementById("showPast").addEventListener("change", render);
+
   fetch("events_scored.json")
     .then(function (r) { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
     .then(function (data) {
+      return fetch("newsletter.json").then(function (r) {if (!r.ok) throw new Error("Newsletter unavailable"); return r.json();})
+        .then(function (newsletter) {data.newsletter= newsletter; return data;})
+        .catch(function () {data.newsletter={events:[]}; return data;});
+    })
+    .then(function (data) {
+      state.newsletterEvents = ((data.newsletter || {}).events || []).map(function (ev, i) {
+        ev._id = "newsletter:" + (ev.event_id || i); return ev;
+      });
+      state.releaseExpiresAt = data.release_expires_at;
       state.events = (data.events || []).map(function (ev, i) {
         ev._id = i;
         return ev;
@@ -632,7 +697,12 @@
       document.getElementById("subtitle").textContent =
         state.events.length + " events" + (window_ ? " (" + window_ + ")" : "") +
         ", grouped by day, free first.";
+      state.mainSubtitle=document.getElementById("subtitle").textContent;
       render();
+      if (data.release_expires_at) {
+        setTimeout(render, Math.max(0, Date.parse(data.release_expires_at) - Date.now()) + 10);
+        setInterval(render, 30000);
+      }
     })
     .catch(function (err) {
       document.getElementById("subtitle").textContent = "Could not load events_scored.json (" + err.message + ").";

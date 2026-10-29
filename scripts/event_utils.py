@@ -21,7 +21,7 @@ from __future__ import annotations
 import html
 import re
 import unicodedata
-from datetime import date, timedelta
+from datetime import date, timedelta, datetime, timezone
 from typing import Any, Dict, Iterable, List, Optional, Tuple
 from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 
@@ -388,6 +388,8 @@ def looks_synthetic_title(title: str) -> bool:
     if SYNTHETIC_TITLE_RE.match(stripped) or URL_TITLE_RE.match(stripped):
         return True
     if stripped.lstrip("#").strip().lower() in JUNK_TITLES:
+        return True
+    if re.fullmatch(r"(?:Ausverkauft\s+Theater|Theater\s+Comedy\s*&\s*Kabarett|(?:Ermäßigt|Studenten|Studierende)(?:\s*\([^)]*\))?\s*€?\s*\d+[,.]\d{2}\s*€?)", stripped, re.I):
         return True
     if CALENDAR_HEADING_RE.match(stripped):
         return True
@@ -904,7 +906,10 @@ def validate_event(
     if require_berlin_signal and not has_berlin_signal(normalized):
         return None
 
-    return normalized
+    from scripts.ticket_evidence import enrich_evidence
+    normalized.update({k: event[k] for k in ("offers", "event_status", "observed_at", "evidence", "canonical_url", "official_event_id") if k in event})
+    normalized.setdefault("observed_at", datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"))
+    return enrich_evidence(normalized)
 
 
 def validate_events(
@@ -958,17 +963,28 @@ def dedupe_events(events: Iterable[Dict[str, Any]]) -> List[Dict[str, Any]]:
     whenever two sources formatted the date differently ("2026-8-29" vs
     "2026-08-29"); normalisation upstream plus a URL key closes both gaps.
     """
-    seen_urls, seen_keys, out = set(), set(), []
+    from scripts.ticket_evidence import folded
+    seen_urls, seen_keys, out = {}, {}, []
     for event in events or []:
-        url = event.get("url") or ""
-        if event.get("has_detail_link") and url:
-            if url in seen_urls:
-                continue
-            seen_urls.add(url)
-        key = (re.sub(r'\W+', '', str(event.get("title", "")).lower()), event.get("date"))
-        if key in seen_keys:
+        occurrence = (event.get("date"), event.get("time") or "")
+        url_key = (clean_url(event.get("url") or ""), occurrence)
+        key = (folded(event.get("title", "")), occurrence, folded(event.get("venue", "")))
+        previous = seen_urls.get(url_key) if event.get("has_detail_link") else None
+        previous = previous or seen_keys.get(key)
+        if previous is not None:
+            if event.get('discovery_source_names'):
+                previous['discovery_source_names'] = sorted(set(previous.get('discovery_source_names', [])) | set(event['discovery_source_names']))
+            alternates = previous.setdefault("alternate_source_urls", [])
+            source = event.get("source_url")
+            if source and source != previous.get("source_url") and source not in alternates:
+                alternates.append(source)
+            for field in ("venue", "offers", "description"):
+                if not previous.get(field) and event.get(field):
+                    previous[field] = event[field]
             continue
-        seen_keys.add(key)
+        if event.get("has_detail_link"):
+            seen_urls[url_key] = event
+        seen_keys[key] = event
         out.append(event)
     return out
 
