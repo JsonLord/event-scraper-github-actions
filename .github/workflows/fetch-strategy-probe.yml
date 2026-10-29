@@ -45,6 +45,7 @@ jobs:
           name: restored-branch-website-qualification
           path: ${{ runner.temp }}/restored-qualification
           retention-days: 14
+          include-hidden-files: true
   deploy:
     needs: qualify
     if: ${{ github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/codex/restore-before-tinyfish-search' && inputs.publish == true }}
