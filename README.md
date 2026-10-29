@@ -190,7 +190,7 @@ at it and see what comes back.
 ```bash
 python scripts/generic_event_scraper.py \
   --url "https://example.berlin/programm" \
-  --output /tmp/check.json --price-max 20 --date-days 7
+  --output /tmp/check.json --price-max 20 --date-days 14
 ```
 
 A venue homepage is often the wrong URL - use the programme, Spielplan or

@@ -34,7 +34,7 @@ jobs:
         include:
           # Every source runs through scripts/generic_event_scraper.py.
           # __START_DATE__/__END_DATE__ are substituted at runtime with today
-          # and today+7 (see the "Resolve dynamic dates in URL" step), so
+          # and today+14 (see the "Resolve dynamic dates in URL" step), so
           # rausgegangen returns the coming week's events by date.
           - { name: rausgegangen_de,        url: "https://rausgegangen.de/en/berlin/eventsbydate/?geospatial_query_type=CITY&lat=52.5&lng=13.405&city=berlin&active_city_name=Berlin&start_date=__START_DATE__&end_date=__END_DATE__" }
           # Removed: Eventbrite blocks this runner at the edge. Both legs
@@ -204,12 +204,12 @@ jobs:
         run: python -m cloakbrowser install
 
       # Substitute date placeholders in the target URL so date-parameterised
-      # sources (e.g. rausgegangen's "by date" view) fetch the coming 7 days.
+      # sources (e.g. rausgegangen's "by date" view) fetch the coming 14 days.
       # Sites without placeholders are unaffected.
       - name: Resolve dynamic dates in URL
         run: |
           START_DATE="$(date -u +%Y-%m-%d)"
-          END_DATE="$(date -u -d '+7 days' +%Y-%m-%d)"
+          END_DATE="$(date -u -d '+14 days' +%Y-%m-%d)"
           RESOLVED="${TARGET_URL}"
           RESOLVED="${RESOLVED//__START_DATE__/${START_DATE}}"
           RESOLVED="${RESOLVED//__END_DATE__/${END_DATE}}"
@@ -247,7 +247,7 @@ jobs:
             --url "${TARGET_URL}" \
             --output "data/raw_${{ steps.site-info.outputs.site_name }}.json" \
             --price-max 20 \
-            --date-days 7 \
+            --date-days 14 \
             $HORIZON \
             --save-html \
             --html-output "data/html/${{ steps.site-info.outputs.site_name }}.html"
@@ -337,7 +337,7 @@ jobs:
             --aggregated docs/events.json \
             --raw-dir data \
             --html-dir data/html \
-            --date-days 7 \
+            --date-days 14 \
             --price-max 20 \
             --output docs/events.json
 
