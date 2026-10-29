@@ -128,3 +128,26 @@ def test_eventon_unix_time_is_berlin_local_including_dst():
  timestamp=int(datetime(2026,10,30,23,30,tzinfo=timezone.utc).timestamp())
  rows=_from_eventon([{'meta':{'evcal_srow':timestamp},'title':{'rendered':'Night performance'}}],'https://a.example/list')
  assert (rows[0]['date'],rows[0]['time'])==('2026-10-31','00:30')
+
+
+def test_real_museum_cards_have_specific_links_and_do_not_treat_child_discounts_as_free():
+ from pathlib import Path
+ from scripts.generic_event_scraper import scrape_document
+ html=(Path(__file__).parent/'fixtures/berlin_museum_listing_2026-10-29.html').read_text()
+ rows=scrape_document(html,'https://www.berlin.museum/programm','fixture')
+ event=next(e for e in rows if e['title']=='Sonntag im Nikolaiviertel')
+ assert event['url']=='https://www.berlin.museum/veranstaltungen/sonntag-im-nikolaiviertel-november'
+ assert (event['date'],event['time'],event['venue'])==('2026-11-01','10:00','Ephraim-Palais')
+ assert event['price'] is None  # Admission is free only under 18/with a concession.
+
+
+def test_real_volksbuehne_cards_keep_room_price_and_local_performance_time_together():
+ from pathlib import Path
+ from scripts.generic_event_scraper import scrape_document
+ html=(Path(__file__).parent/'fixtures/volksbuehne_listing_2026-10-29.html').read_text()
+ rows=scrape_document(html,'https://www.volksbuehne-berlin.de/','fixture')
+ event=next(e for e in rows if e['title']=='Raw Voice Lab')
+ assert (event['date'],event['time'],event['venue'],event['price'])==('2026-10-29','15:00','Grüner Salon',0)
+ assert event['url'].endswith('/raw-voice-lab/20261029-1400/')
+ other=next(e for e in rows if e['title']=='Mata Leão')
+ assert other['venue']=='Große Bühne' and other['time']=='19:30' and other['price'] is None

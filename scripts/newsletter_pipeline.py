@@ -1,6 +1,5 @@
 """Full-corpus newsletter materialization, independent of pilot/personal scoring."""
 from copy import deepcopy
-from datetime import timedelta
 from urllib.parse import urlsplit
 import json
 from pathlib import Path
