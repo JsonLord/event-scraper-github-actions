@@ -6,6 +6,10 @@ on:
         description: 'Explicitly deploy this restored branch review build to live Pages'
         type: boolean
         default: false
+      raus_tinyfish:
+        description: 'Allow only Rausgegangen discovery: maximum two Search calls and three permitted Fetch URLs'
+        type: boolean
+        default: false
 permissions:
   contents: read
 concurrency:
@@ -29,14 +33,19 @@ jobs:
       - name: Install isolated direct-HTTP qualification dependencies
         run: |
           python -m venv "$RUNNER_TEMP/qualification-venv"
-          "$RUNNER_TEMP/qualification-venv/bin/pip" install requests beautifulsoup4 lxml PyYAML pytest
-      - name: Preserve restored scraper baseline and run offline tests
+          "$RUNNER_TEMP/qualification-venv/bin/pip" install requests beautifulsoup4 lxml PyYAML pytest python-dotenv
+      - name: Preserve scoring, frontend and shared model; test selective adapters
         run: |
-          git diff --exit-code 70787edd3d4b99124e38a179b7737f27c60ba229 -- scripts/generic_event_scraper.py scripts/event_utils.py scripts/ticket_evidence.py
+          git diff --exit-code 70787edd3d4b99124e38a179b7737f27c60ba229 -- scripts/event_utils.py scripts/ticket_evidence.py scripts/score_events.py web/index.html
           "$RUNNER_TEMP/qualification-venv/bin/python" -m pytest -q
       - name: Scrape and measure each configured website
+        env:
+          TINYFISH_API_KEY: ${{ secrets.TINYFISH_API_KEY }}
+          QUALIFY_RAUS_TINYFISH: ${{ inputs.raus_tinyfish }}
         run: |
-          "$RUNNER_TEMP/qualification-venv/bin/python" scripts/qualify_restored_branch.py --output "$RUNNER_TEMP/restored-qualification"
+          EXTRA=()
+          if [ "$QUALIFY_RAUS_TINYFISH" = "true" ]; then EXTRA+=(--raus-tinyfish); fi
+          "$RUNNER_TEMP/qualification-venv/bin/python" scripts/qualify_restored_branch.py --output "$RUNNER_TEMP/restored-qualification" "${EXTRA[@]}"
           cat "$RUNNER_TEMP/restored-qualification/REPORT.md" >> "$GITHUB_STEP_SUMMARY"
           test -z "$(git status --porcelain)"
       - uses: actions/upload-artifact@v4

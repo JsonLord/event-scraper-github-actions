@@ -295,6 +295,7 @@ def extract_jsonld_events(html: str, source_url: str) -> List[Dict[str, Any]]:
                 "description": clean_text(node.get("description"), max_length=400),
                 "url": clean_url(urljoin(source_url, str(event_url))),
                 "venue": clean_text(venue),
+                "location_city": clean_text((location.get('address') or {}).get('addressLocality','')) if isinstance(location,dict) and isinstance(location.get('address'),dict) else '',
                 "source_url": source_url,
             })
     return events
@@ -962,6 +963,10 @@ def scrape_document(html: str, url: str, label: str) -> List[Dict[str, Any]]:
     page whose JSON-LD described four events never had its remaining fifty
     cards scanned.
     """
+    from scripts.official_source_adapters import official_programme_cards
+    adapted=official_programme_cards(html,url)
+    if adapted is not None:
+        return _merge(extract_jsonld_events(html,url),adapted)
     jsonld = extract_jsonld_events(html, url)
     timed = extract_time_element_events(html, url)
     heuristic = extract_heuristic_events(html, url)

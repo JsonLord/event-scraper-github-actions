@@ -80,7 +80,7 @@ jobs:
           - { name: berlin_buehnen,         url: "https://www.berlin-buehnen.de/de/spielplan", date_horizon: true }
           - { name: zku_berlin,             url: "https://www.zku-berlin.org/de/timeline/" }
           - { name: ufafabrik,              url: "https://ufafabrik.de/spielplan.html" }
-          - { name: stadtmuseum,            url: "https://www.stadtmuseum.de/programm" }
+          - { name: stadtmuseum,            url: "https://www.berlin.museum/programm" }
           # The werk9 homepage is a block-theme shell whose entire body is 275
           # characters of nav and address - no programme at all. /kalender/ is
           # where the dates actually are. It is a small venue and often lists
@@ -103,7 +103,7 @@ jobs:
           # Empty outside the season: the house publishes its whole programme
           # but the nearest dates can be weeks out (21 events within 30 days,
           # none within 7, when this was last measured in mid-September).
-          - { name: volksbuehne,            url: "https://www.volksbuehne.berlin/" }
+          - { name: volksbuehne,            url: "https://www.volksbuehne-berlin.de/" }
           # The "/januar/" slug is not a stale month page - it is what the
           # site's own "Spielplan / Uebersicht" nav points at, and it serves
           # the current programme. Expect few or no rows: extraction finds

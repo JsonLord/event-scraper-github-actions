@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Read-only qualification of the restored scraper, with no provider calls.
+"""Read-only qualification with optional Raus-only, bounded provider discovery.
 
-The scraper/extractors remain unchanged. This harness bounds their direct HTTP
-transport and disables third-party/browser fallbacks. Outputs live outside git.
+Direct HTTP remains the default. The explicitly enabled Raus adapter alone may
+use free Fetch/Search. No generic provider/browser fallback. Outputs outside git.
 """
 from collections import defaultdict
 from concurrent.futures import ProcessPoolExecutor
@@ -41,6 +41,8 @@ def sanitized(value):
  if isinstance(value,dict):return {k:sanitized(v) for k,v in value.items()}
  if isinstance(value,(list,tuple)):return [sanitized(v) for v in value]
  if not isinstance(value,str):return value
+ key=os.environ.get('TINYFISH_API_KEY','')
+ if key:value=value.replace(key,'[REDACTED]')
  def strip(m):
   try:
    p=urlsplit(m.group());return urlunsplit((p.scheme,p.hostname or '',p.path,'',''))
@@ -154,14 +156,16 @@ def sample_one(event,http):
  result={k:event.get(k) for k in ('title','date','time','venue','url')};result.update(matched=False,outcome=http.reason)
  if not doc:return result
  final,html=doc;result.update(final_url=final,http_success=True,outcome='no_matching_structured_event')
- for candidate in scraper.extract_jsonld_events(html,final):
+ from scripts.raus_selective import detail_candidates
+ for candidate in detail_candidates(html,final):
   if not event.get('time') or (event.get('date'),event.get('time'),folded(event.get('title','')))!=(candidate.get('date'),candidate.get('time'),folded(candidate.get('title',''))):continue
   if canonical(candidate.get('url',''),http)!=canonical(final,http):continue
   a,b=event.get('venue'),candidate.get('venue')
   if a and b and folded(a)!=folded(b):continue
   if not (a and b) and (canonical(url,http)!=canonical(final,http) or urlsplit(canonical(event.get('source_url',''),http)).hostname!=urlsplit(final).hostname):continue
   item=enrich_evidence(candidate)
-  result.update(matched=True,outcome='exact_structured_occurrence',match_basis='title_date_time_venue' if a and b else 'official_canonical_title_date_time',
+  result.update(matched=True,outcome='exact_structured_occurrence' if candidate.get('_representation','jsonld')=='jsonld' else 'exact_bound_occurrence',match_basis='title_date_time_venue' if a and b else 'official_canonical_title_date_time',
+                representation=candidate.get('_representation','jsonld'),
                 regular_offers=[o for o in item.get('offers',[]) if o.get('kind')=='regular'],student_offers=[o for o in item.get('offers',[]) if o.get('kind')=='student'],
                 ticket_status=item.get('ticket_status','unknown'),event_status=item.get('event_status','unknown'),venue=candidate.get('venue') or a)
   break
@@ -173,7 +177,7 @@ def fingerprints():
 
 
 def main():
- parser=argparse.ArgumentParser();parser.add_argument('--output',required=True);a=parser.parse_args()
+ parser=argparse.ArgumentParser();parser.add_argument('--output',required=True);parser.add_argument('--raus-tinyfish',action='store_true');a=parser.parse_args()
  output=Path(a.output).resolve();assert output!=ROOT and ROOT not in output.parents
  output.mkdir(parents=True,exist_ok=False);before=fingerprints();start=time.monotonic();now=datetime.now(timezone.utc);deadline=start+600
  catalog=yaml.safe_load((ROOT/'.github/workflows/weekly-event-scraper.yml').read_text())['jobs']['scrape']['strategy']['matrix']['include']
@@ -186,16 +190,35 @@ def main():
  http=HTTP(40,deadline,25_000_000)
  for state in states:
   http.robots.update(state['robots']);http.aliases.update(state['aliases']);http.blocked.update(state['blocked']);http.documents.update(state['documents'])
+ provider_diagnostics=dict(enabled=False,search_calls=0,fetch_urls=0,provider_calls=[])
+ if a.raus_tinyfish:
+  from scripts.raus_selective import discover
+  raus_http=HTTP(8,deadline,4_500_000)
+  raus_http.robots.update(http.robots);raus_http.blocked.update(http.blocked)
+  raus_http.documents.update(http.documents)
+  discovered,provider_diagnostics=discover(now,raus_http,deadline)
+  http.documents.update(raus_http.documents);http.robots.update(raus_http.robots);http.blocked.update(raus_http.blocked)
+  report=next(r for r in results if r['name']=='rausgegangen_de')
+  report['listing_outcome']=report['outcome']
+  report['events']=dedupe_events(report['events']+discovered)
+  report.update(window_occurrences=len(report['events']),under_twenty=sum(e.get('price') is None or e['price']<=20 for e in report['events']),
+                missing_detail_links=sum(not e.get('has_detail_link') for e in report['events']),missing_venues=sum(not e.get('venue') for e in report['events']))
+  if discovered:report['outcome']='permitted_destination_discovery'
+  provider_diagnostics['http_calls']=raus_http.calls
+  (output/'raus-tinyfish-diagnostics.json').write_text(json.dumps(sanitized(provider_diagnostics),ensure_ascii=False,indent=2)+'\n')
  local=now.astimezone(ZoneInfo('Europe/Berlin'))
  def eligible(e):
   return e.get('has_detail_link') and e.get('time') and (e['date']>local.date().isoformat() or (e['date']==local.date().isoformat() and e['time']>local.strftime('%H:%M'))) and not re.search(r'/(?:login|checkout|cart|account|webticket)(?:/|$)',urlsplit(e['url']).path,re.I)
  queues={r['name']:sorted([e for e in r['events'] if eligible(e)],key=lambda e:(e['date'],e.get('time',''),e['title'])) for r in results}
- for round_number in range(2):
-  for report in results:
-   queue=queues[report['name']]
-   if not queue:continue
-   if http.requests>=40 or time.monotonic()+20>deadline:break
-   report['detail_samples'].append(sample_one(queue.pop(0),http))
+ focus=[r for r in results if r['name'] in ('rausgegangen_de','stadtmuseum','volksbuehne')]
+ others=[r for r in results if r not in focus]
+ for group in (focus,others):
+  for round_number in range(2):
+   for report in group:
+    queue=queues[report['name']]
+    if not queue:continue
+    if http.requests>=40 or time.monotonic()+20>deadline:break
+    report['detail_samples'].append(sample_one(queue.pop(0),http))
  for report in results:
   report['exact_sample_matches']=sum(s['matched'] for s in report['detail_samples']);report['sampled_occurrences']=len(report['detail_samples'])
   report['conclusion']='supported_sample' if report['exact_sample_matches'] else 'candidates_only' if report['window_occurrences'] else report['outcome']
@@ -203,13 +226,13 @@ def main():
  summary=dict(commit=subprocess.check_output(['git','rev-parse','HEAD'],cwd=ROOT,text=True).strip(),scraper_baseline='70787edd3d4b99124e38a179b7737f27c60ba229',
               generated_at=now.isoformat(),window_end=(local.date()+timedelta(days=7)).isoformat(),environment='GitHub Actions' if os.getenv('GITHUB_ACTIONS') else 'cloud executor',
               sources=results,listing_http_attempts=sum(s['requests'] for s in states),listing_http_limit=sum(s['capacity'] for s in states),detail_http_attempts=http.requests,detail_http_limit=40,
-              response_bytes=sum(s['bytes'] for s in states)+http.bytes,seconds=round(time.monotonic()-start,3),tinyfish_calls=0,other_provider_calls=0,browser_calls=0,production_data_unchanged=True,
-              caveats=['Direct HTTP only; provider/browser fallbacks disabled.','Restored extraction and price enrichment are not the later production verification overlay.','Counts are date-window candidates, not guaranteed upcoming verified events.','At most two occurrence samples per source; exact structured matches never imply all source records are verified.','Unknown prices/inventory remain unsupported; no Community/newsletter eligibility is asserted.'],
+              response_bytes=sum(s['bytes'] for s in states)+http.bytes,seconds=round(time.monotonic()-start,3),tinyfish_calls=len(provider_diagnostics['provider_calls']),tinyfish=provider_diagnostics,other_provider_calls=0,browser_calls=0,production_data_unchanged=True,
+              caveats=['Direct HTTP for all sources; optional free Fetch/Search allowlisted to Raus destinations only.','Source-adapter repair and Raus detail matching do not qualify the complete corpus.','Counts are date-window candidates, not guaranteed upcoming verified events.','At most two occurrence samples per source; exact matches never imply all source records are verified.','Unknown prices/inventory remain unsupported; no Community/newsletter eligibility is asserted.'],
               calls=[c for s in states for c in s['calls']]+http.calls)
  (output/'results.json').write_text(json.dumps(sanitized(summary),ensure_ascii=False,indent=2)+'\n')
  for r in results:(output/(r['name']+'.json')).write_text(json.dumps(sanitized(dict(source=r['url'],events=r['events'],samples=r['detail_samples'])),ensure_ascii=False,indent=2)+'\n')
  lines=['# Restored branch: website conclusiveness','',f"Commit: `{summary['commit']}`; baseline scraper: `70787ed`.",f"Run time: {now.astimezone(ZoneInfo('Europe/Berlin')).isoformat()}; seven-day date window ends {summary['window_end']}.",'',
-        'Direct HTTP with robots checks; no TinyFish, Jina, browser, production write or deployment. Counts include all prices; ≤€20 is the legacy price filter. A supported sample requires exact structured title/date/time and venue or official canonical identity. This is sample evidence, not complete verification.','',
+        f"Direct HTTP with robots checks. TinyFish is {'enabled for Rausgegangen only' if a.raus_tinyfish else 'disabled'}; {provider_diagnostics['search_calls']}/2 Search calls and {provider_diagnostics['fetch_urls']}/3 Fetch URLs. No Jina, browser or production-data writes. Publication is a separate explicitly requested job. Counts include all prices; ≤€20 is the legacy price filter. Samples require bound occurrence identity, never Search snippets.",'',
         '| Source | Window rows | ≤€20 | Links missing | Venues missing | Exact samples | Conclusion |','|---|---:|---:|---:|---:|---:|---|']
  for r in results:lines.append(f"| {r['name']} | {r['window_occurrences']} | {r['under_twenty']} | {r.get('missing_detail_links',0)} | {r.get('missing_venues',0)} | {r['exact_sample_matches']}/{r['sampled_occurrences']} | {r['conclusion']} |")
  lines+=['',f"HTTP: {summary['listing_http_attempts']}/{summary['listing_http_limit']} listing attempts + {http.requests}/40 detail attempts. Duration {summary['seconds']} seconds.",'','## Limitations','']+['- '+c for c in summary['caveats']]
