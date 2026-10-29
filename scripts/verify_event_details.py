@@ -57,7 +57,7 @@ class BoundedHTTP:
         self.deadline,self.clock=deadline,clock
         self.diagnostics=[]
 
-    def _get(self, url, robots=False):
+    def _get(self, url, robots=False, accept_json=False):
         retries = 0
         while self.validator(url):
             if self.deadline is not None and self.clock()+20>self.deadline:
@@ -71,7 +71,7 @@ class BoundedHTTP:
             diagnostic={'host':host,'operation':'robots' if robots else 'page','http_status':None}
             try:
                 self.session.cookies.clear()
-                response = self.session.get(url, headers={'User-Agent':AGENT, 'Accept':'text/html,text/plain'}, timeout=(self.policy['connect_timeout_seconds'], self.policy['read_timeout_seconds']), allow_redirects=False, stream=True)
+                response = self.session.get(url, headers={'User-Agent':AGENT, 'Accept':'application/json' if accept_json else 'text/html,text/plain'}, timeout=(self.policy['connect_timeout_seconds'], self.policy['read_timeout_seconds']), allow_redirects=False, stream=True)
                 with response:
                     status = response.status_code
                     diagnostic['http_status']=status
@@ -92,7 +92,7 @@ class BoundedHTTP:
                     if status != 200:
                         self.reason = 'http_'+str(status); return None
                     mime = response.headers.get('Content-Type','').split(';')[0].lower()
-                    if mime not in (('text/plain','text/html') if robots else ('text/html','application/xhtml+xml')):
+                    if mime not in (('text/plain','text/html') if robots else ('application/json','application/ld+json') if accept_json else ('text/html','application/xhtml+xml')):
                         self.reason = 'unsupported_mime'; return None
                     chunks, size = [], 0
                     while True:
@@ -121,7 +121,7 @@ class BoundedHTTP:
         self.reason = 'unsafe_url'
         return None
 
-    def fetch(self, url):
+    def fetch(self, url, *, accept_json=False):
         self.permitted = False
         if not self.validator(url):
             self.reason = 'unsafe_url'; return None
@@ -139,7 +139,7 @@ class BoundedHTTP:
         if parser is None or not parser.can_fetch(AGENT,url):
             self.reason = 'robots_denied_or_unknown'; return None
         self.permitted = True
-        return self._get(url)
+        return self._get(url, accept_json=accept_json)
 
 
 def matches(event, candidate):

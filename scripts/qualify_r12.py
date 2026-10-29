@@ -62,13 +62,13 @@ def write_json(path,value):
 class RecordingHTTP(BoundedHTTP):
     def __init__(self,*args,**kwargs):
         super().__init__(*args,**kwargs);self.documents={}
-    def fetch(self,url):
+    def fetch(self,url,**kwargs):
         if url in self.documents:
             self.reason='cached_same_run'; self.permitted=True;return self.documents[url]
         provider=getattr(self,'provider',None)
         if provider and url in provider.documents:
             self.reason='cached_same_run_tinyfish';self.permitted=True;return provider.documents[url]
-        result=super().fetch(url)
+        result=super().fetch(url,**kwargs)
         if result: self.documents[url]=result
         return result
 

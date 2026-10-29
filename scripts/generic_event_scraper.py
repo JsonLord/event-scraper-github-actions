@@ -759,7 +759,8 @@ def _from_eventon(records: List[Dict[str, Any]], source_url: str) -> List[Dict[s
         start = meta.get("evcal_srow") or record.get("date")
         iso, start_time = "", ""
         try:
-            moment = datetime.fromtimestamp(int(start))
+            from zoneinfo import ZoneInfo
+            moment = datetime.fromtimestamp(int(start), tz=ZoneInfo('Europe/Berlin'))
             iso, start_time = moment.date().isoformat(), moment.strftime("%H:%M")
         except (TypeError, ValueError, OSError):
             iso = normalize_date(start) or ""

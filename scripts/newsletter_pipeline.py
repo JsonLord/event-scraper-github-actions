@@ -26,7 +26,7 @@ def destination_proof(event,html,url,now):
 
 def build_newsletter(data,overlay,now):
     from scripts.audit_events import normalize_records
-    from scripts.build_page_dataset import merge_overlay
+    from scripts.build_page_dataset import merge_overlay,fresh
     from scripts.community_events import newsletter
     rows,_=normalize_records(data.get('events',[]),data.get('generated_at'))
     # Deliberately no score_and_filter_events(), source profile, or selected-row slice.
@@ -34,39 +34,39 @@ def build_newsletter(data,overlay,now):
     for event in rows:
         if event.get('listing_ticket_status')=='sold_out': event['ticket_status']='sold_out'
     result=newsletter(rows,now)
-    result.update(scope='full_source_catalog',input_occurrences=len(rows),sources_considered=sorted({e.get('source_url','') for e in rows}),source_catalog=data.get('source_catalog',[]),source_diagnostics=data.get('source_diagnostics',[]),source_coverage_complete=bool(data.get('source_diagnostics')) and all(s['outcome'] in ('fresh_discovery_reused','discovered') for s in data.get('source_diagnostics',[])))
+    diagnostics=deepcopy(data.get('source_diagnostics',[]))
+    from scripts.event_matching import event_url
+    for source in diagnostics:
+        source_rows=[e for e in rows if source.get('name') in e.get('discovery_source_names',[]) or (not e.get('discovery_source_names') and e.get('source_url','').rstrip('/')==source.get('url','').rstrip('/'))]
+        exact=[e for e in source_rows if e.get('verification_outcome')=='matched' and e.get('detail_link_status')=='verified' and fresh(e.get('field_observed_at',{}).get('link'),utc(now),6)]
+        ids={occurrence_id(e) for e in source_rows}
+        source.update(candidate_url_occurrences=sum(bool(event_url(e.get('url',''))) and event_url(e.get('url',''))!=event_url(e.get('source_url','')) for e in source_rows),
+                      exact_matched_occurrences=len(exact),
+                      newsletter_eligible_occurrences=sum(occurrence_id(e) in ids for e in result['events']))
+    catalog=data.get('source_catalog',[])
+    complete=bool(catalog) and len(diagnostics)==len(catalog) and all(s.get('exact_matched_occurrences',0)>0 for s in diagnostics)
+    result.update(scope='full_source_catalog',input_occurrences=len(rows),sources_considered=sorted({e.get('source_url','') for e in rows}),source_catalog=catalog,source_diagnostics=diagnostics,source_coverage_complete=complete,
+                  coverage_metrics=dict(configured_sources=len(catalog),listing_sources_received=sum(bool(s.get('listing_received')) for s in diagnostics),
+                                        sources_with_discovered_occurrences=sum(s.get('discovered',0)>0 for s in diagnostics),
+                                        sources_with_exact_matches=sum(s.get('exact_matched_occurrences',0)>0 for s in diagnostics),
+                                        candidate_url_occurrences=sum(bool(event_url(e.get('url',''))) and event_url(e.get('url',''))!=event_url(e.get('source_url','')) for e in rows),
+                                        exact_matched_occurrences=sum(e.get('verification_outcome')=='matched' and e.get('detail_link_status')=='verified' and fresh(e.get('field_observed_at',{}).get('link'),utc(now),6) for e in rows),
+                                        publishable_newsletter_occurrences=result['count']))
     return result
 
 
 def collect(data,overlay,now,http,provider,documents):
     """Consider every configured source; preserve explicit budget/host failures."""
     import yaml
-    from scripts.generic_event_scraper import scrape_document,extract_jsonld_events
-    from scripts.event_utils import validate_events,dedupe_events
-    from scripts.qualify_r14 import document
+    from scripts.event_utils import dedupe_events
     from scripts.verify_event_details import run
     from scripts.community_events import CULTURAL_VENUES,PUBLIC_SPACES
+    from scripts.newsletter_discovery import discover
     root=Path(__file__).resolve().parents[1]
     catalog=yaml.safe_load((root/'.github/workflows/weekly-event-scraper.yml').read_text())['jobs']['scrape']['strategy']['matrix']['include']
-    from zoneinfo import ZoneInfo
-    day=utc(now).astimezone(ZoneInfo('Europe/Berlin')).date();end=day+timedelta(days=7)
-    rows=deepcopy(data['events']);diagnostics=[]
-    existing={e.get('source_url','').rstrip('/') for e in rows}
-    for source in catalog:
-        url=source['url'].replace('__START_DATE__',day.isoformat()).replace('__END_DATE__',end.isoformat())
-        diagnostic=dict(name=source['name'],url=url,discovered=0)
-        if url.rstrip('/') in existing:
-            diagnostic['outcome']='fresh_discovery_reused';diagnostics.append(diagnostic);continue
-        if http.requests>=http.policy['max_http_requests_per_run']-4:
-            diagnostic['outcome']='listing_budget_reserved_for_verification';diagnostics.append(diagnostic);continue
-        # Direct-only listing discovery reserves free Fetch allowance for details.
-        page=http.fetch(url)
-        if not page:
-            diagnostic['outcome']=http.reason;diagnostics.append(diagnostic);continue
-        found,_=validate_events(scrape_document(page[1],url,'Full-list newsletter discovery'),url,day,end,max_price=float('inf'))
-        for event in found: event['observed_at']=utc(now).isoformat()
-        rows.extend(found);diagnostic.update(discovered=len(found),outcome='discovered' if found else 'no_event_evidence')
-        diagnostics.append(diagnostic)
+    rows=deepcopy(data['events'])
+    added,diagnostics,discovery_usage=discover(catalog,rows,now,http)
+    rows.extend(added)
     rows=dedupe_events(rows)
     # Discovery prices/words are candidates only; production matching remains mandatory.
     def priority(e):
@@ -97,4 +97,4 @@ def collect(data,overlay,now,http,provider,documents):
             if proof:
                 event['location_evidence']=proof
                 event['venue']=event.get('venue') or proof['venue']
-    return dict(generated_at=utc(now).isoformat(),events=rows,source_diagnostics=diagnostics,source_catalog=[dict(name=s['name'],url=s['url']) for s in catalog]),combined,dict(sources=diagnostics,additional_verification=usage,selected_candidates=[dict(title=e['title'],url=e['url'],source_url=e['source_url'],outcome=addition.get('events',{}).get(occurrence_id(e),{}).get('outcome','not_selected')) for e in selected])
+    return dict(generated_at=utc(now).isoformat(),events=rows,source_diagnostics=diagnostics,source_catalog=[dict(name=s['name'],url=s['url']) for s in catalog]),combined,dict(sources=diagnostics,discovery=discovery_usage,additional_verification=usage,selected_candidates=[dict(title=e['title'],url=e['url'],source_url=e['source_url'],outcome=addition.get('events',{}).get(occurrence_id(e),{}).get('outcome','not_selected')) for e in selected])

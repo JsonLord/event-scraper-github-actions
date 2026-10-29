@@ -972,6 +972,8 @@ def dedupe_events(events: Iterable[Dict[str, Any]]) -> List[Dict[str, Any]]:
         previous = seen_urls.get(url_key) if event.get("has_detail_link") else None
         previous = previous or seen_keys.get(key)
         if previous is not None:
+            if event.get('discovery_source_names'):
+                previous['discovery_source_names'] = sorted(set(previous.get('discovery_source_names', [])) | set(event['discovery_source_names']))
             alternates = previous.setdefault("alternate_source_urls", [])
             source = event.get("source_url")
             if source and source != previous.get("source_url") and source not in alternates:

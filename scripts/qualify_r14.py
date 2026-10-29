@@ -127,6 +127,9 @@ def main():
                      http_calls=http.diagnostics,tinyfish_calls=provider.diagnostics,
                      http_per_host=dict(http.hosts),http_attempts=http.requests,http_bytes=http.bytes,
                      tinyfish_fetch_urls=provider.fetch_urls,tinyfish_search_calls=provider.search_queries,
+                     newsletter_discovery_http_attempts=newsletter_diagnostics['discovery']['http_attempts'],
+                     newsletter_discovery_http_bytes=newsletter_diagnostics['discovery']['http_bytes'],
+                     total_http_attempts=http.requests+newsletter_diagnostics['discovery']['http_attempts'],
                      pipeline_seconds=round(time.monotonic()-started,3),production_files_unchanged=True)
     write_json(output/'diagnostics.json',diagnostics)
     evidence=[]
