@@ -17,8 +17,11 @@ Its latest run stopped before browser launch because of robots policy. There is
 therefore no evidence that either browser succeeds or fails at rendering the live
 listing. Changing engines does not establish permission to crawl it.
 
-This report reviews captured evidence and source code. Preparing it made no new
-Rausgegangen or TinyFish requests and did not deploy or change production data.
+This report reviews captured evidence and source code. The follow-up also checks
+the current main branch and its existing weekly-run logs. No new Rausgegangen or
+TinyFish requests were made and no production data was changed or deployed.
+Separate, permitted Berlin Bühnen requests are documented in the
+[event-link investigation](BERLIN_BUEHNEN_LINK_ANALYSIS.md).
 
 ## Evidence and its limits
 
@@ -34,6 +37,111 @@ A compact [machine-readable evidence extract](evidence/rausgegangen-analysis-202
 preserves the latest run identities, Raus diagnostics, Search timings and recorded
 robots policy. Full Actions artifacts have limited retention; this extract does
 not contain the original event-page HTML or replace the historical reports.
+
+## How the current main branch handles Rausgegangen
+
+Main was fetched again for this comparison. Its head is
+[`bab0e19072b966ae05f55342d29979b39d1eb4b5`](https://github.com/JsonLord/event-scraper-github-actions/commit/bab0e19072b966ae05f55342d29979b39d1eb4b5),
+the 25 October weekly aggregate update. The latest completed weekly workflow is
+[run 40225678325](https://github.com/JsonLord/event-scraper-github-actions/actions/runs/40225678325),
+whose source jobs checked out `5160c32072c323bd99267de3d3d7a5a82803df03`.
+The analysis distinguishes that completed run from a fresh October 29 test.
+
+### Actual production path
+
+The [weekly workflow](https://github.com/JsonLord/event-scraper-github-actions/blob/bab0e19072b966ae05f55342d29979b39d1eb4b5/.github/workflows/weekly-event-scraper.yml)
+runs **`scripts/generic_event_scraper.py` for every matrix source**, including
+Rausgegangen. It substitutes UTC today and today+7 in the same `eventsbydate`
+URL template discussed above. It then applies its seven-day and €20 filters,
+deduplicates, aggregates, scores, writes repository data and publishes Pages.
+
+The [generic retrieval function](https://github.com/JsonLord/event-scraper-github-actions/blob/bab0e19072b966ae05f55342d29979b39d1eb4b5/scripts/generic_event_scraper.py)
+tries, in executable order:
+
+1. A direct HTTP session with browser-style headers and cookies, then the
+   generic document extractors: JSON-LD, datetime markers, heuristic cards,
+   calendar headings and date blocks.
+2. Jina Reader **HTML**, if the direct path supplies no candidates and
+   `JINA_API_KEY` is configured. It requests `X-Return-Format: html` and has a
+   default two-request budget per scraper process. This is a configured fallback,
+   not an observation that the latest Raus run needed it.
+3. CloakBrowser rendered DOM if those paths supply no candidates. This is a
+   different browser integration from both Camoufox and the Camofox REST server.
+
+Executable order matters: some older comments still describe Jina as the last
+tier, but the `scrape()` function invokes Jina before CloakBrowser. The separate
+`scripts/rausgegangen_scraper.py` is a legacy Jina-markdown line scanner; it is
+**not the weekly workflow's entry point**. That older file assigns the scrape
+date and `Various` venue, so copying it would not solve exact occurrence identity.
+
+Main also attempts bounded detail-page price enrichment for missing prices and
+has a second-pass recovery step for empty sources. Recovery reads saved listing
+snapshots, harvests same-host ordinary event anchors and tries detail JSON-LD.
+These mechanisms improve extraction opportunities, but they do not apply the
+current qualification's strict identity/performance/venue matcher.
+
+### What the last main run actually achieved
+
+The Raus job
+[`121266401296`](https://github.com/JsonLord/event-scraper-github-actions/actions/runs/40225678325/job/121266401296)
+records the following at 19:22 UTC on 25 October (20:22 CET):
+
+```text
+plain HTML: JSON-LD 0, <time datetime> 0, heuristic scan 189,
+calendar headings 0, date blocks 2
+Found 189 candidate events from plain HTML
+Price enrichment: found a price for 21/48 previously unpriced events
+150 events kept for 2026-10-25..2026-11-01
+(39 rejected as unusable or out of window)
+```
+
+Thus **direct HTML worked in that run**; the successful listing did not require
+Jina, TinyFish, CloakBrowser or Camofox. The optional browser fallbacks cannot be
+credited with its success. This rules out the explanation that Raus necessarily
+requires a new browser to produce any event records.
+
+The committed main datasets expose a narrower quality result:
+
+| Main snapshot metric | Aggregated `data/events.json` | Scored `data/events_scored.json` |
+|---|---:|---:|
+| All-source rows | 564 | 474 |
+| Rows whose source URL is the Raus listing | 149 | 124 |
+| Those Raus rows with a nonblank venue | 42 | 37 |
+| Those Raus rows with a numeric price | 123 | 112 |
+| Those Raus rows flagged as having a detail link | 149 | 124 |
+
+One further event in each dataset has a Raus destination URL but an Orangerie
+source URL; it is deliberately excluded from the Raus-source counts above.
+The raw job's 150 retained rows and the aggregate's 149 source rows are different
+pipeline measurements and must not be reported interchangeably. A link flag or
+numeric price is an extraction result, not proof of successful destination
+identity verification or ordinary public admission.
+
+### Why main's success and this branch's failure can coexist
+
+Main's generic fetcher does not perform a robots-policy check before collection.
+It can also return a non-2xx body for extraction if it is not recognized as a bot
+challenge. This branch's qualification instead uses the bounded `HTTP` client,
+checks robots for `BerlinEventEvidence/1.0`, stops on denied/unknown policies,
+caches host blocks and disables the legacy Jina/CloakBrowser fallbacks.
+
+Consequently, main may collect usable HTML in an execution that our current
+policy-aware run would decline. The runs also took place four days apart, with
+different request identities and environments. The available evidence does not
+isolate which factor caused the observed response differences. Main did not
+record the robots evidence needed to establish permission retrospectively.
+
+There is a representation difference too: main's successful raw HTML retained
+enough card structure and URLs for the heuristic extractor; the historical
+TinyFish semantic listing did not. This supports keeping a deterministic direct
+HTML adapter for a **permitted** access path. It does not justify reconstructing
+missing TinyFish titles or skipping the current robots gate.
+
+**Assessment:** main has demonstrated historical extraction success, with major
+venue gaps and weaker verification. It has not demonstrated that the current
+access-policy and exact-evidence requirements are solved. Keep its useful dynamic
+date URL and raw-HTML parsing lessons; do not copy the missing policy gate or
+treat its October 25 prices/statuses as fresh verified newsletter evidence.
 
 ## 1. Robots permission and HTTP blocking are different
 
@@ -215,9 +323,11 @@ event. Original venue pages may establish eligible events independently.
    counts separately. Replay sanitized fixtures offline, then run manual staging
    with temporary outputs and provider limits before any release decision.
 
-The existing 199-test result belongs to the published Camoufox/date code run;
-this documentation update adds no executable behavior. No further live requests
-or test runs are represented as having occurred during report preparation.
+The existing 199-test result belongs to the published Camoufox/date code run.
+The follow-up Berlin Bühnen adapter and captured-fixture tests bring the local
+suite to **205 passing tests**. That change addresses missing custom-element
+links, not Raus access. No new live Raus/provider qualification is represented
+as having occurred during this comparison.
 
 ## Decision
 

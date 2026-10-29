@@ -1,14 +1,48 @@
-"""Occurrence-bound adapters for the two canonical official programmes."""
+"""Occurrence-bound adapters for canonical official programmes."""
 from urllib.parse import urlsplit,urljoin
 from bs4 import BeautifulSoup
 import re
 from scripts.event_utils import clean_text,normalize_date,parse_time,looks_synthetic_title,parse_price
 
+
+def berlin_buehnen_cards(soup, source_url):
+    """Read public Hylo component hrefs, never neighbouring ticket links.
+
+    Mobile and desktop markup repeat the same title/time within each card.
+    Require those copies to agree rather than treating them as performances.
+    """
+    cards=soup.select('hylo-router-link.event-list-item[href]')
+    if not cards:return None
+    out=[]
+    for card in cards:
+        url=urljoin(source_url,card['href']);parsed=urlsplit(url)
+        if (parsed.scheme!='https' or parsed.username or parsed.password or
+            parsed.netloc not in ('www.berlin-buehnen.de','berlin-buehnen.de') or
+            parsed.query or parsed.fragment or
+            not re.fullmatch(r'/de/spielplan/[^/]+/events/\d+/',parsed.path)):
+            continue
+        titles={clean_text(h.get_text(' ',strip=True)) for h in card.select('h3')}
+        stamps={t['datetime'].strip() for t in card.select('time[datetime]')}
+        # The first desktop h4 is the venue; later h4s can be subtitles.
+        venue=card.select_one('[slot="end"] h4')
+        if len(titles)!=1 or len(stamps)!=1 or venue is None:continue
+        title=next(iter(titles));stamp=next(iter(stamps))
+        if not title or looks_synthetic_title(title) or not re.fullmatch(r'\d{4}-\d{2}-\d{2} \d{2}:\d{2}',stamp):continue
+        day=normalize_date(stamp);start=parse_time(stamp)
+        venue_name=clean_text(venue.get_text(' ',strip=True))
+        if not day or not start or not venue_name:continue
+        out.append(dict(title=title,date=day,time=start,venue=venue_name,
+                        url=url,source_url=source_url,price=None,
+                        description=card.get_text(' ',strip=True)))
+    return out
+
+
 def official_programme_cards(html, source_url):
-    """Canonical museum/theatre layouts; never use subtitle text as venue."""
+    """Canonical programme layouts; never use subtitle text as venue."""
     host=(urlsplit(source_url).hostname or '').removeprefix('www.')
-    if host not in ('volksbuehne-berlin.de','berlin.museum'): return None
+    if host not in ('volksbuehne-berlin.de','berlin.museum','berlin-buehnen.de'): return None
     soup=BeautifulSoup(html,'lxml')
+    if host=='berlin-buehnen.de':return berlin_buehnen_cards(soup,source_url)
     if host=='volksbuehne-berlin.de':
         cards=soup.select('li.activity')
     elif host=='berlin.museum':

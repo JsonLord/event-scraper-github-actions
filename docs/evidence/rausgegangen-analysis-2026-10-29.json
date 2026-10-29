@@ -155,5 +155,41 @@
         "conclusion": "robots_denied"
       }
     }
-  ]
+  ],
+  "main_branch_comparison": {
+    "main_sha": "bab0e19072b966ae05f55342d29979b39d1eb4b5",
+    "weekly_run": "40225678325",
+    "source_job": "121266401296",
+    "source_checkout_sha": "5160c32072c323bd99267de3d3d7a5a82803df03",
+    "selected_existing_job_log_lines": [
+      "2026-10-25T19:22:20.1887905Z 2026-10-25 19:22:20,188 - INFO - plain HTML: JSON-LD 0, <time datetime> 0, heuristic scan 189, calendar headings 0, date blocks 2",
+      "2026-10-25T19:22:20.1899477Z 2026-10-25 19:22:20,189 - INFO - Found 189 candidate events from plain HTML",
+      "2026-10-25T19:22:49.0988393Z 2026-10-25 19:22:49,098 - INFO - Price enrichment: found a price for 21/48 previously unpriced events",
+      "2026-10-25T19:22:49.1272302Z 2026-10-25 19:22:49,127 - INFO - 150 events kept for 2026-10-25..2026-11-01 (39 rejected as unusable or out of window)"
+    ],
+    "datasets": {
+      "data/events.json": {
+        "sha256": "d81866ea6807b9961f167d702afc91258ab12afc94515312081b59d68664146b",
+        "all_rows": 564,
+        "raus_listing_rows": 149,
+        "raus_nonblank_venues": 42,
+        "raus_numeric_prices": 123,
+        "raus_detail_flags": 149,
+        "raus_destination_from_other_source": 1,
+        "berlin_buehnen_rows": 214,
+        "berlin_buehnen_missing_detail_links": 214
+      },
+      "data/events_scored.json": {
+        "sha256": "ad47a4d71a6aebdd1dee18ded01709fdfe5fff187bce339a9ac66a3c4844e8b9",
+        "all_rows": 474,
+        "raus_listing_rows": 124,
+        "raus_nonblank_venues": 37,
+        "raus_numeric_prices": 112,
+        "raus_detail_flags": 124,
+        "raus_destination_from_other_source": 1,
+        "berlin_buehnen_rows": 157,
+        "berlin_buehnen_missing_detail_links": 157
+      }
+    }
+  }
 }

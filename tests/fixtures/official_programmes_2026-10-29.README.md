@@ -31,3 +31,21 @@ Additional targeted detail fixtures, captured by robots-checked direct HTTP on
 The museum listing's `Ausverkauft:` span is a status badge, not part of its
 structured event name. Tests retain that negative evidence while matching the
 actual title. No event facts were fabricated.
+
+Berlin Bühnen follow-up fixtures, captured on 29 October 2026 using bounded,
+robots-checked direct HTTP:
+
+- `berlin_buehnen_listing_2026-11-01_captured_2026-10-29.html`: first three cards
+  from https://www.berlin-buehnen.de/de/spielplan/?date=2026-11-01
+- `berlin_buehnen_listing_2026-11-02_captured_2026-10-29.html`: first three cards
+  from https://www.berlin-buehnen.de/de/spielplan/?date=2026-11-02
+
+These are literal event-card fragments, not reconstructed event data. The outer
+`hylo-router-link` elements' public hrefs, datetime markers, h3 titles, desktop
+venue headings, subtitles and responsive duplicates are retained. Image/icon
+payloads, scripts and unnecessary attributes were removed. Ticket-link query
+strings were removed; those links are not used as event destinations. No event
+title, performance, venue or price was invented. Mutation-based rejection tests
+identify their changed fields explicitly and do not call those mutations live
+evidence. Both full listing responses contained pagination, so these fragments
+do not represent complete day coverage.
