@@ -222,6 +222,9 @@ def main():
  for report in results:
   for original in report['events']:
    event=deepcopy(original)
+   # The review build must not erase explicit negative source evidence.
+   if event.get('ticket_status')=='sold_out' or event.get('event_status') in ('cancelled','postponed'):
+    continue
    matches=[s for s in report['detail_samples'] if s['matched'] and (s['date'],s['time'],s['url'])==(event['date'],event.get('time'),event['url'])]
    regular=[o for s in matches for o in s.get('regular_offers',[]) if o.get('amount_eur') is not None and folded(o.get('eligibility','')) in ('','standard','normalpreis','regular','adult','erwachsene')]
    proven_free=bool(regular) and all(o.get('amount_eur')==0 and o.get('price_max',0)==0 for o in regular)
@@ -229,7 +232,7 @@ def main():
    if event.get('price')==0 and not proven_free:
     unsupported_free+=1
     event.update(price=None,price_min=None,price_max=None,price_status='unknown',price_label='Check admission on site',free_admission_confirmed=False,offers=[])
-   event.update(ticket_status='unknown',event_status='unknown')
+   event.update(ticket_status='unknown')
    rows.append(event)
  published=score_and_filter_events(rows,20,today=local.date())
  for event in published:
