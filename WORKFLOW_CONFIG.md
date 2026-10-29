@@ -16,7 +16,7 @@ per-source scraper to write. Jobs run 4 at a time (`max-parallel: 4`) and
 `fail-fast` is off, so one bad source cannot take down the run.
 
 `__START_DATE__` and `__END_DATE__` in a URL are substituted at runtime with
-today and today+7, for sources that take a date range as a query parameter.
+today and today+14, for sources that take a date range as a query parameter.
 
 Most matrix lines carry a comment recording what was measured from that
 source and what to expect from it. Keep that up when you change one — it is
@@ -44,7 +44,7 @@ what stops a legitimate empty week being mistaken for a breakage.
 - **Price**: 20 EUR cap. Free ranks best, up to 10 EUR is preferred. An event
   with no stated price is kept and scored neutrally, because most listings
   never state one; the scraper tries the event's own page before giving up.
-- **Date range**: the next 7 days.
+- **Date range**: the next 14 days.
 - **Streams**: the page splits out sport and networking; film and kids' events
   are excluded. See `scripts/score_events.py`.
 
