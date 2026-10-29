@@ -35,9 +35,6 @@ jobs:
     env:
       PYTHONDONTWRITEBYTECODE: '1'
       TZ: Europe/Berlin
-      XDG_CACHE_HOME: ${{ runner.temp }}/browser-cache
-      XDG_CONFIG_HOME: ${{ runner.temp }}/browser-config
-      PIP_CACHE_DIR: ${{ runner.temp }}/pip-cache
     steps:
       - uses: actions/checkout@v4
         with:
@@ -50,6 +47,12 @@ jobs:
         env:
           RAUS_BROWSER: ${{ inputs.raus_browser }}
         run: |
+          export XDG_CACHE_HOME="$RUNNER_TEMP/browser-cache"
+          export XDG_CONFIG_HOME="$RUNNER_TEMP/browser-config"
+          export PIP_CACHE_DIR="$RUNNER_TEMP/pip-cache"
+          echo "XDG_CACHE_HOME=$XDG_CACHE_HOME" >> "$GITHUB_ENV"
+          echo "XDG_CONFIG_HOME=$XDG_CONFIG_HOME" >> "$GITHUB_ENV"
+          echo "PIP_CACHE_DIR=$PIP_CACHE_DIR" >> "$GITHUB_ENV"
           python -m venv "$RUNNER_TEMP/qualification-venv"
           "$RUNNER_TEMP/qualification-venv/bin/pip" install requests beautifulsoup4 lxml PyYAML pytest python-dotenv
           if [ "$RAUS_BROWSER" = "camoufox" ]; then "$RUNNER_TEMP/qualification-venv/bin/pip" install camoufox==0.5.8; fi
