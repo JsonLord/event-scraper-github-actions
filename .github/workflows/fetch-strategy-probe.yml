@@ -1,94 +1,88 @@
-name: Fetch Strategy Probe
-
-# Manual only. This is a measurement tool, not part of the weekly pipeline:
-# it answers "which way of fetching this site actually yields events" for the
-# sources an ordinary GET cannot reach.
-#
-# It has to run here rather than on a developer machine, because the answer is
-# IP-dependent - a hosted runner and a home connection get different responses
-# from exactly these sites (Eventbrite answers this runner with HTTP 405 and a
-# residential IP with a parseable 200).
-#
-# Read the table it prints, then wire the winner into generic_event_scraper.py
-# and stop paying for the rest.
-
+name: Restored branch read-only website qualification
 on:
   workflow_dispatch:
     inputs:
-      sites:
-        description: 'Sites to probe: inline JSON {"name":"url"}, or blank for config/probe_sites.json'
-        required: false
-        default: ''
-      strategies:
-        description: 'Comma-separated subset (direct, cloakbrowser, jina_markdown, jina_html, jina_html_nocache, jina_html_browser, jina_html_proxy)'
-        required: false
-        default: 'direct,cloakbrowser,jina_markdown,jina_html,jina_html_nocache,jina_html_browser,jina_html_proxy'
-      date_days:
-        description: 'Date window in days'
-        required: false
-        default: '7'
-
+      publish:
+        description: 'Explicitly deploy this restored branch review build to live Pages'
+        type: boolean
+        default: false
+permissions:
+  contents: read
+concurrency:
+  group: restored-branch-read-only-qualification
+  cancel-in-progress: false
 jobs:
-  probe:
+  qualify:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 15
+    env:
+      PYTHONDONTWRITEBYTECODE: '1'
+      TZ: Europe/Berlin
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-
-      - name: Install dependencies
+      - name: Install isolated direct-HTTP qualification dependencies
         run: |
-          python -m pip install --upgrade pip
-          pip install requests beautifulsoup4 lxml
-          pip install cloakbrowser
-
-      - name: Install CloakBrowser binary
-        # Non-fatal: the probe reports a failing strategy as a result rather
-        # than crashing, and that is itself worth measuring.
-        continue-on-error: true
-        run: python -m cloakbrowser install
-
-      - name: Probe
-        env:
-          # Add this under Settings -> Secrets and variables -> Actions.
-          # Without it every jina_* strategy reports "JINA_API_KEY not set",
-          # which the probe prints as a result rather than failing the run.
-          JINA_API_KEY: ${{ secrets.JINA_API_KEY }}
+          python -m venv "$RUNNER_TEMP/qualification-venv"
+          "$RUNNER_TEMP/qualification-venv/bin/pip" install requests beautifulsoup4 lxml PyYAML pytest
+      - name: Preserve restored scraper baseline and run offline tests
         run: |
-          mkdir -p probe
-          SITES='${{ github.event.inputs.sites }}'
-          if [ -z "$SITES" ]; then SITES=config/probe_sites.json; fi
-
-          python scripts/fetch_strategy_probe.py \
-            --sites "$SITES" \
-            --strategies "${{ github.event.inputs.strategies }}" \
-            --date-days "${{ github.event.inputs.date_days }}" \
-            --output probe/results.json \
-            | tee probe/console.txt || true
-
-      - name: Publish the table to the run summary
+          git diff --exit-code 70787edd3d4b99124e38a179b7737f27c60ba229 -- scripts/generic_event_scraper.py scripts/event_utils.py scripts/ticket_evidence.py
+          "$RUNNER_TEMP/qualification-venv/bin/python" -m pytest -q
+      - name: Scrape and measure each configured website
+        run: |
+          "$RUNNER_TEMP/qualification-venv/bin/python" scripts/qualify_restored_branch.py --output "$RUNNER_TEMP/restored-qualification"
+          cat "$RUNNER_TEMP/restored-qualification/REPORT.md" >> "$GITHUB_STEP_SUMMARY"
+          test -z "$(git status --porcelain)"
+      - uses: actions/upload-artifact@v4
         if: always()
-        run: |
-          {
-            echo '## Fetch strategy probe'
-            echo
-            echo 'Events kept per site per strategy, measured on this runner.'
-            echo
-            echo '```'
-            sed -n '/^site /,$p' probe/console.txt 2>/dev/null || echo 'no output'
-            echo '```'
-          } >> "$GITHUB_STEP_SUMMARY"
-
-      - name: Upload results
-        if: always()
-        uses: actions/upload-artifact@v4
         with:
-          name: fetch-strategy-probe
-          path: probe/
-          retention-days: 30
-          if-no-files-found: warn
+          name: restored-branch-website-qualification
+          path: ${{ runner.temp }}/restored-qualification
+          retention-days: 14
+  deploy:
+    needs: qualify
+    if: ${{ github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/codex/restore-before-tinyfish-search' && inputs.publish == true }}
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    runs-on: ubuntu-latest
+    environment:
+      name: runner branch
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: restored-branch-website-qualification
+          path: ${{ runner.temp }}/restored-qualification
+      - name: Validate exact review build and freshness
+        env:
+          ARTIFACT_ROOT: ${{ runner.temp }}/restored-qualification
+          EXPECTED_SHA: ${{ github.sha }}
+        run: |
+          python - <<'PY'
+          import os, json, hashlib
+          from pathlib import Path
+          from datetime import datetime, timezone, timedelta
+          root=Path(os.environ['ARTIFACT_ROOT'])
+          manifest=json.loads((root/'site-manifest.json').read_text())
+          assert manifest['commit']==os.environ['EXPECTED_SHA']
+          age=datetime.now(timezone.utc)-datetime.fromisoformat(manifest['generated_at'])
+          assert timedelta(0)<=age<timedelta(hours=2)
+          assert manifest['count']>0
+          for name, checksum in manifest['files'].items():
+              path=(root/'site'/name).resolve()
+              assert path.is_relative_to((root/'site').resolve())
+              assert hashlib.sha256(path.read_bytes()).hexdigest()==checksum
+          PY
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: ${{ runner.temp }}/restored-qualification/site
+      - uses: actions/deploy-pages@v4
+        id: deployment
