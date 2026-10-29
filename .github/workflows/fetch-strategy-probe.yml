@@ -10,6 +10,19 @@ on:
         description: 'Allow only Rausgegangen discovery: maximum two Search calls and three permitted Fetch URLs'
         type: boolean
         default: false
+      raus_browser:
+        description: 'Optional Raus listing browser; robots policy is checked before launch'
+        type: choice
+        options: [none, camoufox]
+        default: none
+      window_start:
+        description: 'Optional first date YYYY-MM-DD; provide both dates, otherwise today through today+7'
+        type: string
+        default: ''
+      window_end:
+        description: 'Optional inclusive final date YYYY-MM-DD, at most eight dates in the window'
+        type: string
+        default: ''
 permissions:
   contents: read
 concurrency:
@@ -22,6 +35,9 @@ jobs:
     env:
       PYTHONDONTWRITEBYTECODE: '1'
       TZ: Europe/Berlin
+      XDG_CACHE_HOME: ${{ runner.temp }}/browser-cache
+      XDG_CONFIG_HOME: ${{ runner.temp }}/browser-config
+      PIP_CACHE_DIR: ${{ runner.temp }}/pip-cache
     steps:
       - uses: actions/checkout@v4
         with:
@@ -31,9 +47,12 @@ jobs:
         with:
           python-version: '3.11'
       - name: Install isolated direct-HTTP qualification dependencies
+        env:
+          RAUS_BROWSER: ${{ inputs.raus_browser }}
         run: |
           python -m venv "$RUNNER_TEMP/qualification-venv"
           "$RUNNER_TEMP/qualification-venv/bin/pip" install requests beautifulsoup4 lxml PyYAML pytest python-dotenv
+          if [ "$RAUS_BROWSER" = "camoufox" ]; then "$RUNNER_TEMP/qualification-venv/bin/pip" install camoufox==0.5.8; fi
       - name: Preserve scoring, frontend and shared model; test selective adapters
         run: |
           git diff --exit-code 70787edd3d4b99124e38a179b7737f27c60ba229 -- scripts/event_utils.py scripts/ticket_evidence.py scripts/score_events.py web/index.html
@@ -42,9 +61,15 @@ jobs:
         env:
           TINYFISH_API_KEY: ${{ secrets.TINYFISH_API_KEY }}
           QUALIFY_RAUS_TINYFISH: ${{ inputs.raus_tinyfish }}
+          QUALIFY_RAUS_BROWSER: ${{ inputs.raus_browser }}
+          QUALIFY_WINDOW_START: ${{ inputs.window_start }}
+          QUALIFY_WINDOW_END: ${{ inputs.window_end }}
         run: |
           EXTRA=()
           if [ "$QUALIFY_RAUS_TINYFISH" = "true" ]; then EXTRA+=(--raus-tinyfish); fi
+          if [ -n "$QUALIFY_RAUS_BROWSER" ]; then EXTRA+=(--raus-browser "$QUALIFY_RAUS_BROWSER"); fi
+          if [ -n "$QUALIFY_WINDOW_START" ]; then EXTRA+=(--window-start "$QUALIFY_WINDOW_START"); fi
+          if [ -n "$QUALIFY_WINDOW_END" ]; then EXTRA+=(--window-end "$QUALIFY_WINDOW_END"); fi
           "$RUNNER_TEMP/qualification-venv/bin/python" scripts/qualify_restored_branch.py --output "$RUNNER_TEMP/restored-qualification" "${EXTRA[@]}"
           cat "$RUNNER_TEMP/restored-qualification/REPORT.md" >> "$GITHUB_STEP_SUMMARY"
           test -z "$(git status --porcelain)"

@@ -9,7 +9,7 @@ from concurrent.futures import ProcessPoolExecutor
 from datetime import datetime,timedelta,timezone
 import argparse,hashlib,ipaddress,json,logging,os,re,shutil,socket,subprocess,sys,time
 from pathlib import Path
-from urllib.parse import urlsplit,urljoin,urlunsplit
+from urllib.parse import urlsplit,urljoin,urlunsplit,parse_qsl,urlencode
 from urllib.robotparser import RobotFileParser
 from zoneinfo import ZoneInfo
 import requests,yaml
@@ -45,7 +45,10 @@ def sanitized(value):
  if key:value=value.replace(key,'[REDACTED]')
  def strip(m):
   try:
-   p=urlsplit(m.group());return urlunsplit((p.scheme,p.hostname or '',p.path,'',''))
+   p=urlsplit(m.group())
+   allowed={'geospatial_query_type','lat','lng','city','active_city_name','start_date','end_date','date','location','source','distance','keywords','event','eventid','id'}
+   query=urlencode([(k,v) for k,v in parse_qsl(p.query) if k.casefold() in allowed])
+   return urlunsplit((p.scheme,p.hostname or '',p.path,query,''))
   except ValueError:return '[invalid URL]'
  return re.sub(r'https?://[^\s<>"\']+',strip,value)
 
@@ -122,7 +125,7 @@ class HTTP:
 
 
 def listing_worker(task):
- sources,stamp,deadline=task;now=datetime.fromisoformat(stamp);day=now.astimezone(ZoneInfo('Europe/Berlin')).date();end=day+timedelta(days=7)
+ sources,stamp,deadline,start,end_string=task;now=datetime.fromisoformat(stamp);day=datetime.fromisoformat(start).date();end=datetime.fromisoformat(end_string).date()
  capacity=20 if any(s.get('date_horizon') for s in sources) else min(4*len(sources),16)
  http=HTTP(capacity,deadline,2_000_000*len(sources));reports=[]
  scraper.fetch_plain=http.plain
@@ -132,7 +135,7 @@ def listing_worker(task):
   start=http.requests;http.limit=min(capacity,start+(20 if source.get('date_horizon') else 4));began=time.monotonic()
   url=source['url'].replace('__START_DATE__',day.isoformat()).replace('__END_DATE__',end.isoformat())
   try:
-   raw=scraper.scrape_date_horizon(url,7) if source.get('date_horizon') else scraper.scrape(url)
+   raw=scraper.scrape_date_horizon(url,(end-day).days,start_day=day) if source.get('date_horizon') else scraper.scrape(url)
    keep,_=validate_events(raw,url,day,end,max_price=float('inf'));keep=dedupe_events(keep)
    cheap,_=validate_events(raw,url,day,end,max_price=20);cheap=dedupe_events(cheap)
    month,_=validate_events(raw,url,day,day+timedelta(days=30),max_price=float('inf'));month=dedupe_events(month)
@@ -185,16 +188,26 @@ def fingerprints():
  return {str(p.relative_to(ROOT)):hashlib.sha256(p.read_bytes()).hexdigest() for p in (ROOT/'data').glob('*.json')}
 
 
+def date_window(now,start='',end=''):
+ today=now.astimezone(ZoneInfo('Europe/Berlin')).date()
+ if bool(start)!=bool(end):raise ValueError('Provide both start and end dates')
+ first=datetime.strptime(start,'%Y-%m-%d').date() if start else today
+ last=datetime.strptime(end,'%Y-%m-%d').date() if end else today+timedelta(days=7)
+ if not today<=first<=last<=today+timedelta(days=30) or (last-first).days>7:raise ValueError('Choose a future window of at most eight dates within thirty days')
+ return first,last
+
+
 def main():
- parser=argparse.ArgumentParser();parser.add_argument('--output',required=True);parser.add_argument('--raus-tinyfish',action='store_true');a=parser.parse_args()
+ parser=argparse.ArgumentParser();parser.add_argument('--output',required=True);parser.add_argument('--raus-tinyfish',action='store_true');parser.add_argument('--window-start',default='');parser.add_argument('--window-end',default='');parser.add_argument('--raus-browser',choices=('none','camoufox'),default='none');a=parser.parse_args()
  output=Path(a.output).resolve();assert output!=ROOT and ROOT not in output.parents
  output.mkdir(parents=True,exist_ok=False);before=fingerprints();start=time.monotonic();now=datetime.now(timezone.utc);deadline=start+600
+ day,end=date_window(now,a.window_start,a.window_end)
  catalog=yaml.safe_load((ROOT/'.github/workflows/weekly-event-scraper.yml').read_text())['jobs']['scrape']['strategy']['matrix']['include']
  groups=defaultdict(list)
  for source in catalog:groups[urlsplit(source['url']).netloc].append(source)
  results=[];states=[]
  with ProcessPoolExecutor(max_workers=2) as pool:
-  for reports,state in pool.map(listing_worker,[(v,now.isoformat(),deadline-90) for v in groups.values()]):results.extend(reports);states.append(state)
+  for reports,state in pool.map(listing_worker,[(v,now.isoformat(),deadline-90,day.isoformat(),end.isoformat()) for v in groups.values()]):results.extend(reports);states.append(state)
  order={s['name']:i for i,s in enumerate(catalog)};results.sort(key=lambda s:order[s['name']])
  http=HTTP(40,deadline,25_000_000)
  for state in states:
@@ -206,7 +219,7 @@ def main():
   raus_http=HTTP(8,deadline,4_500_000)
   raus_http.robots.update(http.robots);raus_http.blocked.update(http.blocked)
   raus_http.documents.update(http.documents)
-  discovered,provider_diagnostics=discover(now,raus_http,deadline)
+  discovered,provider_diagnostics=discover(now,raus_http,deadline,window=(day,end))
   http.documents.update(raus_http.documents);http.robots.update(raus_http.robots);http.blocked.update(raus_http.blocked)
   report=next(r for r in results if r['name']=='rausgegangen_de')
   report['listing_outcome']=report['outcome']
@@ -216,6 +229,24 @@ def main():
   if discovered:report['outcome']='permitted_destination_discovery'
   provider_diagnostics['http_calls']=raus_http.calls
   (output/'raus-tinyfish-diagnostics.json').write_text(json.dumps(sanitized(provider_diagnostics),ensure_ascii=False,indent=2)+'\n')
+ browser_diagnostics=dict(engine='none',navigations=0,outcome='disabled')
+ if a.raus_browser=='camoufox':
+  from scripts.raus_browser import render_listing
+  from scripts.raus_selective import listing_url
+  url=listing_url(day,end)
+  doc,browser_diagnostics=render_listing(url,http,deadline)
+  if doc:
+   raw=scraper.scrape_document(doc[1],url,'Camoufox Raus listing')
+   from scripts.raus_selective import candidate_url
+   raw=[e for e in raw if candidate_url(e.get('url','')) and e.get('venue') and e.get('time') and
+        (e.get('location_city','').strip().casefold()=='berlin' or re.search(r'\bBerlin\b',e.get('venue','')+' '+e.get('description',''),re.I))]
+   rows,_=validate_events(raw,url,day,end,max_price=float('inf'))
+   report=next(r for r in results if r['name']=='rausgegangen_de')
+   report['listing_outcome']=report.get('listing_outcome',report['outcome'])
+   report['events']=dedupe_events(report['events']+rows)
+   report.update(listing_received=True,final_url=doc[0],window_occurrences=len(report['events']),under_twenty=sum(e.get('price') is None or e['price']<=20 for e in report['events']),missing_detail_links=sum(not e.get('has_detail_link') for e in report['events']),missing_venues=sum(not e.get('venue') for e in report['events']))
+   if rows:report['outcome']='camoufox_listing_candidates'
+  (output/'raus-browser-diagnostics.json').write_text(json.dumps(sanitized(browser_diagnostics),ensure_ascii=False,indent=2)+'\n')
  local=now.astimezone(ZoneInfo('Europe/Berlin'))
  def eligible(e):
   return e.get('has_detail_link') and e.get('time') and (e['date']>local.date().isoformat() or (e['date']==local.date().isoformat() and e['time']>local.strftime('%H:%M'))) and not re.search(r'/(?:login|checkout|cart|account|webticket)(?:/|$)',urlsplit(e['url']).path,re.I)
@@ -234,15 +265,15 @@ def main():
   report['conclusion']='supported_sample' if report['exact_sample_matches'] else 'candidates_only' if report['window_occurrences'] else report['outcome']
  assert fingerprints()==before,'Production data changed'
  summary=dict(commit=subprocess.check_output(['git','rev-parse','HEAD'],cwd=ROOT,text=True).strip(),scraper_baseline='70787edd3d4b99124e38a179b7737f27c60ba229',
-              generated_at=now.isoformat(),window_end=(local.date()+timedelta(days=7)).isoformat(),environment='GitHub Actions' if os.getenv('GITHUB_ACTIONS') else 'cloud executor',
+              generated_at=now.isoformat(),window_start=day.isoformat(),window_end=end.isoformat(),environment='GitHub Actions' if os.getenv('GITHUB_ACTIONS') else 'cloud executor',
               sources=results,listing_http_attempts=sum(s['requests'] for s in states),listing_http_limit=sum(s['capacity'] for s in states),detail_http_attempts=http.requests,detail_http_limit=40,
-              response_bytes=sum(s['bytes'] for s in states)+http.bytes,seconds=round(time.monotonic()-start,3),tinyfish_calls=len(provider_diagnostics['provider_calls']),tinyfish=provider_diagnostics,robots_evidence=http.robot_evidence,other_provider_calls=0,browser_calls=0,production_data_unchanged=True,
+              response_bytes=sum(s['bytes'] for s in states)+http.bytes,seconds=round(time.monotonic()-start,3),tinyfish_calls=len(provider_diagnostics['provider_calls']),tinyfish=provider_diagnostics,robots_evidence=http.robot_evidence,other_provider_calls=0,browser_calls=browser_diagnostics['navigations'],browser=browser_diagnostics,production_data_unchanged=True,
               caveats=['Direct HTTP for all sources; optional free Fetch/Search allowlisted to Raus destinations only.','Source-adapter repair and Raus detail matching do not qualify the complete corpus.','Counts are date-window candidates, not guaranteed upcoming verified events.','At most two occurrence samples per source; exact matches never imply all source records are verified.','Unknown prices/inventory remain unsupported; no Community/newsletter eligibility is asserted.'],
               calls=[c for s in states for c in s['calls']]+http.calls)
  (output/'results.json').write_text(json.dumps(sanitized(summary),ensure_ascii=False,indent=2)+'\n')
  for r in results:(output/(r['name']+'.json')).write_text(json.dumps(sanitized(dict(source=r['url'],events=r['events'],samples=r['detail_samples'])),ensure_ascii=False,indent=2)+'\n')
- lines=['# Restored branch: website conclusiveness','',f"Commit: `{summary['commit']}`; baseline scraper: `70787ed`.",f"Run time: {now.astimezone(ZoneInfo('Europe/Berlin')).isoformat()}; seven-day date window ends {summary['window_end']}.",'',
-        f"Direct HTTP with robots checks. TinyFish is {'enabled for Rausgegangen only' if a.raus_tinyfish else 'disabled'}; {provider_diagnostics['search_calls']}/2 Search calls and {provider_diagnostics['fetch_urls']}/3 Fetch URLs. No Jina, browser or production-data writes. Publication is a separate explicitly requested job. Counts include all prices; ≤€20 is the legacy price filter. Samples require bound occurrence identity, never Search snippets.",'',
+ lines=['# Restored branch: website conclusiveness','',f"Commit: `{summary['commit']}`; baseline scraper: `70787ed`.",f"Run time: {now.astimezone(ZoneInfo('Europe/Berlin')).isoformat()}; date window {summary['window_start']} through {summary['window_end']}.",'',
+        f"Direct HTTP with robots checks. TinyFish is {'enabled for Rausgegangen only' if a.raus_tinyfish else 'disabled'}; {provider_diagnostics['search_calls']}/2 Search calls and {provider_diagnostics['fetch_urls']}/3 Fetch URLs. No Jina or production-data writes. Camoufox: {browser_diagnostics['outcome']}, {browser_diagnostics['navigations']} navigation(s). Publication is a separate explicitly requested job. Counts include all prices; ≤€20 is the legacy price filter. Samples require bound occurrence identity, never Search snippets.",'',
         '| Source | Window rows | ≤€20 | Links missing | Venues missing | Exact samples | Conclusion |','|---|---:|---:|---:|---:|---:|---|']
  for r in results:lines.append(f"| {r['name']} | {r['window_occurrences']} | {r['under_twenty']} | {r.get('missing_detail_links',0)} | {r.get('missing_venues',0)} | {r['exact_sample_matches']}/{r['sampled_occurrences']} | {r['conclusion']} |")
  lines+=['',f"HTTP: {summary['listing_http_attempts']}/{summary['listing_http_limit']} listing attempts + {http.requests}/40 detail attempts. Duration {summary['seconds']} seconds.",'','## Limitations','']+['- '+c for c in summary['caveats']]

@@ -146,3 +146,75 @@ def test_destination_sold_out_excludes_only_its_exact_performance():
  assert publication_observations(event,[sample])[1] is True
  assert publication_observations(dict(event,date='2026-10-31'),[sample])[1] is False
  assert publication_observations(event,[dict(sample,matched=False)])[1] is False
+
+
+def test_supplied_raus_url_and_date_window_are_preserved_without_secret_parameters():
+ from scripts.raus_selective import listing_url
+ from scripts.qualify_restored_branch import date_window,sanitized
+ from urllib.parse import urlsplit,parse_qs
+ first,last=date_window(NOW,'2026-11-01','2026-11-07')
+ url=listing_url(first,last)
+ q=parse_qs(urlsplit(url).query)
+ assert q=={'geospatial_query_type':['CITY'],'lat':['52.5'],'lng':['13.405'],'city':['berlin'],'active_city_name':['Berlin'],'start_date':['2026-11-01'],'end_date':['2026-11-07']}
+ output=sanitized(url+'&auth_token=private')
+ assert 'private' not in output and parse_qs(urlsplit(output).query)==q
+
+
+def test_date_window_uses_berlin_day_and_rejects_partial_reversed_or_unbounded_ranges():
+ from scripts.qualify_restored_branch import date_window
+ import pytest
+ first,last=date_window(datetime(2026,10,29,23,30,tzinfo=timezone.utc))
+ assert first.isoformat()=='2026-10-30'
+ for start,end in [('2026-11-01',''),('2026-11-07','2026-11-01'),('2026-10-28','2026-11-01'),('2026-11-01','2026-12-01')]:
+  with pytest.raises(ValueError):date_window(NOW,start,end)
+
+
+def test_explicit_window_drives_each_daily_schedule_url(monkeypatch):
+ import scripts.generic_event_scraper as generic
+ from datetime import date
+ from urllib.parse import urlsplit,parse_qs
+ calls=[]
+ monkeypatch.setattr(generic,'scrape',lambda url:calls.append(url) or [])
+ generic.scrape_date_horizon('https://www.berlin-buehnen.de/de/spielplan',6,start_day=date(2026,11,1))
+ assert [parse_qs(urlsplit(u).query)['date'][0] for u in calls]==[f'2026-11-{i:02}' for i in range(1,8)]
+
+
+def test_camoufox_never_launches_for_denied_or_unknown_robots_or_other_sources():
+ import time
+ from scripts.raus_browser import render_listing
+ from scripts.raus_selective import listing_url
+ from datetime import date
+ url=listing_url(date(2026,11,1),date(2026,11,7))
+ def forbidden(**kwargs):raise AssertionError('Browser launched despite policy')
+ for h in (HTTP(allowed=False),HTTP()):
+  if h.robots['https://rausgegangen.de'].can_fetch('*',url):h.robots={}
+  doc,d=render_listing(url,h,time.monotonic()+600,launch=forbidden)
+  assert doc is None and d['navigations']==0 and d['outcome']=='robots_denied_or_unknown'
+ doc,d=render_listing('https://other.example/en/berlin/eventsbydate/',HTTP(),time.monotonic()+600,launch=forbidden)
+ assert doc is None and d['outcome']=='source_not_allowlisted'
+
+
+def test_camoufox_permitted_navigation_is_one_bounded_listing_without_interaction(monkeypatch):
+ import time
+ from scripts.raus_browser import render_listing
+ from scripts.raus_selective import listing_url
+ from datetime import date
+ url=listing_url(date(2026,11,1),date(2026,11,7));seen={}
+ class Page:
+  def route(self,pattern,handler):seen['route']=pattern
+  def goto(self,target,**kwargs):seen['goto']=(target,kwargs);return type('Response',(),{'status':200})()
+  def content(self):return '<h1>Public programme</h1>'
+  def wait_for_timeout(self,n):assert n==1500
+  @property
+  def url(self):return url
+ class Context:
+  def new_page(self):return Page()
+ class Browser:
+  def __enter__(self):return self
+  def __exit__(self,*args):pass
+  def new_context(self,**kwargs):assert kwargs['ignore_https_errors'] is False;return Context()
+ def launch(**kwargs):
+  assert kwargs['headless'] and kwargs['humanize'] is False and kwargs['geoip'] is False
+  return Browser()
+ doc,d=render_listing(url,HTTP(),time.monotonic()+600,launch=launch)
+ assert doc[0]==url and d['navigations']==1 and seen['goto'][1]['timeout']==45000

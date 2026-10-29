@@ -1122,7 +1122,7 @@ def build_date_url(base_url: str, target: date) -> str:
     return urlunparse(parsed._replace(query=urlencode(query)))
 
 
-def scrape_date_horizon(url: str, days: int) -> List[Dict[str, Any]]:
+def scrape_date_horizon(url: str, days: int, start_day: Optional[date] = None) -> List[Dict[str, Any]]:
     """Crawl a schedule one day at a time and merge the days.
 
     Sites that render a single day per request hide most of their programme
@@ -1137,7 +1137,7 @@ def scrape_date_horizon(url: str, days: int) -> List[Dict[str, Any]]:
     fragments, which is unnecessary when the HTML is parsed directly.
     """
     days = max(0, min(days, MAX_HORIZON_DAYS))
-    today = date.today()
+    today = start_day or date.today()
     batches, seen_urls = [], set()
 
     for offset in range(days + 1):

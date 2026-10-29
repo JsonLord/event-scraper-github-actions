@@ -1,9 +1,15 @@
 """Raus-only bounded discovery: Search candidates require permitted destinations."""
-from urllib.parse import urlsplit
+from urllib.parse import urlsplit,urlencode
 from bs4 import BeautifulSoup
 import re
 from scripts.event_utils import clean_text
 from scripts.ticket_evidence import folded
+
+
+def listing_url(start,end):
+    if start>end:raise ValueError('End date precedes start date')
+    params=dict(geospatial_query_type='CITY',lat='52.5',lng='13.405',city='berlin',active_city_name='Berlin',start_date=start.isoformat(),end_date=end.isoformat())
+    return 'https://rausgegangen.de/en/berlin/eventsbydate/?'+urlencode(params)
 
 def raus_semantic_candidates(soup, final_url, expected_title):
     """Raus detail header and literal Location/Venue block only.
@@ -63,7 +69,7 @@ def detail_candidates(html,url):
     return result
 
 
-def discover(now,http,deadline,provider=None):
+def discover(now,http,deadline,provider=None,window=None):
     """At most two Search queries and three permitted official destination URLs.
 
     The provider validator and this caller both enforce the one-domain allowlist.
@@ -74,11 +80,12 @@ def discover(now,http,deadline,provider=None):
     from scripts.event_utils import validate_events,dedupe_events
     from scripts.tinyfish_client import TinyFishClient,public_url
     from scripts.qualify_restored_branch import AGENT,origin
-    day=now.astimezone(ZoneInfo('Europe/Berlin')).date();end=day+timedelta(days=7)
+    today=now.astimezone(ZoneInfo('Europe/Berlin')).date()
+    day,end=window or (today,today+timedelta(days=7))
     if provider is None:
         provider=TinyFishClient(max_fetch=3,max_search=2,deadline=deadline,
                                validator=lambda u:bool(candidate_url(u)) and public_url(u))
-    first=day+timedelta(days=1 if now.astimezone(ZoneInfo('Europe/Berlin')).hour>=18 else 0)
+    first=day+timedelta(days=1 if day==today and now.astimezone(ZoneInfo('Europe/Berlin')).hour>=18 else 0)
     queries=[f'site:rausgegangen.de/events/ Berlin "{first.strftime("%d.%m.%Y")}"',
              f'site:rausgegangen.de/en/events/ Berlin "{first.strftime("%d. %b %Y")}"']
     urls=[];seen=set()
