@@ -132,3 +132,31 @@ fixture representations; compatibility with the current real listing DOM is not.
 A permitted current listing/detail capture remains necessary before a Raus
 production GO. Search candidates, successful policy HTTP responses, passing tests
 and nonempty historical records are not substituted for that qualification.
+
+## CI and final decision
+
+The production implementation was pushed in `1871a2b`; the affordability-metric
+correction is `763db69c884af3709fccbea0291b74c5754f9493`.
+
+| Manual Raus-only CI run | Python suite | Qualification | Deployment |
+|---|---:|---|---|
+| [41191888045](https://github.com/JsonLord/event-scraper-github-actions/actions/runs/41191888045) | 245 passed | robots denied; zero occurrences | skipped |
+| [41192076994](https://github.com/JsonLord/event-scraper-github-actions/actions/runs/41192076994) | **246 passed** | robots denied; zero occurrences | **skipped** |
+
+The final run used the unchanged production-data fingerprint check and the new
+Raus-only manual scope. Its sole request was HTTP 200 for robots.txt in 0.264 s.
+The artifact `restored-branch-website-qualification`, downloadable from the final
+run, contains `results.json` and `REPORT.md`; it contains no deployable site.
+Exact-match rate is null, not 100%, because no destination was retrieved.
+
+Across three local invocations and these two runner invocations, total source
+usage was **five policy reads and zero listing/detail reads**, with zero provider
+or browser calls. All observed policies have the same recorded hash. The compact
+evidence file includes both CI results and the final pytest log line.
+
+**GO for the tested offline parsing/filtering/gate behavior and read-only workflow
+integration. NO-GO for current live Raus coverage or production activation.** The
+current listing's real DOM and structured destination evidence still need a
+permitted live qualification. This technical result provides no release or
+deployment authorization. Documentation-only follow-ups do not change the code
+snapshot qualified by the final CI run.
