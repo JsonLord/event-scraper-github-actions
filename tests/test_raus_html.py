@@ -279,7 +279,7 @@ class BoundedFixtureHTTP:
         if url in self.documents:return self.documents[url]
         if self.requests >= self.limit:return None
         e=event()
-        html = reconstructed_card(CAPTURE['events'][0]) if url == SOURCE else detail(e) if url == e['url'] else None
+        html = reconstructed_card(CAPTURE['events'][0]) if url == SOURCE else detail(e,offers=getattr(self,'detail_offers',None)) if url == e['url'] else None
         self.requests+=1;self.calls.append({'url':url,'http_status':200 if html else 404})
         if html is None:return None
         self.bytes+=len(html.encode());self.documents[url]=(url,html)
@@ -307,7 +307,8 @@ def test_production_cli_applies_gates_after_shared_normalization_without_refetch
     assert h.requests == 2 and 'event-card' in snapshot.read_text()
 
 
-def test_full_review_builder_reuses_parser_matcher_scoring_and_checksum_manifest(monkeypatch,tmp_path):
+@pytest.mark.parametrize('ordinary_price',[12,None])
+def test_full_review_builder_reuses_parser_matcher_scoring_and_checksum_manifest(monkeypatch,tmp_path,ordinary_price):
     import hashlib
     import sys
     import scripts.qualify_restored_branch as review
@@ -320,6 +321,8 @@ def test_full_review_builder_reuses_parser_matcher_scoring_and_checksum_manifest
         {'name':'rausgegangen_de','url':SOURCE}]}}}}}
     monkeypatch.setattr(review,'datetime',FrozenDateTime)
     monkeypatch.setattr(review,'HTTP',BoundedFixtureHTTP)
+    if ordinary_price is None:
+        monkeypatch.setattr(BoundedFixtureHTTP,'detail_offers',[offer(0,name='Student')],raising=False)
     monkeypatch.setattr(review,'ProcessPoolExecutor',InlinePool)
     monkeypatch.setattr(review.yaml,'safe_load',lambda text:catalog)
     # listing_worker mutates these process-local functions in production.
@@ -331,7 +334,7 @@ def test_full_review_builder_reuses_parser_matcher_scoring_and_checksum_manifest
     payload=json.loads((output/'site/events_scored.json').read_text())
     assert payload['count'] == 1
     row=payload['events'][0]
-    assert row['price'] == 12 and row['verification_status'] == 'verified'
+    assert row['price'] == ordinary_price and row['verification_status'] == 'verified'
     assert '_qualification_free_proven' not in row and '/events/' in row['url']
     manifest=json.loads((output/'site-manifest.json').read_text())
     for name,checksum in manifest['files'].items():
@@ -339,6 +342,8 @@ def test_full_review_builder_reuses_parser_matcher_scoring_and_checksum_manifest
     report=json.loads((output/'results.json').read_text())
     assert report['production_data_unchanged']
     assert report['raus_publication']['exact_publication_coverage'] == 1.0
+    assert report['sources'][0]['under_twenty'] == (1 if ordinary_price is not None else 0)
+    assert report['sources'][0]['verified_unknown_prices'] == (0 if ordinary_price is not None else 1)
 
 
 def test_raus_only_workflow_scope_cannot_deploy_even_with_publish_input():

@@ -142,6 +142,17 @@ def listing_worker(task):
    raw=scraper.scrape_date_horizon(url,(end-day).days,start_day=day) if source.get('date_horizon') else scraper.scrape(url)
    keep,_=validate_events(raw,url,day,end,max_price=float('inf'));keep=dedupe_events(keep)
    cheap,_=validate_events(raw,url,day,end,max_price=20);cheap=dedupe_events(cheap)
+   if source['name']=='rausgegangen_de':
+    from scripts.raus_html import identity
+    original={identity(e):e for e in raw}
+    for event in keep:
+     # Shared normalization can inspect text for venue/price clues. Those
+     # clues cannot become Raus admission or identity evidence before detail.
+     event.update(venue=original.get(identity(event),{}).get('venue',''),
+                  price=None,price_min=None,price_max=None,price_status='unknown',
+                  price_label='Check admission on site',offers=[],free_admission_confirmed=False,
+                  ticket_status='unknown',event_status='unknown',student_discount_status='unknown')
+    cheap=[]
    month,_=validate_events(raw,url,day,day+timedelta(days=30),max_price=float('inf'));month=dedupe_events(month)
    page=next((v for k,v in http.documents.items() if k==url or (source.get('date_horizon') and k.startswith(url+'?'))),None)
    report=dict(name=source['name'],url=url,listing_received=bool(page),final_url=page[0] if page else None,
@@ -273,6 +284,12 @@ def main():
  for report in results:
   report['exact_sample_matches']=sum(s['matched'] for s in report['detail_samples']);report['sampled_occurrences']=len(report['detail_samples'])
   report['conclusion']='supported_sample' if report['exact_sample_matches'] else 'candidates_only' if report['window_occurrences'] else report['outcome']
+  if report['name']=='rausgegangen_de':
+   from scripts.raus_html import identity,publication_gate
+   observations={identity(s):s for s in report['detail_samples'] if s.get('matched')}
+   accepted=[p for e in report['events'] if (p:=publication_gate(e,observations.get(identity(e)),now,day,end))]
+   report['under_twenty']=sum(e['price'] is not None and e['price']<=20 for e in accepted)
+   report['verified_unknown_prices']=sum(e['price'] is None for e in accepted)
  assert fingerprints()==before,'Production data changed'
  summary=dict(commit=subprocess.check_output(['git','rev-parse','HEAD'],cwd=ROOT,text=True).strip(),scraper_baseline='70787edd3d4b99124e38a179b7737f27c60ba229',
               generated_at=now.isoformat(),window_start=day.isoformat(),window_end=end.isoformat(),environment='GitHub Actions' if os.getenv('GITHUB_ACTIONS') else 'cloud executor',
@@ -286,6 +303,7 @@ def main():
         f"Direct HTTP with robots checks. TinyFish is {'enabled for Rausgegangen only' if a.raus_tinyfish else 'disabled'}; {provider_diagnostics['search_calls']}/2 Search calls and {provider_diagnostics['fetch_urls']}/3 Fetch URLs. No Jina or production-data writes. Camoufox: {browser_diagnostics['outcome']}, {browser_diagnostics['navigations']} navigation(s). Publication is a separate explicitly requested job. Counts include all prices; ≤€20 is the legacy price filter. Samples require bound occurrence identity, never Search snippets.",'',
         '| Source | Window rows | ≤€20 | Links missing | Venues missing | Exact samples | Conclusion |','|---|---:|---:|---:|---:|---:|---|']
  for r in results:lines.append(f"| {r['name']} | {r['window_occurrences']} | {r['under_twenty']} | {r.get('missing_detail_links',0)} | {r.get('missing_venues',0)} | {r['exact_sample_matches']}/{r['sampled_occurrences']} | {r['conclusion']} |")
+ lines+=['','Raus ≤€20 counts only matched ordinary admission; UNKNOWN/student-only prices do not qualify. Other source price counts retain their legacy listing-estimate meaning.']
  lines+=['',f"HTTP: {summary['listing_http_attempts']}/{summary['listing_http_limit']} listing attempts + {http.requests}/40 detail attempts. Duration {summary['seconds']} seconds.",'','## Limitations','']+['- '+c for c in summary['caveats']]
  (output/'REPORT.md').write_text('\n'.join(lines)+'\n')
  # Materialize the actual restored scoring/frontend path, with explicit

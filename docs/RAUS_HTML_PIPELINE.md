@@ -69,7 +69,7 @@ Pages scorer retains its existing day/price presentation order.
   range is displayed as a range.
 - Reapply the same gate after legacy normalization/enrichment and scoring so
   promotional “free” text or a student price cannot reappear as public admission.
-  Listing text cannot assign ticket inventory. Unsampled rows do not publish.
+  Listing text cannot assign ticket inventory. Unsampled rows do not publish. The Raus ≤€20 metric counts only matched ordinary prices; student-only and UNKNOWN admission never inflate it.
   Generic recovery cannot reintroduce Raus rows or repeatedly probe a denied host.
 
 These build-time gates do not add a browser-side automatic refresh or expiry
@@ -104,7 +104,7 @@ risk; this branch has not been merged into main.
 
 ## Fixtures and measured evidence
 
-All **245 local Python tests pass**, preserving the prior 205-test baseline. New
+All **246 local Python tests pass**, preserving the prior 205-test baseline. New
 tests cover card isolation, deterministic aliases/offers/order, missing-venue
 fallback, wrong city/identity/date/time, multiple performances, conditional/student
 prices, offer/observation expiry, negative statuses and bounded transport behavior.

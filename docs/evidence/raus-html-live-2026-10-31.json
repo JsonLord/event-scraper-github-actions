@@ -1,7 +1,7 @@
 {
   "review_date_berlin": "2026-10-31",
   "scope": "Existing fixtures and bounded live policy checks; no live listing/detail DOM qualified.",
-  "local_tests_passed": 245,
+  "local_tests_passed": 246,
   "runs": [
     {
       "label": "initial_live_policy",
