@@ -54,11 +54,12 @@ def sanitized(value):
 
 
 class HTTP:
- def __init__(self,limit,deadline,byte_limit=2_000_000):
+ def __init__(self,limit,deadline,byte_limit=2_000_000,browser_headers=False,preserve_cookies=False):
   self.limit=limit;self.deadline=deadline;self.byte_limit=byte_limit
   self.requests=0;self.bytes=0;self.calls=[];self.robots={};self.aliases={};self.blocked=set();self.documents={};self.reason='not_attempted'
   self.robot_evidence={}
   self.session=requests.Session()
+  self.browser_headers=browser_headers;self.preserve_cookies=preserve_cookies
  def get(self,url,robots=False):
   while public(url):
    if self.requests>=self.limit:self.reason='http_budget';return None
@@ -66,8 +67,10 @@ class HTTP:
    if urlsplit(url).netloc in self.blocked:self.reason='host_blocked_cached';return None
    self.requests+=1;start=time.monotonic();call=dict(url=url,operation='robots' if robots else 'page',http_status=None)
    try:
-    self.session.cookies.clear()
-    with self.session.get(url,headers={'User-Agent':AGENT,'Accept':'text/html,text/plain,application/json'},timeout=(8,12),allow_redirects=False,stream=True) as r:
+    if not self.preserve_cookies:self.session.cookies.clear()
+    headers=dict(scraper.BROWSER_HEADERS) if self.browser_headers else {'Accept':'text/html,text/plain,application/json'}
+    headers['User-Agent']=AGENT
+    with self.session.get(url,headers=headers,timeout=(8,12),allow_redirects=False,stream=True) as r:
      call['http_status']=r.status_code
      if r.status_code in (403,429):self.blocked.add(urlsplit(url).netloc);self.reason='http_'+str(r.status_code);return None
      if r.status_code in (301,302,303,307,308):
@@ -127,7 +130,8 @@ class HTTP:
 def listing_worker(task):
  sources,stamp,deadline,start,end_string=task;now=datetime.fromisoformat(stamp);day=datetime.fromisoformat(start).date();end=datetime.fromisoformat(end_string).date()
  capacity=20 if any(s.get('date_horizon') for s in sources) else min(4*len(sources),16)
- http=HTTP(capacity,deadline,2_000_000*len(sources));reports=[]
+ raus_only=all(s['name']=='rausgegangen_de' for s in sources)
+ http=HTTP(capacity,deadline,2_000_000*len(sources),browser_headers=raus_only,preserve_cookies=raus_only);reports=[]
  scraper.fetch_plain=http.plain
  scraper.fetch_jina_html=lambda *a,**k:None
  scraper.render_with_cloakbrowser=lambda *a,**k:None
@@ -157,11 +161,15 @@ def canonical(url,http):
  return urlunsplit((q.scheme,q.netloc,p.path.rstrip('/'),p.query,''))
 
 
-def sample_one(event,http):
+def sample_one(event,http,observed_at=None):
  url=event['url'];doc=http.fetch(url)
  result={k:event.get(k) for k in ('title','date','time','venue','url')};result.update(matched=False,outcome=http.reason)
  if not doc:return result
  final,html=doc;result.update(final_url=final,http_success=True,outcome='no_matching_structured_event')
+ from scripts.raus_html import is_raus_record,match_detail
+ if is_raus_record(event):
+  observation=match_detail(event,html,final,observed_at or datetime.now(timezone.utc).isoformat())
+  return dict(result,**observation)
  from scripts.raus_selective import detail_candidates
  for candidate in detail_candidates(html,final):
   if not event.get('time') or (event.get('date'),event.get('time'),folded(event.get('title','')))!=(candidate.get('date'),candidate.get('time'),folded(candidate.get('title',''))):continue
@@ -250,16 +258,18 @@ def main():
  local=now.astimezone(ZoneInfo('Europe/Berlin'))
  def eligible(e):
   return e.get('has_detail_link') and e.get('time') and (e['date']>local.date().isoformat() or (e['date']==local.date().isoformat() and e['time']>local.strftime('%H:%M'))) and not re.search(r'/(?:login|checkout|cart|account|webticket)(?:/|$)',urlsplit(e['url']).path,re.I)
- queues={r['name']:sorted([e for e in r['events'] if eligible(e)],key=lambda e:(e['date'],e.get('time',''),e['title'])) for r in results}
+ from scripts.raus_html import sort_key as raus_sort_key
+ queues={r['name']:sorted([e for e in r['events'] if eligible(e)],key=raus_sort_key if r['name']=='rausgegangen_de' else lambda e:(e['date'],e.get('time',''),e['title'])) for r in results}
  focus=[r for r in results if r['name'] in ('rausgegangen_de','stadtmuseum','volksbuehne')]
  others=[r for r in results if r not in focus]
  for group in (focus,others):
-  for round_number in range(2):
+  for round_number in range(6 if group is focus else 2):
    for report in group:
+    if round_number>=2 and report['name']!='rausgegangen_de':continue
     queue=queues[report['name']]
     if not queue:continue
     if http.requests>=40 or time.monotonic()+20>deadline:break
-    report['detail_samples'].append(sample_one(queue.pop(0),http))
+    report['detail_samples'].append(sample_one(queue.pop(0),http,now.isoformat()))
  for report in results:
   report['exact_sample_matches']=sum(s['matched'] for s in report['detail_samples']);report['sampled_occurrences']=len(report['detail_samples'])
   report['conclusion']='supported_sample' if report['exact_sample_matches'] else 'candidates_only' if report['window_occurrences'] else report['outcome']
@@ -268,7 +278,7 @@ def main():
               generated_at=now.isoformat(),window_start=day.isoformat(),window_end=end.isoformat(),environment='GitHub Actions' if os.getenv('GITHUB_ACTIONS') else 'cloud executor',
               sources=results,listing_http_attempts=sum(s['requests'] for s in states),listing_http_limit=sum(s['capacity'] for s in states),detail_http_attempts=http.requests,detail_http_limit=40,
               response_bytes=sum(s['bytes'] for s in states)+http.bytes,seconds=round(time.monotonic()-start,3),tinyfish_calls=len(provider_diagnostics['provider_calls']),tinyfish=provider_diagnostics,robots_evidence=http.robot_evidence,other_provider_calls=0,browser_calls=browser_diagnostics['navigations'],browser=browser_diagnostics,production_data_unchanged=True,
-              caveats=['Direct HTTP for all sources; optional free Fetch/Search allowlisted to Raus destinations only.','Source-adapter repair and Raus detail matching do not qualify the complete corpus.','Counts are date-window candidates, not guaranteed upcoming verified events.','At most two occurrence samples per source; exact matches never imply all source records are verified.','Unknown prices/inventory remain unsupported; no Community/newsletter eligibility is asserted.'],
+              caveats=['Direct HTTP for all sources; optional free Fetch/Search allowlisted to Raus destinations only.','Source-adapter repair and Raus detail matching do not qualify the complete corpus.','Counts are date-window candidates, not guaranteed upcoming verified events.','At most six Raus and two other occurrence samples per source; every published Raus row requires its own fresh exact match.','Unknown prices/inventory remain unsupported; no Community/newsletter eligibility is asserted.'],
               calls=[c for s in states for c in s['calls']]+http.calls)
  (output/'results.json').write_text(json.dumps(sanitized(summary),ensure_ascii=False,indent=2)+'\n')
  for r in results:(output/(r['name']+'.json')).write_text(json.dumps(sanitized(dict(source=r['url'],events=r['events'],samples=r['detail_samples'])),ensure_ascii=False,indent=2)+'\n')
@@ -281,11 +291,16 @@ def main():
  # Materialize the actual restored scoring/frontend path, with explicit
  # qualification labels. Never promote a listing-only zero as validated free.
  from scripts.score_events import score_and_filter_events
+ from scripts.raus_html import is_raus_record,publication_gate,identity
  from copy import deepcopy
+ raus_observations={identity(s):s for report in results for s in report['detail_samples'] if s.get('matched')}
  rows=[];unsupported_free=0
  for report in results:
   for original in report['events']:
    event=deepcopy(original)
+   if is_raus_record(event):
+    event=publication_gate(event,raus_observations.get(identity(event)),now,day,end)
+    if event is None:continue
    matches,negative=publication_observations(event,report['detail_samples'])
    # Neither listing warnings nor exact destination warnings may be erased.
    if negative:
@@ -299,14 +314,31 @@ def main():
    event.update(ticket_status='unknown')
    rows.append(event)
  published=score_and_filter_events(rows,20,today=local.date())
+ gated=[]
  for event in published:
+  if is_raus_record(event):
+   event=publication_gate(event,raus_observations.get(identity(event)),now,day,end)
+   if event is not None:
+    event.pop('_qualification_free_proven',None)
+    gated.append(event)
+   continue
   if event.get('price')==0 and not event.pop('_qualification_free_proven',False):
    event.update(price=None,price_min=None,price_max=None,free_admission_confirmed=False,price_status='unknown',offers=[])
   event.pop('_qualification_free_proven',None)
   event['price_label']='Free · matched structured offer' if event.get('price')==0 else f"€{event['price']:g} · listing estimate" if event.get('price') is not None else 'Check admission on site'
   event['ticket_status']='unknown'
+  gated.append(event)
+ published=gated
  from scripts.score_events import day_sort_key
  published.sort(key=day_sort_key)
+ raus_rows=[e for e in published if is_raus_record(e)]
+ summary['raus_publication']=dict(candidate_occurrences=sum(r['window_occurrences'] for r in results if r['name']=='rausgegangen_de'),
+   exact_matches=sum(s['matched'] for r in results if r['name']=='rausgegangen_de' for s in r['detail_samples']),
+   final_publishable=len(raus_rows),verified_source_coverage=bool(raus_rows),
+   exact_publication_coverage=1.0 if raus_rows else None)
+ lines+=['','## Raus publication gates','',json.dumps(summary['raus_publication'],sort_keys=True)]
+ (output/'results.json').write_text(json.dumps(sanitized(summary),ensure_ascii=False,indent=2)+'\n')
+ (output/'REPORT.md').write_text('\n'.join(lines)+'\n')
  site=output/'site';site.mkdir()
  payload=dict(count=len(published),generated_at=now.isoformat(),events=published,qualification_only=True,source_commit=summary['commit'])
  (site/'events_scored.json').write_text(json.dumps(sanitized(payload),ensure_ascii=False,indent=2)+'\n')

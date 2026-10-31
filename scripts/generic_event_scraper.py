@@ -963,6 +963,9 @@ def scrape_document(html: str, url: str, label: str) -> List[Dict[str, Any]]:
     page whose JSON-LD described four events never had its remaining fifty
     cards scanned.
     """
+    from scripts.raus_html import is_listing, parse_listing
+    if is_listing(url):
+        return parse_listing(html, url)
     from scripts.official_source_adapters import official_programme_cards
     adapted=official_programme_cards(html,url)
     if adapted is not None:
@@ -1177,6 +1180,12 @@ def scrape_date_horizon(url: str, days: int, start_day: Optional[date] = None) -
 
 
 def scrape(url: str) -> List[Dict[str, Any]]:
+    from scripts.raus_html import is_listing, parse_listing
+    if is_listing(url):
+        # The production CLI supplies the bounded robots-aware direct pipeline.
+        # Staging supplies its shared bounded fetch_plain. No legacy escalation.
+        html = fetch_plain(url)
+        return parse_listing(html, url) if html else []
     html = fetch_plain(url)
     if html and not is_bot_challenge(html):
         events = scrape_document(html, url, "plain HTML")
@@ -1248,20 +1257,39 @@ def main():
 
     args = parser.parse_args()
 
+    from scripts.raus_html import is_listing, is_raus_record, direct_pipeline, direct_http, publication_gate, identity, sort_key
+    from datetime import timezone
+    window_start, window_end = scrape_window(args.date_days)
+    raus_diagnostics = None
+    raus_http = None
+    observed_now = datetime.now(timezone.utc)
+    if is_listing(args.url):
+        from scripts.raus_html import BERLIN
+        window_start = observed_now.astimezone(BERLIN).date()
+        window_end = window_start + timedelta(days=max(0,min(args.date_days,7)))
     try:
-        events = (scrape_date_horizon(args.url, args.date_days)
-                  if args.date_horizon else scrape(args.url))
+        if is_listing(args.url):
+            raus_http = direct_http()
+            events, raus_diagnostics = direct_pipeline(args.url, observed_now, window_start,
+                window_end, http=raus_http, max_price=args.price_max)
+        else:
+            events = (scrape_date_horizon(args.url, args.date_days)
+                      if args.date_horizon else scrape(args.url))
     except Exception as e:
         logger.error(f"Scraping failed: {e}")
         events = []
 
-    if args.price_enrich_limit > 0 and events:
+    if not is_listing(args.url):
+        # A different source pointing at Raus must not bypass its detail gate
+        # or spend unrestricted legacy price-enrichment requests on that host.
+        events = [e for e in events if not is_raus_record(e)]
+
+    if args.price_enrich_limit > 0 and events and not is_listing(args.url):
         missing = sum(1 for e in events if e.get("price") is None)
         enrich_missing_prices(events, max_fetches=args.price_enrich_limit)
         found = missing - sum(1 for e in events if e.get("price") is None)
         logger.info(f"Price enrichment: found a price for {found}/{missing} previously unpriced events")
 
-    window_start, window_end = scrape_window(args.date_days)
     kept, rejected = validate_events(
         events,
         source_url=args.url,
@@ -1270,6 +1298,12 @@ def main():
         max_price=args.price_max,
     )
     filtered = dedupe_events(kept)
+    if raus_diagnostics is not None:
+        observations = {identity(o):o for o in raus_diagnostics['observations'] if o.get('matched')}
+        filtered = [accepted for event in filtered if (accepted := publication_gate(event,
+            observations.get(identity(event)), observed_now, window_start, window_end, args.price_max))]
+        filtered.sort(key=sort_key)
+        raus_diagnostics['publishable'] = len(filtered)
     logger.info(
         f"{len(filtered)} events kept for {window_start}..{window_end} "
         f"({rejected} rejected as unusable or out of window)"
@@ -1278,7 +1312,8 @@ def main():
     if args.save_html:
         html_output = args.html_output or "data/html/generic.html"
         os.makedirs(os.path.dirname(html_output), exist_ok=True)
-        snapshot = fetch_plain(args.url) or ""
+        snapshot = (raus_http.documents.get(args.url, ('',''))[1] if raus_http is not None
+                    else fetch_plain(args.url) or "")
         with open(html_output, "w", encoding="utf-8") as f:
             f.write(snapshot)
 
@@ -1290,6 +1325,10 @@ def main():
         "window_end": window_end.isoformat(),
         "events": filtered,
     }
+    if raus_diagnostics is not None:
+        from scripts.qualify_restored_branch import sanitized
+        output['raus_qualification'] = sanitized(dict(raus_diagnostics,
+            http_calls=raus_http.calls, robots_evidence=raus_http.robot_evidence))
 
     os.makedirs(os.path.dirname(args.output) or ".", exist_ok=True)
     with open(args.output, "w", encoding="utf-8") as f:

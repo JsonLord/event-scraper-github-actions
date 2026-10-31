@@ -1,0 +1,124 @@
+{
+  "review_date_berlin": "2026-10-31",
+  "scope": "Existing fixtures and bounded live policy checks; no live listing/detail DOM qualified.",
+  "local_tests_passed": 245,
+  "runs": [
+    {
+      "label": "initial_live_policy",
+      "evidence": {
+        "observed_at": "2026-10-30T23:06:17.995895+00:00",
+        "listing_url": "https://rausgegangen.de/en/berlin/eventsbydate/?geospatial_query_type=CITY&lat=52.5&lng=13.405&city=berlin&active_city_name=Berlin&start_date=2026-10-31&end_date=2026-11-07",
+        "received": false,
+        "outcome": "robots_denied",
+        "calls": [
+          {
+            "url": "https://rausgegangen.de/robots.txt",
+            "operation": "robots",
+            "http_status": 200,
+            "seconds": 1.31,
+            "outcome": "ok"
+          }
+        ],
+        "robots_evidence": {
+          "https://rausgegangen.de": {
+            "url": "https://rausgegangen.de/robots.txt",
+            "sha256": "5f7beefec6a2f04e6adaa2d3607ae2154d4e7820caa55c1ef202f0e10734b99b",
+            "policy_excerpt": "# Search engines, AI crawlers/assistants, link-preview bots and the SEO tools we use are\n# allowed; every other crawler (scrapers, unknown bots) is blocked via \"*\".\n\nUser-agent: Googlebot\nUser-agent: Googlebot-Image\nUser-agent: Googlebot-News\nUser-agent: Googlebot-Video\nUser-agent: Storebot-Google\nUser-agent: Google-InspectionTool\nUser-agent: GoogleOther\nUser-agent: Google-Extended\nUser-agent: AdsBot-Google\nUser-agent: AdsBot-Google-Mobile\nUser-agent: Mediapartners-Google\nUser-agent: Bingbot\nUser-agent: DuckDuckBot\nUser-agent: DuckAssistBot\nUser-agent: Applebot\nUser-agent: Applebot-Extended\nUser-agent: Qwantbot\nUser-agent: YandexBot\nUser-agent: GPTBot\nUser-agent: OAI-SearchBot\nUser-agent: ChatGPT-User\nUser-agent: Claude-SearchBot\nUser-agent: Claude-User\nUser-agent: anthropic-ai\nUser-agent: PerplexityBot\nUser-agent: Perplexity-User\nUser-agent: CCBot\nUser-agent: Meta-ExternalAgent\nUser-agent: Meta-ExternalFetcher\nUser-agent: Amazonbot\nUser-agent: Bytespider\nUser-agent: cohere-ai\nUser-agent: MistralAI-User\nUser-agent: YouBot\nUser-agent: facebookexternalhit\nUser-agent: Facebot\nUser-agent: Twitterbot\nUser-agent: LinkedInBot\nUser-agent: Slackbot\nUser-agent: Slackbot-LinkExpanding\nUser-agent: WhatsApp\nUser-agent: TelegramBot\nUser-agent: Discordbot\nUser-agent: Pinterestbot\nUser-agent: AhrefsBot\nUser-agent: AhrefsSiteAudit\nUser-agent: SemrushBot\nUser-agent: SiteAuditBot\nUser-agent: SISTRIX\nUser-agent: rogerbot\nUser-agent: dotbot\nUser-agent: MJ12bot\nUser-agent: Screaming Frog SEO Spider\nDisallow: /*/report/\n\nUser-agent: ClaudeBot\nCrawl-delay: 10\nDisallow: /login/\nDisallow: /*/login/\nDisallow: /*/report/\n\nUser-agent: *\nDisallow: /\n\nSitemap: https://rausgegangen.de/sitemap.xml\n",
+            "agent": "BerlinEventEvidence/1.0"
+          }
+        }
+      }
+    },
+    {
+      "label": "initial_pipeline_probe",
+      "evidence": {
+        "observed_at": "2026-10-31T10:03:35.449065+00:00",
+        "window_start": "2026-10-31",
+        "window_end": "2026-11-07",
+        "events": [],
+        "qualification": {
+          "listing_received": false,
+          "listing_outcome": "robots_denied",
+          "candidates": 0,
+          "attempted_details": 0,
+          "exact_matches": 0,
+          "publishable": 0,
+          "detail_limit": 6,
+          "observations": []
+        },
+        "http_calls": [
+          {
+            "url": "https://rausgegangen.de/robots.txt",
+            "operation": "robots",
+            "http_status": 200,
+            "seconds": 1.301,
+            "outcome": "ok"
+          }
+        ],
+        "robots_evidence": {
+          "https://rausgegangen.de": {
+            "url": "https://rausgegangen.de/robots.txt",
+            "sha256": "5f7beefec6a2f04e6adaa2d3607ae2154d4e7820caa55c1ef202f0e10734b99b",
+            "policy_excerpt": "# Search engines, AI crawlers/assistants, link-preview bots and the SEO tools we use are\n# allowed; every other crawler (scrapers, unknown bots) is blocked via \"*\".\n\nUser-agent: Googlebot\nUser-agent: Googlebot-Image\nUser-agent: Googlebot-News\nUser-agent: Googlebot-Video\nUser-agent: Storebot-Google\nUser-agent: Google-InspectionTool\nUser-agent: GoogleOther\nUser-agent: Google-Extended\nUser-agent: AdsBot-Google\nUser-agent: AdsBot-Google-Mobile\nUser-agent: Mediapartners-Google\nUser-agent: Bingbot\nUser-agent: DuckDuckBot\nUser-agent: DuckAssistBot\nUser-agent: Applebot\nUser-agent: Applebot-Extended\nUser-agent: Qwantbot\nUser-agent: YandexBot\nUser-agent: GPTBot\nUser-agent: OAI-SearchBot\nUser-agent: ChatGPT-User\nUser-agent: Claude-SearchBot\nUser-agent: Claude-User\nUser-agent: anthropic-ai\nUser-agent: PerplexityBot\nUser-agent: Perplexity-User\nUser-agent: CCBot\nUser-agent: Meta-ExternalAgent\nUser-agent: Meta-ExternalFetcher\nUser-agent: Amazonbot\nUser-agent: Bytespider\nUser-agent: cohere-ai\nUser-agent: MistralAI-User\nUser-agent: YouBot\nUser-agent: facebookexternalhit\nUser-agent: Facebot\nUser-agent: Twitterbot\nUser-agent: LinkedInBot\nUser-agent: Slackbot\nUser-agent: Slackbot-LinkExpanding\nUser-agent: WhatsApp\nUser-agent: TelegramBot\nUser-agent: Discordbot\nUser-agent: Pinterestbot\nUser-agent: AhrefsBot\nUser-agent: AhrefsSiteAudit\nUser-agent: SemrushBot\nUser-agent: SiteAuditBot\nUser-agent: SISTRIX\nUser-agent: rogerbot\nUser-agent: dotbot\nUser-agent: MJ12bot\nUser-agent: Screaming Frog SEO Spider\nDisallow: /*/report/\n\nUser-agent: ClaudeBot\nCrawl-delay: 10\nDisallow: /login/\nDisallow: /*/login/\nDisallow: /*/report/\n\nUser-agent: *\nDisallow: /\n\nSitemap: https://rausgegangen.de/sitemap.xml\n",
+            "agent": "BerlinEventEvidence/1.0"
+          }
+        },
+        "http_limit": 10,
+        "detail_limit": 6,
+        "tinyfish_calls": 0,
+        "browser_calls": 0,
+        "production_data_unchanged": true
+      }
+    },
+    {
+      "label": "main_style_pipeline_probe",
+      "evidence": {
+        "observed_at": "2026-10-31T10:09:01.662425+00:00",
+        "window_start": "2026-10-31",
+        "window_end": "2026-11-07",
+        "events": [],
+        "qualification": {
+          "listing_received": false,
+          "listing_outcome": "robots_denied",
+          "listing_discovery_success": false,
+          "listing_card_occurrences": 0,
+          "candidate_url_discovery_success": false,
+          "candidate_urls": 0,
+          "candidates": 0,
+          "attempted_details": 0,
+          "exact_matches": 0,
+          "publishable": 0,
+          "exact_match_rate": null,
+          "verified_source_presence": false,
+          "detail_limit": 6,
+          "observations": []
+        },
+        "http_calls": [
+          {
+            "url": "https://rausgegangen.de/robots.txt",
+            "operation": "robots",
+            "http_status": 200,
+            "seconds": 0.738,
+            "outcome": "ok"
+          }
+        ],
+        "robots_evidence": {
+          "https://rausgegangen.de": {
+            "url": "https://rausgegangen.de/robots.txt",
+            "sha256": "5f7beefec6a2f04e6adaa2d3607ae2154d4e7820caa55c1ef202f0e10734b99b",
+            "policy_excerpt": "# Search engines, AI crawlers/assistants, link-preview bots and the SEO tools we use are\n# allowed; every other crawler (scrapers, unknown bots) is blocked via \"*\".\n\nUser-agent: Googlebot\nUser-agent: Googlebot-Image\nUser-agent: Googlebot-News\nUser-agent: Googlebot-Video\nUser-agent: Storebot-Google\nUser-agent: Google-InspectionTool\nUser-agent: GoogleOther\nUser-agent: Google-Extended\nUser-agent: AdsBot-Google\nUser-agent: AdsBot-Google-Mobile\nUser-agent: Mediapartners-Google\nUser-agent: Bingbot\nUser-agent: DuckDuckBot\nUser-agent: DuckAssistBot\nUser-agent: Applebot\nUser-agent: Applebot-Extended\nUser-agent: Qwantbot\nUser-agent: YandexBot\nUser-agent: GPTBot\nUser-agent: OAI-SearchBot\nUser-agent: ChatGPT-User\nUser-agent: Claude-SearchBot\nUser-agent: Claude-User\nUser-agent: anthropic-ai\nUser-agent: PerplexityBot\nUser-agent: Perplexity-User\nUser-agent: CCBot\nUser-agent: Meta-ExternalAgent\nUser-agent: Meta-ExternalFetcher\nUser-agent: Amazonbot\nUser-agent: Bytespider\nUser-agent: cohere-ai\nUser-agent: MistralAI-User\nUser-agent: YouBot\nUser-agent: facebookexternalhit\nUser-agent: Facebot\nUser-agent: Twitterbot\nUser-agent: LinkedInBot\nUser-agent: Slackbot\nUser-agent: Slackbot-LinkExpanding\nUser-agent: WhatsApp\nUser-agent: TelegramBot\nUser-agent: Discordbot\nUser-agent: Pinterestbot\nUser-agent: AhrefsBot\nUser-agent: AhrefsSiteAudit\nUser-agent: SemrushBot\nUser-agent: SiteAuditBot\nUser-agent: SISTRIX\nUser-agent: rogerbot\nUser-agent: dotbot\nUser-agent: MJ12bot\nUser-agent: Screaming Frog SEO Spider\nDisallow: /*/report/\n\nUser-agent: ClaudeBot\nCrawl-delay: 10\nDisallow: /login/\nDisallow: /*/login/\nDisallow: /*/report/\n\nUser-agent: *\nDisallow: /\n\nSitemap: https://rausgegangen.de/sitemap.xml\n",
+            "agent": "BerlinEventEvidence/1.0"
+          }
+        },
+        "http_limit": 10,
+        "detail_limit": 6,
+        "tinyfish_calls": 0,
+        "browser_calls": 0,
+        "production_data_unchanged": true
+      }
+    }
+  ],
+  "production_datasets_changed": false,
+  "pages_deployed": false,
+  "daily_schedule_activated": false
+}

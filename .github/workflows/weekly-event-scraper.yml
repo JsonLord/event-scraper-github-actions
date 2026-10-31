@@ -208,8 +208,8 @@ jobs:
       # Sites without placeholders are unaffected.
       - name: Resolve dynamic dates in URL
         run: |
-          START_DATE="$(date -u +%Y-%m-%d)"
-          END_DATE="$(date -u -d '+7 days' +%Y-%m-%d)"
+          START_DATE="$(TZ=Europe/Berlin date +%Y-%m-%d)"
+          END_DATE="$(TZ=Europe/Berlin date -d '+7 days' +%Y-%m-%d)"
           RESOLVED="${TARGET_URL}"
           RESOLVED="${RESOLVED//__START_DATE__/${START_DATE}}"
           RESOLVED="${RESOLVED//__END_DATE__/${END_DATE}}"

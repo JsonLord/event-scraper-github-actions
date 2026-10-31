@@ -2,6 +2,11 @@ name: Restored branch read-only website qualification
 on:
   workflow_dispatch:
     inputs:
+      scope:
+        description: 'All-source preview, or only the production Raus direct-HTML path (never deploys)'
+        type: choice
+        options: [all, raus_direct]
+        default: all
       publish:
         description: 'Explicitly deploy this restored branch review build to live Pages'
         type: boolean
@@ -67,8 +72,17 @@ jobs:
           QUALIFY_RAUS_BROWSER: ${{ inputs.raus_browser }}
           QUALIFY_WINDOW_START: ${{ inputs.window_start }}
           QUALIFY_WINDOW_END: ${{ inputs.window_end }}
+          QUALIFY_SCOPE: ${{ inputs.scope }}
         run: |
           EXTRA=()
+          if [ "$QUALIFY_SCOPE" = "raus_direct" ]; then
+            if [ -n "$QUALIFY_WINDOW_START" ]; then EXTRA+=(--window-start "$QUALIFY_WINDOW_START"); fi
+            if [ -n "$QUALIFY_WINDOW_END" ]; then EXTRA+=(--window-end "$QUALIFY_WINDOW_END"); fi
+            "$RUNNER_TEMP/qualification-venv/bin/python" scripts/qualify_raus_html.py --output "$RUNNER_TEMP/restored-qualification" "${EXTRA[@]}"
+            cat "$RUNNER_TEMP/restored-qualification/REPORT.md" >> "$GITHUB_STEP_SUMMARY"
+            test -z "$(git status --porcelain)"
+            exit 0
+          fi
           if [ "$QUALIFY_RAUS_TINYFISH" = "true" ]; then EXTRA+=(--raus-tinyfish); fi
           if [ -n "$QUALIFY_RAUS_BROWSER" ]; then EXTRA+=(--raus-browser "$QUALIFY_RAUS_BROWSER"); fi
           if [ -n "$QUALIFY_WINDOW_START" ]; then EXTRA+=(--window-start "$QUALIFY_WINDOW_START"); fi
@@ -85,7 +99,7 @@ jobs:
           include-hidden-files: true
   deploy:
     needs: qualify
-    if: ${{ github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/codex/restore-before-tinyfish-search' && inputs.publish == true }}
+    if: ${{ github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/codex/restore-before-tinyfish-search' && inputs.scope != 'raus_direct' && inputs.publish == true }}
     permissions:
       contents: read
       pages: write

@@ -1,5 +1,10 @@
 # Rausgegangen: access, extraction and browser analysis
 
+Follow-up, 31 October: [the direct HTML pipeline implementation and qualification](RAUS_HTML_PIPELINE.md)
+now records the dedicated parser, structured detail/publication gates, additional
+live policy requests and the recovered main-artifact limitation. The earlier
+measurements below retain their original dates and scopes.
+
 Evidence reviewed: **29 October 2026**, Europe/Berlin. Working branch:
 `codex/restore-before-tinyfish-search`; published code snapshot:
 `4e508a7d5ce7e804ce9a5daccf4a3bd5f3a338e4`.
