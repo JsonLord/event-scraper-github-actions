@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Past weeks — Berlin community picks</title>
+<meta name="description" content="Every previously published weekly community issue.">
+<!-- Relative paths: this page is served from the project-site base path. -->
+<link rel="stylesheet" href="../assets/community.css">
+</head>
+<body>
+<a class="skip-link" href="#weeks">Skip to the list</a>
+
+<header class="hero">
+  <div class="hero-inner">
+    <p class="eyebrow">Berlin community picks</p>
+    <h1>Past weeks</h1>
+    <p class="hero-sub">Every issue that has been approved and published. Issues are immutable once published.</p>
+    <nav class="hero-nav" aria-label="Navigation">
+      <a href="../">This week</a>
+      <a href="../../">Full event table</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <section class="section" id="weeks" aria-labelledby="weeks-heading">
+    <div class="section-head">
+      <h2 id="weeks-heading">Published issues</h2>
+      <p class="section-note" id="weeks-count"></p>
+    </div>
+    <div id="weeks-list" class="status"><p class="status-loading">Loading…</p></div>
+  </section>
+</main>
+
+<footer class="site-footer">
+  <div class="footer-inner">
+    <p id="archive-freshness">Archive index loaded from archive/index.json.</p>
+    <p>
+      <a href="../">This week</a>
+      <a href="index.json">archive/index.json</a>
+    </p>
+  </div>
+</footer>
+
+<script>
+(function () {
+  "use strict";
+
+  function el(tag, className, text) {
+    var node = document.createElement(tag);
+    if (className) node.className = className;
+    if (text !== undefined && text !== null) node.textContent = String(text);
+    return node;
+  }
+
+  var DAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+  var MONTH_NAMES = ["January", "February", "March", "April", "May", "June",
+                     "July", "August", "September", "October", "November", "December"];
+
+  function parseIsoDate(value) {
+    var m = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(String(value || "").trim());
+    if (!m) return null;
+    return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+  }
+
+  function fmtRange(start, end) {
+    var a = parseIsoDate(start), b = parseIsoDate(end);
+    if (!a || !b) return String(start || "");
+    return a.getDate() + ". " + MONTH_NAMES[a.getMonth()] + " " + a.getFullYear() +
+           " to " + b.getDate() + ". " + MONTH_NAMES[b.getMonth()] + " " + b.getFullYear();
+  }
+
+  function render(index) {
+    var list = document.getElementById("weeks-list");
+    list.replaceChildren();
+    list.className = "";
+    var issues = (index.issues || []).filter(function (i) { return i && i.week_start; });
+    document.getElementById("weeks-count").textContent =
+      issues.length ? issues.length + (issues.length === 1 ? " issue" : " issues") : "";
+
+    if (!issues.length) {
+      list.className = "status";
+      list.appendChild(el("p", null, "No issues have been published yet."));
+      return;
+    }
+
+    var grid = el("div", "card-grid");
+    issues.forEach(function (issue) {
+      var card = el("article", "card");
+      var body = el("div", "card-body");
+      body.appendChild(el("p", "card-when", fmtRange(issue.week_start, issue.week_end)));
+      var title = el("h3", "card-title");
+      var link = document.createElement("a");
+      // The issue URL is stored relative to this page's directory.
+      link.href = String(issue.url || "").replace(/^\/+/, "");
+      link.textContent = issue.count + (issue.count === 1 ? " event" : " events");
+      title.appendChild(link);
+      body.appendChild(title);
+      if (issue.published_at) {
+        body.appendChild(el("span", "verified-note", "Published " + issue.published_at.slice(0, 10)));
+      }
+      card.appendChild(body);
+      grid.appendChild(card);
+    });
+    list.appendChild(grid);
+  }
+
+  fetch("index.json", { cache: "no-cache" })
+    .then(function (r) { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
+    .then(render)
+    .catch(function (err) {
+      var list = document.getElementById("weeks-list");
+      list.replaceChildren();
+      list.className = "status";
+      list.appendChild(el("p", "status-error", "Could not load the archive index (" + err.message + ")."));
+    });
+})();
+</script>
+</body>
+</html>

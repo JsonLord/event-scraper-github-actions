@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Berlin Community Picks — free and affordable events this week</title>
+<meta name="description" content="A weekly, hand-reviewed selection of free and affordable Berlin events, each confirmed on the organiser's own event page.">
+<!-- Relative paths throughout: the page is served from the project-site base
+     path /event-scraper-github-actions/community/, so an absolute /assets/ URL
+     would resolve against the domain root and 404. -->
+<link rel="stylesheet" href="assets/community.css">
+</head>
+<body>
+<a class="skip-link" href="#selection">Skip to the events</a>
+
+<header class="hero">
+  <div class="hero-inner">
+    <p class="eyebrow">Berlin community picks</p>
+    <p class="week-line" id="week-range"></p>
+    <h1 id="week-heading">This week in Berlin</h1>
+    <p class="hero-sub" id="week-sub">A weekly hand-reviewed shortlist. Free and low-cost events, each checked on its organiser's own page.</p>
+    <nav class="hero-nav" aria-label="Event sections">
+      <a href="#free">Free this week</a>
+      <a href="#selection">Curated selection</a>
+      <a href="#categories">By category</a>
+      <a href="#affordable">Still affordable</a>
+    </nav>
+  </div>
+</header>
+
+<main id="main">
+  <div id="status" class="status" role="status" aria-live="polite">
+    <p class="status-loading">Loading this week's picks…</p>
+  </div>
+
+  <section id="empty" class="empty-state" hidden>
+    <h2 id="empty-heading">No approved issue for this week yet</h2>
+    <p id="empty-copy">
+      This page only ever shows events a human editor has approved for publication.
+      Candidates are not displayed here, so an empty week means the weekly review has
+      not been published yet — not that Berlin has nothing on.
+    </p>
+    <p class="empty-links">
+      <a href="../">See the full event table</a>
+      <a href="archive/">Browse past weeks</a>
+    </p>
+  </section>
+
+  <section id="free" class="section" hidden aria-labelledby="free-heading">
+    <div class="section-head">
+      <h2 id="free-heading">Free this week</h2>
+      <p class="section-note">Confirmed free entry. Some are donation-based and cost nothing to attend.</p>
+    </div>
+    <div class="card-grid" id="free-grid"></div>
+  </section>
+
+  <section id="selection" class="section" hidden aria-labelledby="selection-heading">
+    <div class="section-head">
+      <h2 id="selection-heading">Curated community selection</h2>
+      <p class="section-note">The editor's shortlist for this week, across the whole city.</p>
+    </div>
+    <div class="card-grid" id="selection-grid"></div>
+  </section>
+
+  <section id="categories" class="section" hidden aria-labelledby="categories-heading">
+    <div class="section-head">
+      <h2 id="categories-heading">By category</h2>
+      <p class="section-note">Pick a lane, or ignore them and scroll.</p>
+    </div>
+    <div id="category-groups"></div>
+  </section>
+
+  <section id="affordable" class="section" hidden aria-labelledby="affordable-heading">
+    <div class="section-head">
+      <h2 id="affordable-heading">Still affordable</h2>
+      <p class="section-note">Everything else on the list, at €15 or less.</p>
+    </div>
+    <div class="card-grid" id="affordable-grid"></div>
+  </section>
+</main>
+
+<footer class="site-footer">
+  <div class="footer-inner">
+    <p id="freshness">Data freshness unknown.</p>
+    <p>
+      Every event here was checked against its <strong>official event page</strong> before
+      publication. Prices are entry prices as stated by the organiser; fees, booking charges
+      and on-the-door increases are not included. Images remain the property of their
+      organisers and are linked from the event's own page, not copied.
+    </p>
+    <p>
+      <a href="../">Full Berlin event table</a>
+      <a href="archive/">Past weeks</a>
+      <a href="latest.json">latest.json</a>
+    </p>
+  </div>
+</footer>
+
+<noscript>
+  <p class="noscript">
+    This page builds itself from <code>latest.json</code> in the browser, so it needs
+    JavaScript. <a href="latest.json">Open the data directly</a> if you prefer.
+  </p>
+</noscript>
+
+<script src="assets/community.js" defer></script>
+</body>
+</html>

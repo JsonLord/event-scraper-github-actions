@@ -70,6 +70,13 @@ from event_utils import (  # noqa: E402
     title_looks_noisy,
     validate_events,
 )
+from image_utils import (  # noqa: E402
+    attach_image,
+    best_document_image,
+    card_image,
+    jsonld_image,
+    verify_event_images,
+)
 
 logging.basicConfig(
     level=os.environ.get("LOG_LEVEL", "INFO"),
@@ -129,6 +136,11 @@ MAX_EVENTS_PER_SOURCE = 400
 # and validation still do the real filtering afterwards.
 MAX_PRICE_ENRICH_FETCHES = 40
 
+# Image enrichment gets its own, smaller cap rather than sharing the price
+# budget: a source that never prices its events would otherwise spend the
+# whole allowance on price lookups and leave no posters found at all.
+MAX_IMAGE_ENRICH_FETCHES = 24
+
 EVENT_CLASS_HINTS = (
     "event", "teaser", "views-row", "card", "listing", "termin",
     "veranstaltung", "programme-item", "program-item", "spielplan",
@@ -183,6 +195,117 @@ def _best_detail_url(scopes, source_url: str) -> str:
 def is_bot_challenge(html: str) -> bool:
     head = html[:4000].lower()
     return any(marker in head for marker in BOT_CHALLENGE_MARKERS)
+
+
+def _attach_card_image(
+    event: Dict[str, Any], scopes, page_url: str, max_ancestors: int = 2
+) -> Dict[str, Any]:
+    """Give ``event`` the image from its own card, if the card carries one.
+
+    Card markup is a weak signal, so the widest scope searched is a couple of
+    ancestors - enough to reach the card wrapper that holds a sibling
+    ``<img>``, not enough to reach the page header where the logo lives.
+    """
+    if not isinstance(event, dict) or event.get("image_url"):
+        return event
+    if not isinstance(scopes, (list, tuple)):
+        scopes = [scopes]
+    try:
+        for scope in list(scopes)[:max_ancestors]:
+            image = card_image(scope, page_url) if scope is not None else ""
+            if image:
+                attach_image(event, image, "event_card_image", page_url)
+                return event
+        # Fall back to the page's own preview image only when the card said
+        # nothing - one document parse, not one per card.
+        root = scopes[0]
+        if root is not None:
+            while getattr(root, "parent", None) is not None:
+                root = root.parent
+            declared = best_document_image(str(root), page_url)
+            if declared:
+                attach_image(event, declared["url"], declared["source"], page_url)
+    except Exception:  # noqa: BLE001 - image extraction is decoration only
+        return event
+    return event
+
+
+def _attach_listing_images(
+    events: List[Dict[str, Any]], html: str, page_url: str
+) -> List[Dict[str, Any]]:
+    """Attach card artwork to rows from a dedicated listing parser.
+
+    Parsers such as ``raus_html.parse_listing`` select their own card
+    containers and return plain dicts, so the generic extractors' image hooks
+    never run against them. The anchor a card was built from is the row's own
+    event URL, which lets the image be recovered from the same document without
+    re-parsing the card selectors here.
+
+    Best-effort by design: a listing whose markup cannot be navigated simply
+    yields no images, and no row is affected in any other way.
+    """
+    if not events:
+        return events
+    try:
+        soup = BeautifulSoup(html, "lxml")
+        by_target: Dict[str, Any] = {}
+        for anchor in soup.find_all("a", href=True):
+            target = clean_url(urljoin(page_url, anchor["href"].strip()))
+            if target and target not in by_target:
+                by_target[target] = anchor
+        for event in events:
+            if not isinstance(event, dict) or event.get("image_url"):
+                continue
+            anchor = by_target.get(clean_url(str(event.get("url") or "")))
+            if anchor is None:
+                continue
+            card = anchor
+            for _ in range(4):
+                image = card_image(card, page_url)
+                if image:
+                    attach_image(event, image, "event_card_image", page_url)
+                    break
+                if card.parent is None or card.parent.name in ("body", "html"):
+                    break
+                card = card.parent
+    except Exception:  # noqa: BLE001 - image extraction is decoration only
+        return events
+    return events
+
+
+def _attach_document_images(
+    events: List[Dict[str, Any]], html: str, page_url: str
+) -> List[Dict[str, Any]]:
+    """Attach a card's image to an adapter-built row, matched by event link.
+
+    Used for the official programme adapters, which return rows whose ``url``
+    is the event's own page. Each row is matched back to the anchor that points
+    at it, and the image is read from that anchor's enclosing card - not from
+    the page header, where the site logo lives.
+    """
+    if not events:
+        return events
+    try:
+        soup = BeautifulSoup(html, "lxml")
+        anchors = soup.find_all("a", href=True)
+        for event in events:
+            if not isinstance(event, dict) or event.get("image_url"):
+                continue
+            wanted = clean_url(str(event.get("url") or ""))
+            if not wanted:
+                continue
+            for anchor in anchors:
+                if clean_url(urljoin(page_url, anchor["href"].strip())) != wanted:
+                    continue
+                image = card_image(anchor, page_url) or card_image(
+                    getattr(anchor, "parent", None), page_url
+                )
+                if image:
+                    attach_image(event, image, "event_card_image", page_url)
+                break
+    except Exception:  # noqa: BLE001 - image extraction is decoration only
+        return events
+    return events
 
 
 # One shared session per process, so the listing fetch and every detail-page
@@ -256,6 +379,10 @@ def _walk_jsonld_nodes(node: Any):
 def extract_jsonld_events(html: str, source_url: str) -> List[Dict[str, Any]]:
     soup = BeautifulSoup(html, "lxml")
     events = []
+    # The page-level fallback is the same for every node on the document, so
+    # resolve it at most once instead of rescanning the markup per event.
+    document_image: Optional[Dict[str, str]] = None
+    document_image_resolved = False
     for script in soup.find_all("script", type="application/ld+json"):
         raw = script.string or script.text
         if not raw:
@@ -282,7 +409,7 @@ def extract_jsonld_events(html: str, source_url: str) -> List[Dict[str, Any]]:
             prices = [o["amount_eur"] for o in offers if o.get("amount_eur") is not None]
             price = min(prices) if prices else None
 
-            events.append({
+            event = {
                 "title": clean_text(node.get("name")),
                 # schema.org dates arrive as "2026-8-29" or with a time and
                 # offset attached; publish a single zero-padded ISO form.
@@ -297,7 +424,21 @@ def extract_jsonld_events(html: str, source_url: str) -> List[Dict[str, Any]]:
                 "venue": clean_text(venue),
                 "location_city": clean_text((location.get('address') or {}).get('addressLocality','')) if isinstance(location,dict) and isinstance(location.get('address'),dict) else '',
                 "source_url": source_url,
-            })
+            }
+            # schema.org's own image claim is the strongest one available, and
+            # it is resolved against the event's canonical page, not the
+            # listing that carried the JSON-LD.
+            declared = jsonld_image(node)
+            if declared:
+                attach_image(event, declared, "jsonld_image", event["url"])
+            elif not document_image_resolved:
+                # Some publishers only declare the preview image on the page
+                # itself; the detail-page enrichment pass fills that in.
+                document_image_resolved = True
+                document_image = best_document_image(html, source_url)
+            if not declared and document_image:
+                attach_image(event, document_image["url"], document_image["source"], source_url)
+            events.append(event)
     return events
 
 
@@ -348,7 +489,7 @@ def extract_time_element_events(
         if title_looks_noisy(title):
             title = title_from_slug(urljoin(source_url, link["href"]) if link else "") or title
 
-        events.append({
+        event = {
             "title": clean_text(title, max_length=200),
             "date": iso,
             "time": parse_time(marker.get("datetime")) or parse_time(card_text),
@@ -358,7 +499,9 @@ def extract_time_element_events(
             "url": _best_detail_url([card, card.parent], source_url),
             "venue": "",
             "source_url": source_url,
-        })
+        }
+        _attach_card_image(event, card, source_url)
+        events.append(event)
         if len(events) >= max_events:
             break
     return events
@@ -458,7 +601,7 @@ def extract_calendar_events(
         scopes = [card, card.parent]
         event_url = _best_detail_url(scopes, source_url)
         title = _title_from_scopes(scopes, text, event_url)
-        events.append({
+        event = {
             "title": clean_text(title, max_length=200),
             "date": iso,
             "time": parse_time(text),
@@ -468,7 +611,9 @@ def extract_calendar_events(
             "url": event_url,
             "venue": "",
             "source_url": source_url,
-        })
+        }
+        _attach_card_image(event, scopes, source_url)
+        events.append(event)
     return events
 
 
@@ -605,7 +750,7 @@ def extract_block_events(
         scopes = [card, card.parent, getattr(card.parent, "parent", None)]
         event_url = _best_detail_url(scopes, source_url)
         title = _title_from_scopes(scopes, text, event_url)
-        events.append({
+        event = {
             "title": clean_text(title, max_length=200),
             "date": iso,
             "time": parse_time(text),
@@ -615,7 +760,9 @@ def extract_block_events(
             "url": event_url,
             "venue": "",
             "source_url": source_url,
-        })
+        }
+        _attach_card_image(event, scopes, source_url)
+        events.append(event)
     return events
 
 
@@ -722,7 +869,7 @@ def extract_heuristic_events(html: str, source_url: str, max_events: int = MAX_E
                     break
 
         description = clean_text(text, max_length=400)
-        events.append({
+        event = {
             "title": title[:200],
             "date": event_date or "",
             "time": parse_time(text),
@@ -735,7 +882,9 @@ def extract_heuristic_events(html: str, source_url: str, max_events: int = MAX_E
             # blank on nearly two thirds of published rows.
             "venue": "",
             "source_url": source_url,
-        })
+        }
+        _attach_card_image(event, search_scopes, source_url)
+        events.append(event)
     return events
 
 
@@ -965,10 +1114,17 @@ def scrape_document(html: str, url: str, label: str) -> List[Dict[str, Any]]:
     """
     from scripts.raus_html import is_listing, parse_listing
     if is_listing(url):
-        return parse_listing(html, url)
+        # Raus cards carry their artwork in the card itself, and the listing
+        # parser is the only thing that sees the right container, so the image
+        # is attached here rather than in a later pass over a different DOM.
+        return _attach_listing_images(parse_listing(html, url), html, url)
     from scripts.official_source_adapters import official_programme_cards
     adapted=official_programme_cards(html,url)
     if adapted is not None:
+        # The official programme adapters build their own card dictionaries, so
+        # the generic extractors' image hooks never see those cards. Recover the
+        # images from the same document here, keyed by each event's own URL.
+        _attach_document_images(adapted, html, url)
         return _merge(extract_jsonld_events(html,url),adapted)
     jsonld = extract_jsonld_events(html, url)
     timed = extract_time_element_events(html, url)
@@ -1041,6 +1197,49 @@ def _price_from_detail_page(html: str, url: str) -> Optional[float]:
             return node["price"]
     soup = BeautifulSoup(html, "lxml")
     return parse_price(_visible_text(soup))
+
+
+def _image_from_detail_page(html: str, url: str) -> Optional[Dict[str, str]]:
+    """The image one event page declares for itself, or None.
+
+    Read in the same order as the listing pass - schema.org first, then the
+    page's own Open Graph/Twitter preview - because a detail page usually has
+    both while the listing card often had neither.
+    """
+    for node in extract_jsonld_events(html, url):
+        if node.get("image_url"):
+            return {"url": node["image_url"], "source": node.get("image_source") or "jsonld_image"}
+    return best_document_image(html, url)
+
+
+def enrich_missing_images(
+    events: List[Dict[str, Any]],
+    max_fetches: int = MAX_IMAGE_ENRICH_FETCHES,
+    fetch=fetch_plain,
+) -> List[Dict[str, Any]]:
+    """Fill in an image for events whose card did not carry one.
+
+    Bounded like the price pass, and capped *separately*: a page that never
+    prices its events should not also cost the whole image budget. Events
+    already carrying an image from their card or JSON-LD are left untouched.
+    """
+    fetched = 0
+    for event in events:
+        if event.get("image_url"):
+            continue
+        url = event.get("url") or ""
+        if not url or url == event.get("source_url"):
+            continue
+        if fetched >= max_fetches:
+            break
+        fetched += 1
+        html = fetch(url)
+        if not html or is_bot_challenge(html):
+            continue
+        found = _image_from_detail_page(html, url)
+        if found:
+            attach_image(event, found["url"], found["source"], url)
+    return events
 
 
 def enrich_missing_prices(
@@ -1185,7 +1384,10 @@ def scrape(url: str) -> List[Dict[str, Any]]:
         # The production CLI supplies the bounded robots-aware direct pipeline.
         # Staging supplies its shared bounded fetch_plain. No legacy escalation.
         html = fetch_plain(url)
-        return parse_listing(html, url) if html else []
+        # Artwork is attached here too, so a staging/plain-fetch Raus listing
+        # carries the same image fields as one that went through the direct
+        # pipeline. Prices, dates and identities are untouched.
+        return _attach_listing_images(parse_listing(html, url), html, url) if html else []
     html = fetch_plain(url)
     if html and not is_bot_challenge(html):
         events = scrape_document(html, url, "plain HTML")
@@ -1254,6 +1456,21 @@ def main():
         help="Max per-event detail-page fetches for events with no listed price "
              f"(default {MAX_PRICE_ENRICH_FETCHES}; 0 disables)",
     )
+    parser.add_argument(
+        "--image-enrich-limit", type=int, default=MAX_IMAGE_ENRICH_FETCHES,
+        help="Max per-event detail-page fetches for events with no card image "
+             f"(default {MAX_IMAGE_ENRICH_FETCHES}; 0 disables)",
+    )
+    parser.add_argument(
+        "--validate-images", action="store_true",
+        help="Run bounded HTTP checks on discovered image URLs and record "
+             "image_verified/image_checked_at. Off by default: it costs one "
+             "request per image and the community pipeline validates instead.",
+    )
+    parser.add_argument(
+        "--image-check-limit", type=int, default=40,
+        help="Max image URLs to HTTP-check when --validate-images is set (default 40)",
+    )
 
     args = parser.parse_args()
 
@@ -1290,6 +1507,15 @@ def main():
         found = missing - sum(1 for e in events if e.get("price") is None)
         logger.info(f"Price enrichment: found a price for {found}/{missing} previously unpriced events")
 
+    # Image enrichment runs on the generic path only. A Raus listing gets its
+    # cards, identities and publication gate from the dedicated pipeline, and
+    # its window comes from the URL range rather than scrape_window(); fetching
+    # extra detail pages for it here would bypass both.
+    if args.image_enrich_limit > 0 and events and not is_listing(args.url):
+        missing = sum(1 for e in events if not e.get("image_url"))
+        enrich_missing_images(events, max_fetches=args.image_enrich_limit)
+        found = missing - sum(1 for e in events if not e.get("image_url"))
+        logger.info(f"Image enrichment: found an image for {found}/{missing} events without one")
     kept, rejected = validate_events(
         events,
         source_url=args.url,
@@ -1308,6 +1534,11 @@ def main():
         f"{len(filtered)} events kept for {window_start}..{window_end} "
         f"({rejected} rejected as unusable or out of window)"
     )
+
+    if args.validate_images and filtered:
+        verify_event_images(filtered, max_checks=args.image_check_limit)
+        verified = sum(1 for e in filtered if e.get("image_verified"))
+        logger.info(f"Image validation: {verified}/{len(filtered)} image URLs verified")
 
     if args.save_html:
         html_output = args.html_output or "data/html/generic.html"

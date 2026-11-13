@@ -18,21 +18,42 @@ This system scrapes event listings from various Berlin websites, filters for aff
 ```
 ├── .github/
 │   └── workflows/
-│       ├── weekly-event-scraper.yml # The scraper. Sundays, 5PM UTC
-│       └── jekyll-gh-pages.yml     # Rebuilds Pages when the data changes
+│       ├── weekly-event-scraper.yml    # The scraper. Sundays, 5PM UTC
+│       ├── jekyll-gh-pages.yml         # Rebuilds Pages when the data changes
+│       ├── community-prepare.yml       # Weekly community candidates (manual)
+│       └── community-promote.yml       # Publishes an approved community issue
 ├── scripts/
-│   ├── generic_event_scraper.py    # The scraper every source runs through
-│   ├── event_utils.py              # Date/price parsing, validation, dedupe
-│   ├── score_events.py             # Ranking, categorisation, price filter
-│   ├── recover_failed.py           # Second pass over sources that came back empty
-│   └── rausgegangen_scraper.py     # Site-specific scraper (unused by the matrix)
+│   ├── generic_event_scraper.py        # The scraper every source runs through
+│   ├── event_utils.py                  # Date/price parsing, validation, dedupe
+│   ├── image_utils.py                  # Optional event-image discovery + checks
+│   ├── score_events.py                 # Ranking, categorisation, price filter
+│   ├── recover_failed.py               # Second pass over sources that came back empty
+│   ├── ticket_evidence.py              # Occurrence-scoped price/ticket evidence
+│   ├── raus_html.py                    # Rausgegangen card + detail pipeline
+│   ├── raus_selective.py               # Selective-source qualification
+│   ├── raus_browser.py                 # Permission-gated browser rendering
+│   ├── tinyfish_client.py              # Redacted-URL search/fetch client
+│   ├── official_source_adapters.py     # Canonical official programme cards
+│   ├── qualify_*.py                    # Read-only source qualification tooling
+│   ├── community_common.py             # Community vocabulary, week maths, ids
+│   ├── community_select.py             # Community shortlist policy (not the personal one)
+│   ├── community_verify.py             # Official-page verification
+│   ├── community_issue.py              # Issue shape, publication rules, summary
+│   ├── community_prepare.py            # Candidate generation CLI
+│   ├── community_promote.py            # Approval gate and publication CLI
+│   ├── community_validate.py           # Schema + business-rule validation
+│   ├── build_pages_site.py             # Allowlisted Pages artifact assembler
+│   └── rausgegangen_scraper.py         # Site-specific scraper (unused by the matrix)
 ├── data/
-│   ├── events.json                 # Raw aggregate from the last run
-│   └── events_scored.json          # Ranked/filtered output the page shows
-├── docs/                           # GitHub Pages content (built each run)
-│   ├── index.html                  # Main events display
-│   └── events.json                 # Event data for frontend
-└── requirements.txt                # Python dependencies
+│   ├── events.json                     # Raw aggregate from the last run
+│   └── events_scored.json              # Ranked/filtered output the page shows
+├── community/                          # The weekly editorial handoff (see its README)
+│   ├── candidates/ reviewed/ approved/ # Weekly issue files
+│   ├── latest.json archive/ index.html # Public community page and its data
+│   └── schema/ assets/
+├── docs/                               # Intermediate build output for Pages
+├── _site/                              # The Pages artifact (built each run)
+└── requirements.txt                    # Python dependencies
 ```
 
 ## Workflows
@@ -55,8 +76,50 @@ A run refuses to publish an aggregate that has collapsed to under a quarter
 of the previous one, on the assumption that it was blocked rather than that
 Berlin ran out of events.
 
+### Community candidates (`community-prepare.yml`)
+Manual dispatch. Reads the latest persisted aggregate, builds the
+Monday–Sunday community issue, runs bounded official-page verification, and
+commits `community/candidates/<week>.json` plus a human review summary. It
+never writes a public file.
+
+### Community promotion (`community-promote.yml`)
+Manual dispatch. Reads `community/reviewed/<week>.json` — a decision per event
+id — checks every approved event against the publication rules, and writes
+`community/approved/<week>.json`, `latest.json` and the archive index. Nothing
+is published unless a human decision names it.
+
 ### Pages Rebuild (`jekyll-gh-pages.yml`)
-Not scheduled. Runs on push when the event data or the frontend changes.
+Not scheduled. Runs on push when the event data, the community issue or either
+frontend changes. Both this workflow and the weekly scraper assemble the
+artifact with `scripts/build_pages_site.py`, which publishes
+`/index.html` and `/community/` from an explicit allowlist and refuses to
+include candidate or reviewed files.
+
+## Two independent tracks
+
+The repository now carries two pipelines that share the scraper and nothing
+else:
+
+| | Personal event table | Community picks |
+| --- | --- | --- |
+| Page | `/` | `/community/` |
+| Data | `data/events_scored.json` | `community/latest.json` |
+| Policy | `scripts/score_events.py`, €20 cap, one reader's preferences | `scripts/community_select.py`, €15 cap, broad appeal |
+| Publication | Every scored event | Only events a human explicitly approved |
+
+They meet at exactly two points, both of which are pinned by tests in
+`tests/test_community_integration.py`:
+
+* **Price.** The scraping pipeline's evidence model uses `free` / `known` /
+  `range` / `unknown`; the community pipeline uses `confirmed_free` /
+  `confirmed_paid` / `donation_based` / `needs_verification` / `unknown`.
+  The vocabularies are disjoint, so `community_common.price_status_for()`
+  attributes a value to whichever model produced it. A `price: 0` that nothing
+  corroborates stays unpriced on both sides.
+* **Identity.** The scraping pipeline assigns `sha256:…` occurrence ids; the
+  community files require `ce-…`. `event_record()` accepts only a `ce-` id and
+  mints its own otherwise, because an approval names an id and the id must
+  mean the same thing in candidates, reviewed and approved files.
 
 ### Reading a run's per-source counts
 

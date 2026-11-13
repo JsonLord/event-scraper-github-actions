@@ -1,0 +1,424 @@
+/* Community picks - a poster-led card layout.
+ *
+ * Distinct from the main event table on purpose: that page is a sortable
+ * spreadsheet for one reader, this one is a browsable shortlist for a city.
+ * Plain CSS, no build step, no external font or asset, and no absolute URLs,
+ * so it works from the project-site base path and behind any CDN.
+ */
+
+:root {
+  color-scheme: light dark;
+
+  --ink: #14110f;
+  --ink-soft: #4a423d;
+  --ink-faint: #6f665f;
+  --paper: #fdfaf6;
+  --paper-raised: #ffffff;
+  --paper-sunk: #f4eee6;
+  --line: #e4dacd;
+  --line-strong: #c9bcaa;
+
+  /* A warm signal accent rather than a borrowed brand colour: this page has
+     no brand of its own and should not look like one it copied. */
+  --accent: #a83d18;
+  --accent-soft: #fbeee7;
+  --free: #1b6142;
+  --free-soft: #e8f4ed;
+  --donation: #5b3f91;
+  --donation-soft: #f0eaf8;
+
+  --radius-sm: 8px;
+  --radius: 14px;
+  --radius-lg: 22px;
+  --shadow: 0 1px 2px rgba(20, 17, 15, .06), 0 8px 24px rgba(20, 17, 15, .07);
+  --shadow-lift: 0 2px 4px rgba(20, 17, 15, .08), 0 18px 40px rgba(20, 17, 15, .13);
+  --measure: 1180px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --ink: #f6f1ea;
+    --ink-soft: #c4bab1;
+    --ink-faint: #9d938a;
+    --paper: #131110;
+    --paper-raised: #1c1917;
+    --paper-sunk: #221e1b;
+    --line: #322c28;
+    --line-strong: #4b423b;
+    --accent: #f2915f;
+    --accent-soft: #2a1d17;
+    --free: #7cc9a3;
+    --free-soft: #16241d;
+    --donation: #b79ce4;
+    --donation-soft: #211b2c;
+    --shadow: 0 1px 2px rgba(0, 0, 0, .5), 0 8px 24px rgba(0, 0, 0, .4);
+    --shadow-lift: 0 2px 4px rgba(0, 0, 0, .55), 0 18px 40px rgba(0, 0, 0, .5);
+  }
+}
+
+* { box-sizing: border-box; }
+
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font: 16px/1.55 ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI",
+        Roboto, "Helvetica Neue", Arial, sans-serif;
+  text-rendering: optimizeLegibility;
+}
+
+img { max-width: 100%; display: block; }
+
+a { color: var(--accent); text-underline-offset: 2px; }
+a:hover { text-decoration-thickness: 2px; }
+
+:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+.skip-link {
+  position: absolute;
+  left: -9999px;
+  top: 0;
+  background: var(--paper-raised);
+  color: var(--ink);
+  padding: 10px 16px;
+  z-index: 100;
+  border-radius: 0 0 var(--radius-sm) 0;
+}
+.skip-link:focus { left: 0; }
+
+/* ---------------------------------------------------------------- hero --- */
+
+.hero {
+  background:
+    radial-gradient(1200px 420px at 12% -10%, var(--accent-soft), transparent 70%),
+    linear-gradient(180deg, var(--paper-sunk), var(--paper));
+  border-bottom: 1px solid var(--line);
+}
+
+.hero-inner {
+  max-width: var(--measure);
+  margin: 0 auto;
+  padding: clamp(28px, 6vw, 64px) clamp(18px, 4vw, 40px) clamp(20px, 4vw, 36px);
+}
+
+.eyebrow {
+  margin: 0 0 10px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.hero h1 {
+  margin: 0;
+  font-size: clamp(30px, 6vw, 54px);
+  line-height: 1.05;
+  letter-spacing: -.02em;
+  font-weight: 800;
+  max-width: 16ch;
+}
+
+/* The week range sits above the headline as a dated kicker, so the headline
+   itself stays short enough to read at a glance on a phone. */
+.week-line {
+  margin: 0 0 6px;
+  font-size: 13.5px;
+  font-weight: 650;
+  letter-spacing: .02em;
+  color: var(--ink-faint);
+  font-variant-numeric: tabular-nums;
+}
+.week-line:empty { display: none; }
+
+.hero-sub {
+  margin: 16px 0 0;
+  max-width: 62ch;
+  color: var(--ink-soft);
+  font-size: clamp(15px, 2vw, 17.5px);
+}
+
+.hero-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 26px;
+}
+
+.hero-nav a {
+  display: inline-block;
+  padding: 7px 14px;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--ink-soft);
+  text-decoration: none;
+  background: var(--paper-raised);
+}
+.hero-nav a:hover, .hero-nav a:focus-visible {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* -------------------------------------------------------------- layout --- */
+
+main {
+  max-width: var(--measure);
+  margin: 0 auto;
+  padding: 0 clamp(18px, 4vw, 40px) 72px;
+}
+
+.section { margin-top: clamp(36px, 6vw, 64px); }
+
+.section-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 14px;
+  padding-bottom: 12px;
+  margin-bottom: 22px;
+  border-bottom: 1px solid var(--line);
+}
+
+.section-head h2 {
+  margin: 0;
+  font-size: clamp(19px, 2.6vw, 24px);
+  letter-spacing: -.01em;
+  font-weight: 750;
+}
+
+.section-note {
+  margin: 0;
+  color: var(--ink-faint);
+  font-size: 14px;
+}
+
+.status {
+  padding: 24px 0 0;
+  color: var(--ink-soft);
+  font-size: 14.5px;
+}
+.status p { margin: 0 0 6px; }
+.status-error { color: var(--accent); font-weight: 600; }
+
+/* ---------------------------------------------------------------- cards --- */
+
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(272px, 1fr));
+  gap: clamp(16px, 2.2vw, 24px);
+}
+
+.card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  background: var(--paper-raised);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  overflow: hidden;
+  box-shadow: var(--shadow);
+  transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+}
+
+.card:hover, .card:focus-within {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-lift);
+  border-color: var(--line-strong);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card, .card-media img { transition: none; }
+  .card:hover, .card:focus-within { transform: none; }
+  .card:hover .card-media img { transform: none; }
+}
+
+.card-media {
+  position: relative;
+  aspect-ratio: 16 / 10;
+  background: var(--paper-sunk);
+  overflow: hidden;
+}
+
+.card-media img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform .35s ease;
+}
+.card:hover .card-media img { transform: scale(1.03); }
+
+/* A card with no usable artwork keeps the same footprint, so the grid does
+   not reflow; the placeholder carries the category initial instead. */
+.card-media.is-placeholder {
+  display: grid;
+  place-items: center;
+  background:
+    repeating-linear-gradient(135deg,
+      var(--paper-sunk) 0 12px,
+      var(--paper-raised) 12px 24px);
+}
+
+.placeholder-mark {
+  font-size: clamp(28px, 5vw, 40px);
+  font-weight: 800;
+  letter-spacing: -.03em;
+  color: var(--ink-faint);
+  opacity: .6;
+  text-transform: uppercase;
+}
+
+.badge-row {
+  position: absolute;
+  inset: auto auto 10px 10px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  max-width: calc(100% - 20px);
+}
+
+.badge {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: .03em;
+  text-transform: uppercase;
+  background: var(--paper-raised);
+  color: var(--ink-soft);
+  border: 1px solid var(--line-strong);
+}
+
+.badge-free { background: var(--free-soft); color: var(--free); border-color: var(--free); }
+.badge-donation { background: var(--donation-soft); color: var(--donation); border-color: var(--donation); }
+.badge-paid { background: var(--accent-soft); color: var(--accent); border-color: var(--accent); }
+
+.card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px 16px 18px;
+  flex: 1;
+}
+
+.card-when {
+  margin: 0;
+  font-size: 12.5px;
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.card-title {
+  margin: 0;
+  font-size: 17.5px;
+  line-height: 1.3;
+  letter-spacing: -.01em;
+  font-weight: 700;
+}
+
+.card-title a { color: inherit; text-decoration: none; }
+.card-title a:hover, .card-title a:focus-visible { text-decoration: underline; }
+
+.card-where {
+  margin: 0;
+  font-size: 14px;
+  color: var(--ink-soft);
+}
+.card-where .district { color: var(--ink-faint); }
+
+.card-reason {
+  margin: 0;
+  font-size: 14px;
+  color: var(--ink-soft);
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.card-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: auto;
+  padding-top: 4px;
+  font-size: 13px;
+}
+
+.card-price { font-weight: 700; color: var(--ink); }
+.card-price.is-free { color: var(--free); }
+.card-price.is-donation { color: var(--donation); }
+
+.card-link {
+  font-weight: 650;
+  font-size: 13.5px;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.card-link:hover { text-decoration: underline; }
+
+/* --------------------------------------------------------- empty/error --- */
+
+.empty-state {
+  margin: 48px 0;
+  padding: clamp(24px, 4vw, 40px);
+  border: 1px dashed var(--line-strong);
+  border-radius: var(--radius-lg);
+  background: var(--paper-raised);
+  max-width: 68ch;
+}
+.empty-state h2 { margin: 0 0 10px; font-size: 21px; }
+.empty-state p { margin: 0 0 10px; color: var(--ink-soft); font-size: 15px; }
+.empty-links { display: flex; flex-wrap: wrap; gap: 16px; font-size: 14.5px; }
+
+/* -------------------------------------------------------------- footer --- */
+
+.site-footer {
+  border-top: 1px solid var(--line);
+  background: var(--paper-sunk);
+  margin-top: 40px;
+}
+
+.footer-inner {
+  max-width: var(--measure);
+  margin: 0 auto;
+  padding: 32px clamp(18px, 4vw, 40px) 48px;
+  font-size: 13.5px;
+  color: var(--ink-soft);
+}
+
+.footer-inner p { margin: 0 0 12px; max-width: 82ch; }
+.footer-inner a { margin-right: 18px; }
+
+.noscript {
+  max-width: var(--measure);
+  margin: 0 auto;
+  padding: 24px clamp(18px, 4vw, 40px);
+  color: var(--ink-soft);
+}
+
+/* ----------------------------------------------------------- responsive --- */
+
+@media (max-width: 560px) {
+  .card-grid { grid-template-columns: 1fr; }
+  .hero-nav a { font-size: 12.5px; padding: 6px 12px; }
+  .card-media { aspect-ratio: 3 / 2; }
+}
+
+/* Windows high-contrast and forced-colors: keep borders meaningful. */
+@media (forced-colors: active) {
+  .card, .badge, .hero-nav a { border: 1px solid CanvasText; }
+  .card-media.is-placeholder { background: Canvas; }
+}

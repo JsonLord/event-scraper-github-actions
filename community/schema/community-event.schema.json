@@ -1,0 +1,166 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://jsonlord.github.io/event-scraper-github-actions/community/schema/community-event.schema.json",
+  "title": "Community event issue",
+  "description": "One weekly community issue: candidate, reviewed or approved. The same schema covers all three lifecycle stages so a file can be promoted without being reshaped; the stage is recorded in issue.status.",
+  "type": "object",
+  "required": ["schema_version", "issue_week", "generated_at", "events"],
+  "additionalProperties": true,
+  "properties": {
+    "schema_version": {
+      "const": "1.0"
+    },
+    "issue_week": {
+      "type": "object",
+      "required": ["start", "end", "timezone"],
+      "additionalProperties": false,
+      "properties": {
+        "start": { "type": "string", "format": "date" },
+        "end": { "type": "string", "format": "date" },
+        "timezone": { "const": "Europe/Berlin" }
+      }
+    },
+    "generated_at": {
+      "type": "string",
+      "description": "ISO 8601 timestamp with offset, in Europe/Berlin."
+    },
+    "status": {
+      "description": "Lifecycle stage of this file.",
+      "enum": ["candidates", "reviewed", "approved"]
+    },
+    "published_at": {
+      "type": ["string", "null"],
+      "description": "Set only on approved issues, when promotion ran."
+    },
+    "summary": {
+      "type": "object",
+      "description": "Editorial handoff counts. Required on candidates, optional elsewhere.",
+      "additionalProperties": true
+    },
+    "events": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/communityEvent" }
+    }
+  },
+  "$defs": {
+    "communityEvent": {
+      "type": "object",
+      "required": [
+        "event_id", "title", "date", "venue", "price_eur", "price_status",
+        "category", "event_url", "verification", "community"
+      ],
+      "additionalProperties": true,
+      "properties": {
+        "event_id": {
+          "type": "string",
+          "pattern": "^ce-[0-9a-f]{24}$",
+          "description": "Stable deterministic id over title, canonical URL, occurrence date, venue and start time."
+        },
+        "title": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "date": {
+          "type": "string",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+          "description": "Occurrence date in Europe/Berlin."
+        },
+        "time": { "type": ["string", "null"], "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$" },
+        "end_time": { "type": ["string", "null"], "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$" },
+        "venue": { "type": "string" },
+        "district": { "type": ["string", "null"] },
+        "address": { "type": ["string", "null"] },
+        "price_eur": {
+          "type": ["number", "null"],
+          "minimum": 0,
+          "description": "Null means unknown. Never coerced to 0."
+        },
+        "price_status": {
+          "enum": [
+            "confirmed_free",
+            "confirmed_paid",
+            "donation_based",
+            "unknown",
+            "needs_verification"
+          ]
+        },
+        "price_note": { "type": ["string", "null"] },
+        "category": {
+          "enum": [
+            "electronic", "music", "nightlife", "arts", "culture",
+            "workshops", "outdoor", "sports", "markets", "community", "other"
+          ]
+        },
+        "description": { "type": "string" },
+        "event_url": { "type": "string" },
+        "listing_url": { "type": ["string", "null"] },
+        "source_url": { "type": ["string", "null"] },
+        "scraped_at": { "type": ["string", "null"] },
+        "image_url": { "type": ["string", "null"] },
+        "image_source": { "type": ["string", "null"] },
+        "image_verified": { "type": ["boolean", "null"] },
+        "image_checked_at": { "type": ["string", "null"] },
+        "verification": { "$ref": "#/$defs/verification" },
+        "community": { "$ref": "#/$defs/community" }
+      }
+    },
+    "verification": {
+      "type": "object",
+      "required": ["status", "checked_at", "official_source_url", "fields"],
+      "additionalProperties": true,
+      "properties": {
+        "status": {
+          "enum": ["matched", "corrected", "not_confirmed", "rejected", "pending"]
+        },
+        "checked_at": { "type": ["string", "null"] },
+        "official_source_url": { "type": ["string", "null"] },
+        "fields": {
+          "type": "object",
+          "description": "Per-field outcome against the official source.",
+          "additionalProperties": {
+            "enum": ["match", "corrected", "not_confirmed", "rejected"]
+          },
+          "properties": {
+            "title": { "$ref": "#/$defs/fieldStatus" },
+            "date": { "$ref": "#/$defs/fieldStatus" },
+            "time": { "$ref": "#/$defs/fieldStatus" },
+            "venue": { "$ref": "#/$defs/fieldStatus" },
+            "price": { "$ref": "#/$defs/fieldStatus" },
+            "availability": { "$ref": "#/$defs/fieldStatus" },
+            "cancellation": { "$ref": "#/$defs/fieldStatus" },
+            "image": { "$ref": "#/$defs/fieldStatus" }
+          }
+        },
+        "corrections": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["field", "scraped", "verified"],
+            "properties": {
+              "field": { "type": "string" },
+              "scraped": { "type": ["string", "number", "boolean", "null"] },
+              "verified": { "type": ["string", "number", "boolean", "null"] }
+            }
+          }
+        },
+        "notes": { "type": "string" }
+      }
+    },
+    "community": {
+      "type": "object",
+      "required": ["recommendation_reason", "price_priority", "selection_status"],
+      "additionalProperties": true,
+      "properties": {
+        "recommendation_reason": { "type": "string", "maxLength": 240 },
+        "selection_score": { "type": ["number", "null"] },
+        "price_priority": {
+          "enum": ["free", "donation", "paid", "needs_verification", "unknown"]
+        },
+        "selection_status": {
+          "enum": ["proposed", "approved", "rejected", "unresolved"]
+        },
+        "review_note": { "type": ["string", "null"] }
+      }
+    },
+    "fieldStatus": {
+      "enum": ["match", "corrected", "not_confirmed", "rejected"]
+    }
+  }
+}

@@ -1,0 +1,155 @@
+name: Promote approved community issue
+
+# The publication gate. Nothing reaches community/latest.json except through
+# this workflow, and it only ever publishes events listed as "approved" in a
+# human-written decision file. There is no path by which a scraper run, a
+# verification pass or a high score can publish anything on its own.
+#
+# Run it by hand once the review file exists:
+#   community/reviewed/<week-start>.json
+#
+# `require_complete` turns this into all-or-nothing: with it set, a single
+# approved event that fails a publication rule fails the whole promotion
+# rather than being quietly dropped. Leave it off to publish the rest and
+# report what was refused.
+
+on:
+  workflow_dispatch:
+    inputs:
+      week_start:
+        description: "Issue week start (YYYY-MM-DD) — must match an existing candidate file"
+        required: true
+        type: string
+      require_complete:
+        description: "Fail instead of partially publishing if an approved event is unpublishable"
+        required: false
+        default: false
+        type: boolean
+      dry_run:
+        description: "Report what would be published without writing anything"
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+# Reuses the data group so promotion cannot interleave with a scrape or a
+# candidate run that is reading the same files.
+concurrency:
+  group: "weekly-event-data"
+  cancel-in-progress: false
+
+jobs:
+  promote:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Confirm the review file exists
+        # Failing here, loudly, is the point: an empty or missing review file
+        # must never be interpreted as "approve everything" or "approve the
+        # top scorers".
+        env:
+          WEEK_START: ${{ inputs.week_start }}
+        run: |
+          set -eu
+          CANDIDATE="community/candidates/${WEEK_START}.json"
+          REVIEW="community/reviewed/${WEEK_START}.json"
+          test -f "$CANDIDATE" || { echo "::error::No candidate issue at $CANDIDATE"; exit 1; }
+          test -f "$REVIEW" || {
+            echo "::error::No review decisions at $REVIEW. Publication requires an explicit"
+            echo "::error::decision per event id; see community/README.md."
+            exit 1
+          }
+          echo "Candidate: $CANDIDATE"
+          echo "Review:    $REVIEW"
+
+      - name: Validate candidate issue before promoting
+        env:
+          WEEK_START: ${{ inputs.week_start }}
+        run: |
+          python scripts/community_validate.py \
+            --issue "community/candidates/${WEEK_START}.json" \
+            --kind candidates
+
+      - name: Promote
+        env:
+          WEEK_START: ${{ inputs.week_start }}
+          REQUIRE_COMPLETE: ${{ inputs.require_complete }}
+          DRY_RUN: ${{ inputs.dry_run }}
+        run: |
+          set -eu
+          ARGS=""
+          if [ "${REQUIRE_COMPLETE}" = "true" ]; then ARGS="$ARGS --require-complete"; fi
+          if [ "${DRY_RUN}" = "true" ]; then ARGS="$ARGS --dry-run"; fi
+          python scripts/community_promote.py \
+            --newsletter-root community \
+            --week-start "${WEEK_START}" \
+            $ARGS
+
+      - name: Validate the approved issue
+        if: ${{ inputs.dry_run != true }}
+        env:
+          WEEK_START: ${{ inputs.week_start }}
+        run: |
+          python scripts/community_validate.py \
+            --issue "community/approved/${WEEK_START}.json" \
+            --kind approved
+
+      - name: Verify the artifact would publish only approved data
+        if: ${{ inputs.dry_run != true }}
+        run: |
+          python scripts/build_pages_site.py --site-dir _site-check --check-only
+          test -f _site-check/community/latest.json
+
+      - name: Commit the published issue
+        if: ${{ inputs.dry_run != true }}
+        env:
+          WEEK_START: ${{ inputs.week_start }}
+        run: |
+          set -eu
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add \
+            "community/approved/${WEEK_START}.json" \
+            community/latest.json \
+            community/archive/index.json
+          if git diff --staged --quiet; then
+            echo "Nothing changed; the issue was already published."
+            exit 0
+          fi
+          git commit -m "Publish community issue for the week of ${WEEK_START}"
+          for attempt in 1 2 3 4 5; do
+            if git push origin HEAD:main; then
+              echo "Pushed on attempt ${attempt}"
+              exit 0
+            fi
+            echo "Push rejected (attempt ${attempt}); rebasing onto origin/main"
+            git fetch origin main
+            git rebase origin/main
+            sleep $((attempt * 3))
+          done
+          echo "::error::Could not push the published issue after 5 attempts"
+          exit 1
+
+      - name: Note that Pages will redeploy
+        if: ${{ inputs.dry_run != true }}
+        env:
+          WEEK_START: ${{ inputs.week_start }}
+        run: |
+          echo "### Published community issue for ${WEEK_START}" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "The push to \`community/latest.json\` triggers the Pages workflow," >> "$GITHUB_STEP_SUMMARY"
+          echo "which republishes /community/ from the approved issue only." >> "$GITHUB_STEP_SUMMARY"
