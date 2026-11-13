@@ -1,0 +1,206 @@
+name: Community candidates (weekly handoff)
+
+# Prepares the weekly community shortlist for human editorial review.
+#
+# Deliberately manual to start. It is safe to run on a schedule - it only ever
+# writes candidates/ and reviewed/*.md, never a public file - but a manual
+# first phase makes the review loop visible before anything runs on its own.
+# To automate later, uncomment the schedule block below.
+
+on:
+  workflow_dispatch:
+    inputs:
+      week_start:
+        description: "First day of the issue week (YYYY-MM-DD). Blank = the week after this one."
+        required: false
+        type: string
+      week_end:
+        description: "Last day of the issue week (YYYY-MM-DD). Blank = week_start + 6."
+        required: false
+        type: string
+      target:
+        description: "Shortlist ceiling (20-35). Fewer are proposed when supply is thin."
+        required: false
+        default: "35"
+        type: string
+   # schedule:
+   #   # Monday 06:00 UTC, after the Sunday 17:00 UTC scrape has committed its aggregate.
+   #   - cron: '0 6 * * 1'
+
+permissions:
+  contents: write
+
+# Shares the scraper's concurrency group: a candidate run reads the aggregate
+# that the scrape job commits, so the two must not overlap.
+concurrency:
+  group: "weekly-event-data"
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          # A full history is not needed, but the freshest main is: the
+          # aggregate this job reads is committed by the scrape workflow.
+          ref: main
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests beautifulsoup4 lxml pyyaml
+
+      - name: Establish the issue week
+        id: week
+        env:
+          WEEK_START_INPUT: ${{ inputs.week_start }}
+          WEEK_END_INPUT: ${{ inputs.week_end }}
+        run: |
+          python - <<'PY' >> "$GITHUB_OUTPUT"
+          import os
+          from datetime import date, timedelta
+          from zoneinfo import ZoneInfo
+
+          start = os.environ.get("WEEK_START_INPUT", "").strip()
+          end = os.environ.get("WEEK_END_INPUT", "").strip()
+          if not start:
+              today = date.today()
+              # Monday of next week: the issue covers the week that has not
+              # started yet, so an event approved on a Sunday is announced for
+              # the Monday that follows it.
+              monday = today - timedelta(days=today.isoweekday() - 1) + timedelta(days=7)
+              start = monday.isoformat()
+          if not end:
+              end = (date.fromisoformat(start) + timedelta(days=6)).isoformat()
+          print(f"start={start}")
+          print(f"end={end}")
+          print(f"timezone={ZoneInfo('Europe/Berlin')}")
+          print(f"label={start} to {end} (Europe/Berlin)")
+          PY
+
+      - name: Report source data freshness
+        run: |
+          python - <<'PY'
+          import json, os
+          try:
+              with open("data/events.json", encoding="utf-8") as handle:
+                  payload = json.load(handle)
+          except (OSError, json.JSONDecodeError) as exc:
+              raise SystemExit(f"::error::data/events.json is unreadable: {exc}")
+          events = payload.get("events", [])
+          if not events:
+              raise SystemExit("::error::data/events.json contains no events; run the scraper first")
+          dates = sorted({e.get("date") for e in events if e.get("date")})
+          print(f"aggregate: {len(events)} events, dates {dates[0]} .. {dates[-1]}")
+          want_start = os.environ["WEEK_START"]
+          covered = [d for d in dates if d >= want_start]
+          if not covered:
+              print(f"::warning::the aggregate has no events on or after {want_start}; "
+                    "the issue will be empty unless the scraper is re-run for that window")
+          PY
+        env:
+          WEEK_START: ${{ steps.week.outputs.start }}
+
+      - name: Generate community candidates
+        id: prepare
+        env:
+          WEEK_START: ${{ steps.week.outputs.start }}
+          WEEK_END: ${{ steps.week.outputs.end }}
+          TARGET: ${{ inputs.target }}
+        run: |
+          set -eu
+          TARGET_VALUE="${TARGET:-35}"
+          python scripts/community_prepare.py \
+            --events data/events.json \
+            --scored data/events_scored.json \
+            --newsletter-root community \
+            --week-start "${WEEK_START}" \
+            --week-end "${WEEK_END}" \
+            --target "${TARGET_VALUE}" \
+            --max-verifications 40 \
+            --output "community/candidates/${WEEK_START}.json" \
+            --summary-output "community/reviewed/${WEEK_START}.md"
+
+      - name: Validate the candidate issue
+        env:
+          WEEK_START: ${{ steps.week.outputs.start }}
+        run: |
+          python scripts/community_validate.py \
+            --issue "community/candidates/${WEEK_START}.json" \
+            --kind candidates
+
+      - name: Summarise the handoff
+        env:
+          WEEK_START: ${{ steps.week.outputs.start }}
+        run: |
+          python - "$WEEK_START" <<'PY' >> "$GITHUB_STEP_SUMMARY"
+          import json, sys
+          from pathlib import Path
+
+          week = sys.argv[1]
+          issue = json.loads(Path(f"community/candidates/{week}.json").read_text(encoding="utf-8"))
+          summary = issue.get("summary", {})
+          print(f"## Community candidates — week of {week}")
+          print()
+          print("| metric | value |")
+          print("| --- | --- |")
+          for key in ("raw_inspected", "scored_inspected", "discovery_pool", "proposed_count",
+                      "verified_count", "unresolved_count", "rejected_count", "newly_discovered"):
+              if key in summary:
+                  print(f"| {key} | {summary[key]} |")
+          print()
+          if summary.get("categories"):
+              print("Categories: " + ", ".join(
+                  f"{k} ({v})" for k, v in summary["categories"].items()))
+          print()
+          print(f"Review file: `community/reviewed/{week}.md`")
+          print()
+          print("**Nothing is public yet.** Approve events in "
+                f"`community/reviewed/{week}.json` and run the promote workflow.")
+          PY
+
+      - name: Upload candidate issue
+        uses: actions/upload-artifact@v4
+        with:
+          name: community-candidates-${{ steps.week.outputs.start }}
+          path: |
+            community/candidates/${{ steps.week.outputs.start }}.json
+            community/reviewed/${{ steps.week.outputs.start }}.md
+          retention-days: 30
+          if-no-files-found: error
+
+      - name: Commit the candidate issue
+        # Commits only the two draft files. latest.json, approved/ and the
+        # archive are never touched here - promotion owns them.
+        env:
+          WEEK_START: ${{ steps.week.outputs.start }}
+        run: |
+          set -eu
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add "community/candidates/${WEEK_START}.json" "community/reviewed/${WEEK_START}.md"
+          if git diff --staged --quiet; then
+            echo "Candidate issue unchanged; nothing to commit."
+            exit 0
+          fi
+          git commit -m "Community candidates for the week of ${WEEK_START}"
+          for attempt in 1 2 3 4 5; do
+            if git push origin HEAD:main; then
+              echo "Pushed on attempt ${attempt}"
+              exit 0
+            fi
+            echo "Push rejected (attempt ${attempt}); rebasing onto origin/main"
+            git fetch origin main
+            git rebase origin/main
+            sleep $((attempt * 3))
+          done
+          echo "::error::Could not push the candidate issue after 5 attempts"
+          exit 1

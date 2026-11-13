@@ -39,3 +39,9 @@ Thumbs.db
 # Specific to this project
 .hermes/
 event-scraper/
+# Local test/build output
+.venv/
+_site/
+_site-check/
+_build/
+_site-report.json

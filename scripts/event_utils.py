@@ -806,6 +806,7 @@ def validate_event(
     window_end: date,
     max_price: float = DEFAULT_MAX_PRICE,
     require_berlin_signal: bool = False,
+    keep_unknown_price: bool = True,
 ) -> Optional[Dict[str, Any]]:
     """Normalise one scraped row, or return None if it cannot be trusted.
 
@@ -814,6 +815,13 @@ def validate_event(
     tying it to Berlin. Everything that survives has normalised, zero-padded
     dates, 24-hour times, cleaned text and honest None/"" for anything the
     page did not state.
+
+    ``keep_unknown_price`` exists because the community pipeline needs a
+    *discovery* pool, not a priced one: an event whose listing never stated a
+    price must survive to independent verification rather than be dropped as
+    unaffordable. It defaults to True - the keyword is retained so the
+    personal pipeline's behaviour is stated explicitly rather than implied,
+    and passing False restores "drop unpriced rows".
     """
     title = clean_text(event.get("title"), max_length=180)
     description = clean_text(event.get("description"), max_length=400)
@@ -882,8 +890,17 @@ def validate_event(
         price = parse_price(description)
     if price is not None and price > max_price:
         return None
+    if price is None and not keep_unknown_price:
+        return None
 
     description = strip_title_from_description(title, description)
+
+    # Image fields are optional decoration: carried through when an extractor
+    # found one, never a reason to reject a row, and never invented.
+    image_url = str(event.get("image_url") or "").strip()
+    if image_url and not image_url.startswith(("http://", "https://")):
+        image_url = ""
+    image_verified = event.get("image_verified")
 
     normalized = {
         "title": title,
@@ -896,6 +913,10 @@ def validate_event(
         "venue": venue,
         "source_url": source_url,
         "has_detail_link": is_detail_link(url, source_url),
+        "image_url": image_url,
+        "image_source": clean_text(event.get("image_source"), max_length=40) if image_url else "",
+        "image_verified": bool(image_verified) if image_verified is not None else None,
+        "image_checked_at": str(event.get("image_checked_at") or "") if image_url else "",
     }
 
     # A row with neither a name we trust nor a link to verify it is not worth
@@ -918,12 +939,14 @@ def validate_events(
     window_end: date,
     max_price: float = DEFAULT_MAX_PRICE,
     require_berlin_signal: bool = False,
+    keep_unknown_price: bool = True,
 ) -> Tuple[List[Dict[str, Any]], int]:
     """Validate a batch; returns (kept, rejected_count)."""
     kept, rejected = [], 0
     for raw in events or []:
         cleaned = validate_event(
-            raw, source_url, window_start, window_end, max_price, require_berlin_signal
+            raw, source_url, window_start, window_end, max_price, require_berlin_signal,
+            keep_unknown_price,
         )
         if cleaned:
             kept.append(cleaned)

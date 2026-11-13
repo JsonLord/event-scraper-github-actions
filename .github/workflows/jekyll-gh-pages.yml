@@ -4,10 +4,20 @@ on:
   push:
     branches: ["main"]
     paths:
+      # The existing product's triggers, unchanged.
       - "data/events.json"
       - "scripts/score_events.py"
       - "web/index.html"
       - ".github/workflows/jekyll-gh-pages.yml"
+      # The community product. A published issue, its archive index or the
+      # frontend all need a rebuild, and so does the artifact builder itself.
+      - "community/index.html"
+      - "community/latest.json"
+      - "community/archive/**"
+      - "community/assets/**"
+      - "community/approved/**"
+      - "community/schema/**"
+      - "scripts/build_pages_site.py"
   workflow_dispatch:
 
 permissions:
@@ -32,17 +42,52 @@ jobs:
           python-version: "3.11"
 
       - name: Synthesise event findings
+        # Unchanged: the root page's data is regenerated from the aggregate on
+        # every build rather than copied, which is what keeps the existing
+        # endpoint self-consistent with its own scorer.
         run: |
-          mkdir -p _site
+          mkdir -p _build/root
           python scripts/score_events.py \
             --input data/events.json \
-            --output _site/events_scored.json \
+            --output _build/root/events_scored.json \
             --max-price 20
 
-      - name: Build event table
+      - name: Assemble Pages artifact
+        # One allowlisted assembler instead of a set of inline cp commands, so
+        # that "public approved data only" is a property of the code rather
+        # than of remembering which directories to copy.
         run: |
-          cp web/index.html _site/index.html
-          touch _site/.nojekyll
+          python scripts/build_pages_site.py \
+            --site-dir _site \
+            --scored-json _build/root/events_scored.json \
+            --report _site-report.json
+
+      - name: Verify both endpoints are in the artifact
+        run: |
+          set -eu
+          test -f _site/index.html
+          test -f _site/events_scored.json
+          test -f _site/community/index.html
+          test -f _site/community/latest.json
+          test -f _site/community/archive/index.html
+          test -f _site/community/assets/community.css
+          test -f _site/community/assets/community.js
+          echo "Artifact contents:"
+          find _site -type f | sort
+
+      - name: Refuse to publish unapproved community data
+        # A candidate or reviewed issue inside the artifact is a publication
+        # bug, not a warning: candidates are drafts and reviewed files contain
+        # rejected events.
+        run: |
+          set -eu
+          LEAKS="$(find _site -type f \( -path '*/candidates/*' -o -path '*/reviewed/*' \) -print)"
+          if [ -n "$LEAKS" ]; then
+            echo "::error::candidate or reviewed files leaked into the artifact:"
+            echo "$LEAKS"
+            exit 1
+          fi
+          echo "No candidate or reviewed files in the artifact."
 
       - name: Set up GitHub Pages
         uses: actions/configure-pages@v5

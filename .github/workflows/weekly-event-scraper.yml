@@ -6,7 +6,12 @@ permissions:
   id-token: write
 
 concurrency:
-  group: "pages"
+  # Shared with community-prepare and community-promote: all three read or
+  # write data/events.json, data/events_scored.json and the community issue
+  # files, so they must not overlap. The Pages deployment keeps its own
+  # "pages" group in jekyll-gh-pages.yml, which this workflow no longer
+  # competes with directly.
+  group: "weekly-event-data"
   cancel-in-progress: false
 
 on:
@@ -249,6 +254,7 @@ jobs:
             --price-max 20 \
             --date-days 7 \
             $HORIZON \
+            --image-enrich-limit 24 \
             --save-html \
             --html-output "data/html/${{ steps.site-info.outputs.site_name }}.html"
 
@@ -395,10 +401,19 @@ jobs:
       - name: Persist scored events in repository
         run: cp docs/events_scored.json data/events_scored.json
 
-      - name: Publish frontend
+      - name: Assemble Pages artifact
+        # The same allowlisted assembler the standalone Pages workflow uses,
+        # so both paths publish exactly the same set of files. It also copies
+        # the approved community issue, which is why a Sunday scrape cannot
+        # drop the community page from the site.
+        #
+        # Assembled into _site, not docs: the builder owns its output directory
+        # completely (it clears it first), and docs/ is where this job's own
+        # intermediate files live.
         run: |
-          cp web/index.html docs/index.html
-          touch docs/.nojekyll
+          python scripts/build_pages_site.py \
+            --site-dir _site \
+            --scored-json data/events_scored.json
 
       - name: Set up GitHub Pages
         uses: actions/configure-pages@v5
@@ -406,7 +421,7 @@ jobs:
       - name: Upload synthesised event findings
         uses: actions/upload-pages-artifact@v3
         with:
-          path: ./docs
+          path: ./_site
 
       # A plain "pull --rebase && push" left a fully successful run's data
       # stranded uncommitted and Pages undeployed: this exact scenario, live -

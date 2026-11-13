@@ -349,6 +349,14 @@ def publication_gate(event, observation, now, first, last, max_price=20):
                observed_at=observation['observed_at'], last_verified_at=observation['observed_at'],
                verification_status='verified', has_detail_link=True, detail_link_status='verified',
                evidence={field:dict(source='matched_jsonld_event',url=observation['final_url'],observed_at=observation['observed_at']) for field in ('price','status')})
+    # Canonical status alongside the gate's own spelling. The gate above
+    # decides publication from the structural evidence it just matched, and
+    # that behaviour is unchanged; this only makes the row readable for
+    # consumers that must not know which pipeline produced it.
+    from scripts import price_status as canonical
+
+    out['price_status_canonical'] = canonical.canonicalize(out['price_status'])
+    out['price_status_schema'] = canonical.SCHEMA_VERSION
     return out
 
 
