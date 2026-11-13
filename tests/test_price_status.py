@@ -178,38 +178,57 @@ def test_a_bare_zero_is_never_published_as_free():
     assert "price_unknown" in publication_problems(record, WEEK_START, WEEK_END)
 
 
-def test_certainty_is_not_inferred_from_absence():
-    """The invariant, scoped to what the codebase actually guarantees.
+def test_a_present_positive_price_is_a_stated_price():
+    """Documented decision, inherited from both pipelines, pinned here.
 
-    A *missing* price is never upgraded to a confident one: absence of a number
-    yields ``unknown`` no matter what the text says, and no status can invent a
-    number that is not there.
-
-    A *present* positive number is treated as a stated price, which is a
-    deliberate asymmetry inherited from both pipelines and pinned here so it is
-    a documented decision rather than an accident. It is safe because the routes
-    that can produce a positive number - a JSON-LD offer, a price regex over
-    card text, an official detail page - have each already read a number the
-    source published. The zero case is different and is the dangerous one: a
-    zero is what several sources emit when they found nothing, so it needs
-    proof. See test_a_bare_zero_without_evidence_is_not_confirmed_free.
+    A positive figure reaches a record only via a JSON-LD offer, a price regex
+    over card text, or an official detail page - each has already read a number
+    the source published. Requiring a second corroboration would downgrade rows
+    whose price the source did state. This is the behaviour the old module
+    docstring contradicted by claiming every unsupported number was unknown.
     """
-    # Absence alone is never certainty.
+    assert price_status_for({"price_eur": 12.5}) == ps.CONFIRMED_PAID
+    assert price_status_for({"price_eur": 12.5, "description": "Ein Abend."}) == ps.CONFIRMED_PAID
+    assert ps.canonicalize("known") == ps.CONFIRMED_PAID
+
+
+def test_a_missing_price_is_unknown_unless_text_settles_it():
+    """Silence stays unknown; text is the only thing that can settle it."""
     assert price_status_for({"price_eur": None}) == ps.UNKNOWN
-    # A missing number cannot be made into a *paid* price: `known` without a
-    # figure establishes nothing.
+    assert price_status_for({"price_eur": None,
+                             "description": "Ein Abend im Kiez."}) == ps.UNKNOWN
+    # Text can settle it in either direction.
+    assert price_status_for({"price_eur": None,
+                             "description": "Eintritt frei"}) == ps.CONFIRMED_FREE
+    assert price_status_for({"price_eur": None,
+                             "description": "Auf Spendenbasis"}) == ps.DONATION_BASED
+    assert price_status_for({"price_eur": None,
+                             "description": "Preis auf Anfrage"}) == ps.NEEDS_VERIFICATION
+
+
+def test_a_missing_price_cannot_be_made_into_a_paid_price():
+    """No status can invent a number that is not there."""
     assert price_status_for({"price_eur": None,
                              "price_status": "known"}) == ps.UNKNOWN
-    # A `free` status does survive a missing number, and should: the status is
-    # the evidence, and the number was simply not stored. Dropping it would
-    # lose proof of free admission, which is exactly what the contract forbids.
+
+
+def test_a_free_status_survives_a_missing_number():
+    """The status is the evidence; the number was simply not stored.
+
+    Dropping it would lose proof of free admission, which the contract forbids.
+    """
     assert price_status_for({"price_eur": None,
                              "price_status": "free"}) == ps.CONFIRMED_FREE
-    # A present, positive, stated price stands on its own - documented above.
-    assert price_status_for({"price_eur": 12.5}) == ps.CONFIRMED_PAID
-    # Free text still has to corroborate a zero.
+
+
+def test_a_bare_zero_needs_corroboration():
+    """The load-bearing half: a zero is what a failed scrape looks like."""
+    assert price_status_for({"price_eur": 0.0,
+                             "description": "Ein Abend im Kiez."}) == ps.UNKNOWN
     assert price_status_for({"price_eur": 0.0,
                              "description": "Eintritt frei"}) == ps.CONFIRMED_FREE
+    assert price_status_for({"price_eur": 0.0,
+                             "description": "Auf Spendenbasis"}) == ps.DONATION_BASED
 
 
 def test_proof_of_free_admission_survives_canonicalisation():

@@ -37,17 +37,34 @@ status                  meaning                                     entry price 
 ``unknown``             no price stated at all                     unknown          no
 ======================  ==========================================  ===============  =============
 
-Two invariants are preserved from the pipelines that predate this module:
+How a bare number is read
+-------------------------
+The three cases are genuinely different, and treating any two of them alike is
+what produces either a lost free event or a published unverified price.
 
-1. **A bare numeric zero is not evidence of free entry.** ``confirmed_free``
-   requires proof - free admission stated in text, or a structured offer of 0
-   from the event's own page. A ``price: 0`` that nothing corroborates is
-   ``unknown``, because several sources emit zero when they simply failed to
-   find a price. This is the rule that stops an unverified price being
-   published as "Free".
-2. **Certainty is never inferred from a number alone.** A numeric price with no
-   supporting offer, text or advisory field is ``unknown``, not
-   ``confirmed_paid``.
+**A present positive number is a stated price.** ``12.50`` with no offer object
+and no price text is ``confirmed_paid``. This is a deliberate pipeline
+decision, inherited from both pipelines this module unifies: a positive figure
+reaches a record by one of three routes - a JSON-LD offer, a price regex over
+card text, or an official detail page - and each of those has already read a
+number the source published. Requiring a second corroboration would downgrade
+rows whose price the source did state. ``tests/test_price_status.py`` pins this
+so it stays a decision rather than drifting.
+
+**A missing price is ``unknown``** unless independent text establishes
+otherwise. Text is the only thing that can settle it: "Eintritt frei" makes it
+``confirmed_free``, "auf Spendenbasis" makes it ``donation_based``, and "Preis
+auf Anfrage" makes it ``needs_verification``. Silence stays ``unknown``, and no
+status can invent a number that is not there.
+
+**A bare zero is not evidence of free entry.** ``confirmed_free`` requires
+proof - free admission stated in text, or a structured offer of 0 from the
+event's own page. A ``price: 0`` that nothing corroborates is ``unknown``,
+because several sources emit zero when they simply failed to find a price.
+This is the rule that stops an unverified price being published as "Free", and
+it is the one asymmetry in this module that is load-bearing rather than
+convenient: a zero is what a *failed* scrape looks like, while a positive
+number is what a *successful* one looks like.
 
 Migration
 ---------

@@ -40,6 +40,7 @@ from community_common import (
     ISSUE_TIMEZONE,
     PRICE_STATUS_CONFIRMED_FREE,
     PRICE_STATUS_CONFIRMED_PAID,
+    PRICE_STATUS_RANGE,
     PRICE_STATUS_DONATION,
     PRICE_STATUS_NEEDS_VERIFICATION,
     PRICE_STATUS_UNKNOWN,
@@ -127,6 +128,23 @@ def event_record(
             price = float(price)
         except (TypeError, ValueError):
             price = None
+    # Both bounds of a range are preserved, not just the entry price. The cap
+    # is applied to the lower bound; the upper bound is what the reader sees
+    # in the review summary, and dropping it would silently turn a stated span
+    # into a single price. A single-price event leaves the upper bound equal
+    # to its price; nothing invents a span when the source gave one number.
+    price_max = raw.get("price_max_eur", raw.get("price_max"))
+    if price_max is not None:
+        try:
+            price_max = float(price_max)
+        except (TypeError, ValueError):
+            price_max = None
+    if price_max is None and price is not None:
+        price_max = price
+    if price is not None and price_max is not None and price_max < price:
+        # A span is low-to-high; an inverted one is a parsing error, so the
+        # entry price wins rather than being published backwards.
+        price_max = price
     # Normalised through the shared resolver rather than copied, so a record
     # always carries a canonical status regardless of which pipeline produced
     # the row. `price_status_canonical` is preferred when the producer set it;
@@ -155,6 +173,7 @@ def event_record(
         "district": district,
         "address": _clean(raw.get("address")) or None,
         "price_eur": price,
+        "price_max_eur": price_max,
         "price_status": record_price_status,
         "price_note": _clean(raw.get("price_note")) or None,
         "category": category,
@@ -462,6 +481,7 @@ def public_latest(approved: Dict[str, Any]) -> Dict[str, Any]:
             "venue": event.get("venue"),
             "district": event.get("district"),
             "price_eur": event.get("price_eur"),
+            "price_max_eur": event.get("price_max_eur"),
             "price_status": event.get("price_status"),
             "price_label": price_label(event),
             "category": event.get("category"),
@@ -495,8 +515,21 @@ def price_label(event: Dict[str, Any]) -> str:
         return "Entry to be confirmed"
     if status == PRICE_STATUS_UNKNOWN or price is None:
         return "Price not confirmed"
+    if status == PRICE_STATUS_RANGE:
+        # A range is a settled span, so it is rendered as one. Falling through
+        # to the single-price branch would show only the entry price and drop
+        # the upper bound the source actually stated.
+        low = _format_amount(float(price))
+        high_raw = event.get("price_max_eur")
+        if high_raw is not None and float(high_raw) > float(price):
+            return f"{low}–{_format_amount(float(high_raw))}"
+        return f"{low} (entry)"
     value = float(price)
     return f"€{int(value)}" if value.is_integer() else f"€{value:.2f}"
+
+
+def _format_amount(value: float) -> str:
+    return f"€{int(value)}" if float(value).is_integer() else f"€{value:.2f}"
 
 
 def archive_entry(approved: Dict[str, Any], url_base: str) -> Dict[str, Any]:

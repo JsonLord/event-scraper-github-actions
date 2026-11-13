@@ -169,6 +169,7 @@ def stable_event_id(
 
 PRICE_STATUS_CONFIRMED_FREE = "confirmed_free"
 PRICE_STATUS_CONFIRMED_PAID = "confirmed_paid"
+PRICE_STATUS_RANGE = "range"
 PRICE_STATUS_DONATION = "donation_based"
 PRICE_STATUS_UNKNOWN = "unknown"
 PRICE_STATUS_NEEDS_VERIFICATION = "needs_verification"
@@ -176,6 +177,7 @@ PRICE_STATUS_NEEDS_VERIFICATION = "needs_verification"
 PRICE_STATUSES = (
     PRICE_STATUS_CONFIRMED_FREE,
     PRICE_STATUS_CONFIRMED_PAID,
+    PRICE_STATUS_RANGE,
     PRICE_STATUS_DONATION,
     PRICE_STATUS_UNKNOWN,
     PRICE_STATUS_NEEDS_VERIFICATION,
@@ -229,6 +231,11 @@ def price_priority(price_status: str) -> str:
         PRICE_STATUS_CONFIRMED_FREE: "free",
         PRICE_STATUS_DONATION: "donation",
         PRICE_STATUS_CONFIRMED_PAID: "paid",
+        # A range is a confirmed paid span, so it belongs in the paid
+        # affordability bucket. This is a coarse display bucket, not a
+        # restatement of the status: the authoritative distinction stays in
+        # `price_status`, which still reads "range".
+        PRICE_STATUS_RANGE: "paid",
         PRICE_STATUS_NEEDS_VERIFICATION: "needs_verification",
         PRICE_STATUS_UNKNOWN: "unknown",
     }.get(price_status, "unknown")
@@ -238,13 +245,16 @@ def is_confirmed_entry_price(price_status: str, price: Optional[float],
                              max_price: float = COMMUNITY_MAX_PRICE) -> bool:
     """True when the entry price is confirmed and inside the community cap.
 
-    Only the two confirmed states qualify. ``unknown`` and
+    Only the confirmed states qualify. ``unknown`` and
     ``needs_verification`` are unsettled questions, and ``donation_based``
     has no single entry price to compare against a cap at all.
+
+    ``range`` qualifies on its *lower* bound, because that is what it costs to
+    get in; the upper bound describes the dearest option, not the entry.
     """
     if price_status == PRICE_STATUS_CONFIRMED_FREE:
         return True
-    if price_status == PRICE_STATUS_CONFIRMED_PAID:
+    if price_status in (PRICE_STATUS_CONFIRMED_PAID, PRICE_STATUS_RANGE):
         return price is not None and 0 < float(price) <= max_price
     return False
 

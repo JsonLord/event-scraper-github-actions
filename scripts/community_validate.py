@@ -126,6 +126,19 @@ def structural_problems(issue: Dict[str, Any]) -> List[str]:
             problems.append(f"{where} is confirmed_free but price_eur is {price}")
         if status in (price_status.UNKNOWN, price_status.NEEDS_VERIFICATION) and price == 0:
             problems.append(f"{where} claims price 0 while its price is {status}")
+        # Range bounds must describe a real, ordered span around the entry price.
+        upper = event.get("price_max_eur")
+        if upper is not None and (not isinstance(upper, (int, float)) or float(upper) < 0):
+            problems.append(f"{where}.price_max_eur must be a non-negative number or null")
+        elif upper is not None and price is not None and float(upper) < float(price):
+            problems.append(
+                f"{where} has price_max_eur {upper} below its entry price {price}"
+            )
+        if status == price_status.RANGE and price is None:
+            problems.append(
+                f"{where} is a range with no entry price; a span that establishes "
+                "no lower bound cannot be compared to the cap"
+            )
         for field in ("event_id", "title", "date", "venue", "price_eur", "price_status",
                       "category", "event_url", "verification", "community"):
             if field not in event:

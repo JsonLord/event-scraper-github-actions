@@ -97,7 +97,12 @@
         "price_eur": {
           "type": ["number", "null"],
           "minimum": 0,
-          "description": "Null means unknown. Never coerced to 0."
+          "description": "The entry price: the lower bound of a range, the price of a single-price event, 0 for confirmed free. Null means unknown. Never coerced to 0."
+        },
+        "price_max_eur": {
+          "type": ["number", "null"],
+          "minimum": 0,
+          "description": "The upper bound of a confirmed price span. Equal to price_eur for a single-price event, null when no price is known. Never used to decide the cap: the cap applies to the entry price."
         },
         "price_status": {
           "enum": [

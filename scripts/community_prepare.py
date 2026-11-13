@@ -83,6 +83,27 @@ def events_from(payload: Any) -> List[Dict[str, Any]]:
     return payload if isinstance(payload, list) else []
 
 
+def _upper_bound(raw: Dict[str, Any], entry: Optional[float]) -> Optional[float]:
+    """The upper bound of a price span, or the entry price for a single price.
+
+    The upstream evidence model records ``price_max`` for a range and leaves it
+    equal to ``price`` otherwise. A missing upper bound is never invented: when
+    the source gave one number, that number is both bounds, and when the source
+    gave nothing there is no span at all.
+    """
+    raw_max = raw.get("price_max", raw.get("price_max_eur"))
+    if raw_max is None:
+        return entry
+    try:
+        value = float(raw_max)
+    except (TypeError, ValueError):
+        return entry
+    if entry is not None and value < float(entry):
+        # An inverted span is a parsing error; the entry price is authoritative.
+        return entry
+    return value
+
+
 def previous_event_ids(newsletter_root: str, limit: int = 4) -> set:
     """Ids from recently published issues, for the "newly discovered" count.
 
@@ -172,6 +193,11 @@ def discovery_pool(
             "district": raw.get("district"),
             "address": raw.get("address"),
             "price_eur": price,
+            # Both bounds are carried from discovery onward. A range whose
+            # upper bound is dropped here becomes indistinguishable from a
+            # single price by the time it reaches review, which is exactly
+            # the information a reviewer needs to see.
+            "price_max_eur": _upper_bound(raw, price),
             "price_status": price_status,
             "price_note": None,
             "category": "",

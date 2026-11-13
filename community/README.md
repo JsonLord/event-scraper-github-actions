@@ -236,8 +236,22 @@ Two invariants, both inherited from the pipelines that predate the contract:
    published as Free.
 2. **Absence never becomes certainty.** A missing number is never upgraded to
    a confident status, and no status can invent a number that is not there.
-   (A present positive number is treated as stated, which is the search
-   branch's established behaviour and is pinned in `tests/test_price_status.py`.)
+
+### How a bare number is read
+
+Three cases, deliberately not treated alike:
+
+| case | status | why |
+| --- | --- | --- |
+| present **positive** number, no other evidence | `confirmed_paid` | it arrived via a JSON-LD offer, a price regex over card text, or an official detail page — each already read a number the source published |
+| **missing** number | `unknown` unless text settles it | `Eintritt frei` → confirmed free, `auf Spendenbasis` → donation, `Preis auf Anfrage` → needs verification; silence stays unknown |
+| bare **zero**, nothing corroborating | `unknown` | several sources emit `0` when they failed to find a price |
+| zero **with** free text or a structured offer of 0 | `confirmed_free` | the proof is what makes it free |
+
+The positive-number rule is a pipeline decision inherited from both branches,
+not an accident; `tests/test_price_status.py` pins it so it cannot drift. The
+bare-zero rule is the load-bearing half: a zero is what a *failed* scrape looks
+like, while a positive number is what a *successful* one looks like.
 
 **Migration.** Records already on disk keep working. `price_status.py` maps the
 historical evidence spellings one way - `free` → `confirmed_free`, `known` →

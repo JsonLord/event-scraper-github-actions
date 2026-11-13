@@ -36,6 +36,8 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from typing import Any, Dict, Iterable, List, Optional, Tuple
 
+import price_status
+
 from community_common import (
     COMMUNITY_MAX_PRICE,
     COMMUNITY_TARGET_MAX,
@@ -43,6 +45,7 @@ from community_common import (
     DEFAULT_CATEGORY,
     PRICE_STATUS_CONFIRMED_FREE,
     PRICE_STATUS_CONFIRMED_PAID,
+    PRICE_STATUS_RANGE,
     PRICE_STATUS_DONATION,
     PRICE_STATUS_NEEDS_VERIFICATION,
     PRICE_STATUS_UNKNOWN,
@@ -64,6 +67,9 @@ from community_common import (
 PRICE_BASE = {
     PRICE_STATUS_CONFIRMED_FREE: 45,
     PRICE_STATUS_DONATION: 40,
+    # A range is a confirmed paid span and ranks with paid prices, on its
+    # entry (lower) bound - the same number `price_points` scores.
+    PRICE_STATUS_RANGE: 30,
     PRICE_STATUS_CONFIRMED_PAID: 30,
     PRICE_STATUS_UNKNOWN: 10,
     PRICE_STATUS_NEEDS_VERIFICATION: 5,
@@ -77,8 +83,13 @@ def price_points(price_status: str, price: Optional[float],
     A confirmed price above the cap returns a large negative number rather
     than a low score: "expensive" and "disallowed" are different things, and
     the caller checks ``is_eligible`` rather than trusting a ranking number.
+
+    A ``range`` is scored on its **entry price** - the lower bound - because
+    that is what it costs to attend and the same number the cap applies to.
+    The upper bound is never used to decide affordability; it is preserved on
+    the record so a reader can see the dearest option.
     """
-    if price_status == PRICE_STATUS_CONFIRMED_PAID:
+    if price_status in (PRICE_STATUS_CONFIRMED_PAID, PRICE_STATUS_RANGE):
         if price is None:
             return 0
         if price > max_price:
@@ -96,8 +107,12 @@ def is_eligible(price_status: str, price: Optional[float],
     Unknown and needs-verification prices stay eligible for *selection* -
     they go into the shortlist to be resolved - but they are not eligible for
     *publication*, which ``community_publish.publication_problems`` enforces.
+
+    A ``range`` is eligible on its entry price: within the cap, it is as
+    publishable as a single confirmed price. A range with no entry price
+    establishes nothing and is treated like an unknown price.
     """
-    if price_status == PRICE_STATUS_CONFIRMED_PAID:
+    if price_status in (PRICE_STATUS_CONFIRMED_PAID, PRICE_STATUS_RANGE):
         return price is not None and 0 < float(price) <= max_price
     if price_status == PRICE_STATUS_CONFIRMED_FREE:
         return True
@@ -309,6 +324,7 @@ def build_recommendation_reason(event: Dict[str, Any]) -> str:
     """
     price_status = event.get("price_status", PRICE_STATUS_UNKNOWN)
     price = event.get("price_eur")
+    price_max = event.get("price_max_eur")
     category = event.get("category") or DEFAULT_CATEGORY
     district = event.get("district")
     venue = str(event.get("venue") or "").strip()
@@ -326,6 +342,22 @@ def build_recommendation_reason(event: Dict[str, Any]) -> str:
     elif price_status == PRICE_STATUS_CONFIRMED_PAID and price is not None:
         amount = f"{int(price)}" if float(price).is_integer() else f"{float(price):.2f}"
         opening = f"€{amount} entry" if generic else f"{label.capitalize()} for €{amount}"
+    elif price_status == PRICE_STATUS_RANGE and price is not None:
+        # A range is a settled price, not a pending one, so it is stated as a
+        # span. Saying "to be confirmed" here would understate what the
+        # source established; saying only the entry price would hide the
+        # upper bound a reader might care about.
+        low = f"{int(price)}" if float(price).is_integer() else f"{float(price):.2f}"
+        if price_max is not None and float(price_max) > float(price):
+            high = (f"{int(price_max)}" if float(price_max).is_integer()
+                    else f"{float(price_max):.2f}")
+            span = f"€{low}–{high}"
+            opening = (f"{span} entry" if generic
+                       else f"{label.capitalize()} from €{low} to €{high}")
+        else:
+            # A range whose upper bound is missing or equal still has a settled
+            # entry price; state it rather than inventing a span.
+            opening = f"€{low} entry" if generic else f"{label.capitalize()} for €{low}"
     elif price_status == PRICE_STATUS_NEEDS_VERIFICATION:
         opening = ("Entry to be confirmed" if generic
                    else f"{label.capitalize()} with entry to be confirmed")
@@ -421,7 +453,10 @@ def select_community_events(
     eligible, excluded = [], []
     for event in pool:
         status = event.get("price_status", PRICE_STATUS_UNKNOWN)
-        if status == PRICE_STATUS_CONFIRMED_PAID and not is_eligible(
+        # Any state that establishes a settleable entry price is checked against
+        # the cap here. Listing only `confirmed_paid` is what let an over-cap
+        # `range` through: the status was new, this branch was not.
+        if price_status.describes_entry_price(status) and not is_eligible(
             status, event.get("price_eur"), max_price
         ):
             excluded.append({**event, "_exclusion": "above_community_cap"})
