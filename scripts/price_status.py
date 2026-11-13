@@ -207,6 +207,47 @@ def origin_for(event: Dict[str, Any]) -> Dict[str, str]:
     return {"pipeline": "unknown", "model": "derived"}
 
 
+def malformed_span_reason(event: Dict[str, Any]) -> Optional[str]:
+    """Why this record's price span is internally inconsistent, or None.
+
+    A span runs low-to-high. When the upper bound is *below* the entry price,
+    the two numbers cannot both be true, and the problem is in the evidence
+    rather than in the presentation: the source stated something contradictory,
+    or a correction moved one bound without the other.
+
+    This is deliberately a detection function, not a repair function. An
+    earlier version rewrote the upper bound up to the entry price, which made a
+    contradictory record indistinguishable from a valid single-price event by
+    the time validation saw it - so a malformed range could publish with the
+    defect erased. Reporting the inconsistency instead keeps the original
+    numbers intact for a reviewer to look at, and lets validation refuse it.
+
+    The bounds are read from ``event``, so this works on a record built by
+    ``event_record()`` *and* on one mutated afterwards by a verification
+    correction or a human review correction.
+    """
+    if not isinstance(event, dict):
+        return None
+    entry = event.get("price_eur")
+    upper = event.get("price_max_eur")
+    if entry is None or upper is None:
+        return None
+    try:
+        entry_value, upper_value = float(entry), float(upper)
+    except (TypeError, ValueError):
+        return None
+    if upper_value < entry_value:
+        return (
+            f"upper bound €{upper_value:g} is below the entry price €{entry_value:g}"
+        )
+    return None
+
+
+def has_malformed_span(event: Dict[str, Any]) -> bool:
+    """True when the record's price span is internally inconsistent."""
+    return malformed_span_reason(event) is not None
+
+
 def describe(status: Any) -> str:
     """Human sentence for a status, for review summaries and error messages."""
     canonical = canonicalize(status)

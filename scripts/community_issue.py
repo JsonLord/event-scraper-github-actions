@@ -141,10 +141,13 @@ def event_record(
             price_max = None
     if price_max is None and price is not None:
         price_max = price
-    if price is not None and price_max is not None and price_max < price:
-        # A span is low-to-high; an inverted one is a parsing error, so the
-        # entry price wins rather than being published backwards.
-        price_max = price
+    # An inverted span is NOT repaired here. Rewriting the upper bound up to
+    # the entry price would make a contradictory record look like a valid
+    # single-price event before validation could see it, which is how a
+    # malformed range reaches publication with its defect erased. Both numbers
+    # are kept as the source stated them; `publication_problems` refuses the
+    # record and the review summary explains why. See price_status.
+    # malformed_span_reason.
     # Normalised through the shared resolver rather than copied, so a record
     # always carries a canonical status regardless of which pipeline produced
     # the row. `price_status_canonical` is preferred when the producer set it;
@@ -281,6 +284,13 @@ def publication_problems(event: Dict[str, Any], week_start: date, week_end: date
         problems.append("missing_event_url")
     if not _clean(event.get("venue")):
         problems.append("missing_venue")
+    # Checked from the record itself, not from its builder, because a span can
+    # be inverted *after* construction: a verification correction or a human
+    # review correction can move the entry price above a stale upper bound.
+    # Those paths never pass through event_record(), so this is the only gate
+    # that reliably sees them.
+    if price_status.has_malformed_span(event):
+        problems.append("price_span_inverted")
     return problems
 
 
@@ -523,6 +533,11 @@ def price_label(event: Dict[str, Any]) -> str:
         high_raw = event.get("price_max_eur")
         if high_raw is not None and float(high_raw) > float(price):
             return f"{low}–{_format_amount(float(high_raw))}"
+        if high_raw is not None and float(high_raw) < float(price):
+            # Never render an inverted span as a tidy single price: that would
+            # present contradictory evidence as a settled figure. State both
+            # numbers so the problem is visible wherever the label is shown.
+            return f"{low} (upper bound {_format_amount(float(high_raw))} is lower)"
         return f"{low} (entry)"
     value = float(price)
     return f"€{int(value)}" if value.is_integer() else f"€{value:.2f}"
@@ -684,6 +699,15 @@ def render_review_summary(
         lines.append(f"- Category: {category_label(event.get('category') or '')}")
         lines.append(f"- Where: {venue} ({district})")
         lines.append(f"- Price: {price} ({event.get('price_status')})")
+        span_problem = price_status.malformed_span_reason(event)
+        if span_problem:
+            # Flagged in the reviewer's own list, not only in validation
+            # output: this is the file a human reads before approving, so the
+            # defect has to be visible where the decision is actually made.
+            lines.append(
+                f"- **Price evidence inconsistent**: {span_problem}; "
+                "this event cannot be published until the bounds are corrected"
+            )
         lines.append(f"- Why: {(event.get('community') or {}).get('recommendation_reason') or '-'}")
         lines.append(f"- Official link: {event.get('event_url') or 'none'}")
         lines.append(f"- Image: {image}")

@@ -228,6 +228,26 @@ produced it:
 An event is *selectable* in every state - an unsettled price is exactly what
 verification is for - but only the confirmed states are publishable.
 
+### A range whose bounds contradict each other
+
+A span runs low-to-high. If `price_max_eur` is **below** `price_eur`, the two
+numbers cannot both be true, so the evidence is wrong rather than the display.
+Such a record is:
+
+- **preserved, not repaired**: both bounds stay exactly as the source stated
+  them. Rewriting the upper bound up to the entry price would make a
+  contradictory record indistinguishable from a valid single-price event,
+  which is how one could publish with its defect erased.
+- **refused at publication** with `price_span_inverted`, and rejected by
+  structural validation.
+- **flagged in the review summary** as *"Price evidence inconsistent"*, under
+  the price line a reviewer reads before approving.
+
+The check reads the record rather than its builder, because an inversion can be
+introduced *after* construction: a verification correction or a human review
+correction can move the entry price above a stale upper bound, and those paths
+never pass through `event_record()`.
+
 Two invariants, both inherited from the pipelines that predate the contract:
 
 1. **A bare numeric zero is not evidence of free entry.** A `price: 0` that

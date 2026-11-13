@@ -126,13 +126,17 @@ def structural_problems(issue: Dict[str, Any]) -> List[str]:
             problems.append(f"{where} is confirmed_free but price_eur is {price}")
         if status in (price_status.UNKNOWN, price_status.NEEDS_VERIFICATION) and price == 0:
             problems.append(f"{where} claims price 0 while its price is {status}")
-        # Range bounds must describe a real, ordered span around the entry price.
+        # Range bounds must describe a real, ordered span around the entry
+        # price. An inverted span is a rejection, not something to repair: the
+        # two numbers contradict each other, so the evidence is wrong and
+        # silently "fixing" it would hide that from every later reader.
         upper = event.get("price_max_eur")
         if upper is not None and (not isinstance(upper, (int, float)) or float(upper) < 0):
             problems.append(f"{where}.price_max_eur must be a non-negative number or null")
-        elif upper is not None and price is not None and float(upper) < float(price):
+        span_problem = price_status.malformed_span_reason(event)
+        if span_problem:
             problems.append(
-                f"{where} has price_max_eur {upper} below its entry price {price}"
+                f"{where} has an inverted price span: {span_problem}"
             )
         if status == price_status.RANGE and price is None:
             problems.append(

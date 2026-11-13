@@ -20,6 +20,7 @@ from datetime import date
 
 import pytest
 
+from scripts import price_status
 from scripts.community_common import (
     COMMUNITY_MAX_PRICE,
     PRICE_STATUS_CONFIRMED_FREE,
@@ -190,9 +191,17 @@ def test_a_bare_zero_in_a_range_does_not_become_free():
     assert record["price_status"] == PRICE_STATUS_UNKNOWN
 
 
-def test_an_inverted_span_is_not_published_backwards():
+def test_an_inverted_span_is_preserved_not_repaired():
+    """The defect is reported, not erased.
+
+    An earlier implementation rewrote the upper bound up to the entry price,
+    which made a contradictory record look like a valid single-price event
+    before validation ever saw it.
+    """
     record = _verified_record(15.0, 5.0)
-    assert record["price_max_eur"] == 15.0
+    assert record["price_eur"] == 15.0
+    assert record["price_max_eur"] == 5.0, "source bounds must survive as stated"
+    assert price_status.malformed_span_reason(record) is not None
 
 
 # --------------------------------------------------------------------------
@@ -258,7 +267,8 @@ def test_an_inverted_span_fails_structural_validation():
     record = _verified_record(5.0, 15.0)
     record["price_max_eur"] = 4.0
     problems = structural_problems(_issued(record))
-    assert any("below its entry price" in p for p in problems), problems
+    assert any("inverted price span" in p for p in problems), problems
+    assert any("below the entry price" in p for p in problems), problems
 
 
 def test_a_negative_upper_bound_fails_structural_validation():
