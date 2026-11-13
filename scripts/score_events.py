@@ -510,6 +510,21 @@ def score_and_filter_events(
         kept.append(event)
     deduped = kept
     scored = [score_event(e, today) for e in deduped]
+    # The cap is re-applied AFTER scoring, because `score_event()` calls
+    # `enrich_evidence()`, which can *reprices* a row from its own text: a
+    # listing scraped with `price: 0.0` whose description says "Fee: 430 EUR"
+    # comes out of enrichment at 430.0. The filter above only saw the raw
+    # value, so without this pass such a row would be published far above the
+    # cap. Filtering on the enriched price is the only way the cutoff holds
+    # for what is actually displayed.
+    over_cap = [
+        e for e in scored
+        if isinstance(e.get("price"), (int, float)) and not isinstance(e.get("price"), bool)
+        and e["price"] > max_price
+    ]
+    if over_cap:
+        EXCLUDED_COUNTS["over_price_cap"] = EXCLUDED_COUNTS.get("over_price_cap", 0) + len(over_cap)
+        scored = [e for e in scored if e not in over_cap]
     # Day-grouped: earliest date first, and within each day free events first
     # then ascending by price. The rating stays on every row and remains
     # sortable in the page, but it no longer decides the reading order.

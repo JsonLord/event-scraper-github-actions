@@ -309,3 +309,52 @@ def test_weekend_evenings_are_the_sweet_spot():
     assert timing_score(fri_evening) == 22
     assert timing_score(tue_morning) == -8
     assert timing_score(_event(date="2026-08-29", time="")) == 10  # Saturday, no time
+
+
+# --------------------------------------------------------------------------
+# The cap must hold for the price that is actually displayed
+# --------------------------------------------------------------------------
+
+def test_an_event_repriced_above_the_cap_by_enrichment_is_excluded():
+    """`enrich_evidence()` can raise a price after the cap filter has run.
+
+    A listing scraped as `price: 0.0` whose own text says "Fee: 430 EUR"
+    enriches to 430.0. The filter sees the raw 0.0, so without a second pass
+    the row publishes at 430 - far above the EUR 20 cutoff the page promises.
+    """
+    from scripts.score_events import score_and_filter_events
+
+    event = {
+        "title": "Fee test", "date": "2026-11-20", "time": "20:00", "price": 0.0,
+        "description": "Seminar: 2 days Fee: 430€ **You can**",
+        "url": "https://x.de/e", "venue": "K", "source_url": "https://x.de/l",
+        "has_detail_link": True, "category": "",
+    }
+    assert score_and_filter_events([event], 20.0) == []
+
+
+def test_no_scored_event_ever_exceeds_the_cap():
+    """The invariant, stated once for the whole output rather than per case."""
+    from scripts.score_events import score_and_filter_events
+
+    events = [
+        {"title": "Cheap", "date": "2026-11-20", "time": "20:00", "price": 9.0,
+         "description": "Eintritt 9 Euro", "url": "https://x.de/c", "venue": "K",
+         "source_url": "https://x.de/l", "has_detail_link": True, "category": ""},
+        {"title": "Fee 430", "date": "2026-11-20", "time": "20:00", "price": 0.0,
+         "description": "Fee: 430€", "url": "https://x.de/e", "venue": "K",
+         "source_url": "https://x.de/l", "has_detail_link": True, "category": ""},
+        {"title": "Free gig", "date": "2026-11-20", "time": "20:00", "price": 0.0,
+         "description": "Eintritt frei", "url": "https://x.de/f", "venue": "K",
+         "source_url": "https://x.de/l", "has_detail_link": True, "category": ""},
+    ]
+    scored = score_and_filter_events(events, 20.0)
+    for event in scored:
+        price = event.get("price")
+        assert price is None or price <= 20.0, (event["title"], price)
+    # ...and the legitimate rows still survive: the fix is not a filter that
+    # drops everything.
+    titles = {e["title"] for e in scored}
+    assert "Cheap" in titles
+    assert "Free gig" in titles
+    assert "Fee 430" not in titles
