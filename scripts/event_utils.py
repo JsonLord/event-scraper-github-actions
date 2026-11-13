@@ -389,6 +389,8 @@ def looks_synthetic_title(title: str) -> bool:
         return True
     if stripped.lstrip("#").strip().lower() in JUNK_TITLES:
         return True
+    if re.fullmatch(r"(?:Ausverkauft\s+Theater|Theater\s+Comedy\s*&\s*Kabarett|(?:Ermäßigt|Studenten|Studierende)(?:\s*\([^)]*\))?\s*€?\s*\d+[,.]\d{2}\s*€?)", stripped, re.I):
+        return True
     if CALENDAR_HEADING_RE.match(stripped):
         return True
     # A title that is only a date/time and punctuation carries no name.
@@ -804,6 +806,7 @@ def validate_event(
     window_end: date,
     max_price: float = DEFAULT_MAX_PRICE,
     require_berlin_signal: bool = False,
+    keep_unknown_price: bool = True,
 ) -> Optional[Dict[str, Any]]:
     """Normalise one scraped row, or return None if it cannot be trusted.
 
@@ -812,6 +815,13 @@ def validate_event(
     tying it to Berlin. Everything that survives has normalised, zero-padded
     dates, 24-hour times, cleaned text and honest None/"" for anything the
     page did not state.
+
+    ``keep_unknown_price`` exists because the community pipeline needs a
+    *discovery* pool, not a priced one: an event whose listing never stated a
+    price must survive to independent verification rather than be dropped as
+    unaffordable. It defaults to True - the keyword is retained so the
+    personal pipeline's behaviour is stated explicitly rather than implied,
+    and passing False restores "drop unpriced rows".
     """
     title = clean_text(event.get("title"), max_length=180)
     description = clean_text(event.get("description"), max_length=400)
@@ -880,8 +890,17 @@ def validate_event(
         price = parse_price(description)
     if price is not None and price > max_price:
         return None
+    if price is None and not keep_unknown_price:
+        return None
 
     description = strip_title_from_description(title, description)
+
+    # Image fields are optional decoration: carried through when an extractor
+    # found one, never a reason to reject a row, and never invented.
+    image_url = str(event.get("image_url") or "").strip()
+    if image_url and not image_url.startswith(("http://", "https://")):
+        image_url = ""
+    image_verified = event.get("image_verified")
 
     normalized = {
         "title": title,
@@ -894,6 +913,10 @@ def validate_event(
         "venue": venue,
         "source_url": source_url,
         "has_detail_link": is_detail_link(url, source_url),
+        "image_url": image_url,
+        "image_source": clean_text(event.get("image_source"), max_length=40) if image_url else "",
+        "image_verified": bool(image_verified) if image_verified is not None else None,
+        "image_checked_at": str(event.get("image_checked_at") or "") if image_url else "",
     }
 
     # A row with neither a name we trust nor a link to verify it is not worth
@@ -904,7 +927,9 @@ def validate_event(
     if require_berlin_signal and not has_berlin_signal(normalized):
         return None
 
-    return normalized
+    from scripts.ticket_evidence import enrich_evidence
+    normalized.update({k: event[k] for k in ("offers", "event_status", "observed_at", "evidence") if k in event})
+    return enrich_evidence(normalized)
 
 
 def validate_events(
@@ -914,12 +939,14 @@ def validate_events(
     window_end: date,
     max_price: float = DEFAULT_MAX_PRICE,
     require_berlin_signal: bool = False,
+    keep_unknown_price: bool = True,
 ) -> Tuple[List[Dict[str, Any]], int]:
     """Validate a batch; returns (kept, rejected_count)."""
     kept, rejected = [], 0
     for raw in events or []:
         cleaned = validate_event(
-            raw, source_url, window_start, window_end, max_price, require_berlin_signal
+            raw, source_url, window_start, window_end, max_price, require_berlin_signal,
+            keep_unknown_price,
         )
         if cleaned:
             kept.append(cleaned)
@@ -958,17 +985,26 @@ def dedupe_events(events: Iterable[Dict[str, Any]]) -> List[Dict[str, Any]]:
     whenever two sources formatted the date differently ("2026-8-29" vs
     "2026-08-29"); normalisation upstream plus a URL key closes both gaps.
     """
-    seen_urls, seen_keys, out = set(), set(), []
+    from scripts.ticket_evidence import folded
+    seen_urls, seen_keys, out = {}, {}, []
     for event in events or []:
-        url = event.get("url") or ""
-        if event.get("has_detail_link") and url:
-            if url in seen_urls:
-                continue
-            seen_urls.add(url)
-        key = (re.sub(r'\W+', '', str(event.get("title", "")).lower()), event.get("date"))
-        if key in seen_keys:
+        occurrence = (event.get("date"), event.get("time") or "")
+        url_key = (clean_url(event.get("url") or ""), occurrence)
+        key = (folded(event.get("title", "")), occurrence, folded(event.get("venue", "")))
+        previous = seen_urls.get(url_key) if event.get("has_detail_link") else None
+        previous = previous or seen_keys.get(key)
+        if previous is not None:
+            alternates = previous.setdefault("alternate_source_urls", [])
+            source = event.get("source_url")
+            if source and source != previous.get("source_url") and source not in alternates:
+                alternates.append(source)
+            for field in ("venue", "offers", "description"):
+                if not previous.get(field) and event.get(field):
+                    previous[field] = event[field]
             continue
-        seen_keys.add(key)
+        if event.get("has_detail_link"):
+            seen_urls[url_key] = event
+        seen_keys[key] = event
         out.append(event)
     return out
 

@@ -1,0 +1,108 @@
+name: Tests
+
+# The repository had no pull-request test job: `fetch-strategy-probe.yml` runs
+# pytest, but only on manual dispatch and in service of a live source
+# qualification, and the scrape workflows never run the suite at all. A PR
+# against the search branch therefore had no automated evidence.
+#
+# This is the CI-equivalent of the local command in `requirements.txt`, run on
+# every push and pull request. It installs the real dependencies and nothing
+# from a developer's machine.
+
+on:
+  push:
+    branches:
+      - "integrate/**"
+      - "codex/**"
+  pull_request:
+    branches:
+      - "codex/restore-before-tinyfish-search"
+      - "main"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  # One run per ref: a new push supersedes an in-flight run for the same
+  # branch, which is what makes the check meaningful on a fast-moving PR.
+  group: "tests-${{ github.ref }}"
+  cancel-in-progress: true
+
+jobs:
+  pytest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          # Matches the interpreter every other workflow in this repository
+          # uses, so a green run here means the same runtime the scraper gets.
+          python-version: "3.11"
+
+      - name: Install dependencies
+        # The runtime set the suite actually imports. `cloakbrowser` is omitted
+        # deliberately: it downloads a Chromium binary on install, and the tests
+        # that exercise the render tier monkeypatch `sys.modules["cloakbrowser"]`
+        # rather than importing it. `jsonschema` is included so the community
+        # schema layer runs instead of silently skipping.
+        run: |
+          python -m pip install --upgrade pip
+          pip install pytest requests beautifulsoup4 lxml PyYAML python-dotenv jsonschema
+
+      - name: Confirm no local environment is required
+        # The suite must not depend on uncommitted state. A .env or a local
+        # virtualenv in this directory would be a false pass waiting to happen.
+        run: |
+          set -eu
+          test ! -f .env || { echo "::error::.env present in CI checkout"; exit 1; }
+          test ! -d .venv || { echo "::error::.venv present in CI checkout"; exit 1; }
+          echo "Clean checkout: no .env, no local virtualenv."
+
+      - name: Run the full test suite
+        # No `-x`, no exclusions, no path filters: the whole suite is the
+        # contract. Showing failures in the log and still failing the job is the
+        # behaviour a required check needs.
+        run: |
+          python -m pytest tests/ -q --strict-markers
+
+      - name: Verify the suite collected a plausible number of tests
+        # A collection error that pytest reports as "0 passed" would otherwise
+        # look like a green run. The floor is deliberately below the current
+        # count so adding tests never trips it, but an empty run does.
+        #
+        # Parsed with an explicit regex rather than by line position: pytest's
+        # summary is separated from the last collected id by a blank line, so
+        # `tail -2 | head -1` yields "" and the guard would never fire.
+        run: |
+          COLLECTED="$(python -m pytest tests/ --collect-only -q 2>/dev/null \
+            | grep -oE '^[0-9]+ tests? collected' | grep -oE '^[0-9]+' || true)"
+          echo "collected: ${COLLECTED:-0}"
+          if [ "${COLLECTED:-0}" -lt 400 ]; then
+            echo "::error::Suspiciously few tests collected (${COLLECTED:-0}); a collection error was probably masked."
+            exit 1
+          fi
+
+      - name: Summarise the scrape and community invariants
+        # Cheap, explicit evidence for the two limits this repository has
+        # promised not to conflate.
+        run: |
+          python - <<'PY' >> "$GITHUB_STEP_SUMMARY"
+          import sys
+          sys.path.insert(0, "scripts")
+          from event_utils import DEFAULT_MAX_PRICE
+          from score_events import MAX_PRICE
+          from community_common import COMMUNITY_MAX_PRICE
+          print("## Price limits")
+          print()
+          print(f"- personal: `{DEFAULT_MAX_PRICE:g}` (scorer: `{MAX_PRICE:g}`)")
+          print(f"- community: `{COMMUNITY_MAX_PRICE:g}`")
+          assert DEFAULT_MAX_PRICE == MAX_PRICE == 20.0
+          assert COMMUNITY_MAX_PRICE == 15.0
+          print()
+          print("Independent: the community cap never reads the personal one.")
+          PY

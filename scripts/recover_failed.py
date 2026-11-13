@@ -140,6 +140,10 @@ def harvest_detail_links(html: str, source_url: str,
 
 def extract_from_detail_page(url: str, fetch=fetch_plain) -> List[Dict[str, Any]]:
     """Everything one event page has to say, schema.org first."""
+    from scripts.raus_html import is_raus_record
+    if is_raus_record({'url':url}):
+        # Raus needs independent card identity and the dedicated publication gate.
+        return []
     html = fetch(url)
     if not html or is_bot_challenge(html):
         return []
@@ -179,6 +183,10 @@ def recover_site(site: Dict[str, Any], date_days: int, max_price: float,
     """Recover whatever one empty source's event pages still have to offer."""
     name, url = site.get("name", "?"), site.get("url", "")
     if not url:
+        return []
+    from scripts.raus_html import is_raus_record
+    if is_raus_record({'url':url}):
+        logger.info("Raus recovery requires the dedicated card/detail pipeline; generic recovery skipped")
         return []
 
     html = _read_snapshot(site, fetch=fetch)

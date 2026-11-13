@@ -1,0 +1,478 @@
+{
+  "review_date_berlin": "2026-10-29",
+  "scope": "First-page link extraction only; not full-source or exact venue verification. No deployment.",
+  "http_request_count": 5,
+  "initial_listing_calls": [
+    {
+      "url": "https://www.berlin-buehnen.de/robots.txt",
+      "operation": "robots",
+      "http_status": 200,
+      "seconds": 0.589,
+      "outcome": "ok"
+    },
+    {
+      "url": "https://www.berlin-buehnen.de/de/spielplan/?date=2026-11-01",
+      "operation": "page",
+      "http_status": 200,
+      "seconds": 1.113,
+      "outcome": "ok"
+    }
+  ],
+  "followup_http": {
+    "results": [
+      {
+        "kind": "second-date",
+        "requested_url": "https://www.berlin-buehnen.de/de/spielplan/?date=2026-11-02",
+        "received": true,
+        "outcome": "ok",
+        "final_url": "https://www.berlin-buehnen.de/de/spielplan/?date=2026-11-02",
+        "sha256": "41f2eb4cc38859c53c040828b2a6e8d7ba624ff0a4c9048d841a210d74c4aac8",
+        "h1": [],
+        "event_cards": 24,
+        "jsonld_scripts": 0
+      },
+      {
+        "kind": "event-detail",
+        "requested_url": "https://www.berlin-buehnen.de/de/spielplan/keine-panik-resilienz-polykrise-fiff-konferenz-2026/events/376780/",
+        "received": true,
+        "outcome": "ok",
+        "final_url": "https://www.berlin-buehnen.de/de/spielplan/keine-panik-resilienz-polykrise-fiff-konferenz-2026/events/376780/",
+        "sha256": "a42e4fb378f221d6a1829434a2ee30d604c5088b40b47969f9a6155072c63e65",
+        "h1": [
+          "Keine Panik! Resilienz in der Polykrise – FIfF-Konferenz 2026",
+          "Keine Panik! Resilienz in der Polykrise – FIfF-Konferenz 2026"
+        ],
+        "event_cards": 0,
+        "jsonld_scripts": 1
+      }
+    ],
+    "calls": [
+      {
+        "url": "https://www.berlin-buehnen.de/robots.txt",
+        "operation": "robots",
+        "http_status": 200,
+        "seconds": 0.42,
+        "outcome": "ok"
+      },
+      {
+        "url": "https://www.berlin-buehnen.de/de/spielplan/?date=2026-11-02",
+        "operation": "page",
+        "http_status": 200,
+        "seconds": 1.143,
+        "outcome": "ok"
+      },
+      {
+        "url": "https://www.berlin-buehnen.de/de/spielplan/keine-panik-resilienz-polykrise-fiff-konferenz-2026/events/376780/",
+        "operation": "page",
+        "http_status": 200,
+        "seconds": 1.657,
+        "outcome": "ok"
+      }
+    ]
+  },
+  "listings": [
+    {
+      "listing_url": "https://www.berlin-buehnen.de/de/spielplan/?date=2026-11-01",
+      "captured_response_sha256": "6a872eb67cf2a8c10b6fe2a9b85ba8fd3cced83b9c30a086ae073015a7e39986",
+      "event_cards": 24,
+      "adapter_records": 23,
+      "missing_specific_links": 0,
+      "missing_venues": 0,
+      "pagination_next": "2",
+      "fixture": "tests/fixtures/berlin_buehnen_listing_2026-11-01_captured_2026-10-29.html",
+      "fixture_sha256": "8c348ec72f0833c9bc2abaa4569bc57ff96428210e37c8eb8a0a2458ddfbacd7",
+      "extracted_records": [
+        {
+          "title": "Keine Panik! Resilienz in der Polykrise – FIfF-Konferenz 2026",
+          "date": "2026-11-01",
+          "time": "10:00",
+          "venue": "Theater im Delphi",
+          "url": "https://www.berlin-buehnen.de/de/spielplan/keine-panik-resilienz-polykrise-fiff-konferenz-2026/events/376780/",
+          "price": null
+        },
+        {
+          "title": "Die große Zaubershow des Ala Labama",
+          "date": "2026-11-01",
+          "time": "11:00",
+          "venue": "Pfefferberg Theater",
+          "url": "https://www.berlin-buehnen.de/de/spielplan/die-grosse-zaubershow-ala-labama-4/events/281573/",
+          "price": null
+        },
+        {
+          "title": "Krakenkarussell",
+          "date": "2026-11-01",
+          "time": "11:00",
+          "venue": "Theater der kleinen Form",
+          "url": "https://www.berlin-buehnen.de/de/spielplan/krakenkarussell/events/350371/",
+          "price": null
+        },
+        {
+          "title": "aneinander-vorbei",
+          "date": "2026-11-01",
+          "time": "11:00",
+          "venue": "GRIPS Theater | GRIPS Podewil",
+          "url": "https://www.berlin-buehnen.de/de/spielplan/aneinander-vorbei-80/events/372089/",
+          "price": null
+        },
+        {
+          "title": "WORLD CHOIR",
+          "date": "2026-11-01",
+          "time": "11:00",
+          "venue": "Konzerthaus Berlin | Großer Saal",
+          "url": "https://www.berlin-buehnen.de/de/spielplan/world-choir/events/374145/",
+          "price": null
+        },
+        {
+          "title": "Ballettgespräch",
+          "date": "2026-11-01",
+          "time": "11:00",
+          "venue": "Staatsballett Berlin | Apollo Saal - Staatsoper unter den Linden",
+          "url": "https://www.berlin-buehnen.de/de/spielplan/ballettgespraech/events/363324/",
+          "price": null
+        },
+        {
+          "title": "Festivalfrühstück",
+          "date": "2026-11-01",
+          "time": "11:00",
+          "venue": "Schaubude Berlin",
+          "url": "https://www.berlin-buehnen.de/de/spielplan/festivalfruehstueck-3/events/376822/",
+          "price": null
+        },
+        {
+          "title": "Die Zeitdiebe",
+          "date": "2026-11-01",
+          "time": "11:00",
+          "venue": "Figurentheater Grashüpfer | Nicole Gospodarek",
+          "url": "https://www.berlin-buehnen.de/de/spielplan/die-zeitdiebe-3/events/376564/",
+          "price": null
+        },
+        {
+          "title": "Du hast angefangen! Nein, du!",
+          "date": "2026-11-01",
+          "time": "11:00",
+          "venue": "ATZE Musiktheater | Zeltbühne",
+          "url": "https://www.berlin-buehnen.de/de/spielplan/test-360/events/375793/",
+          "price": null
+        },
+        {
+          "title": "BERLINER PORTRÄT GALERIE - GEBURTSHELFER DER LITERATUR FOLGE 1: PAUL UND BRUNO CASSIRER",
+          "date": "2026-11-01",
+          "time": "11:30",
+          "venue": "Renaissance-Theater Berlin | Renaissance-Theater Berlin / Bruckner-Foyer",
+          "url": "https://www.berlin-buehnen.de/de/spielplan/berliner-portraet-galerie-geburtshelfer-der-literatur-folge-1-paul-und-bruno-cassirer/events/376269/",
+          "price": null
+        },
+        {
+          "title": "The School of Self-Defense",
+          "date": "2026-11-01",
+          "time": "12:00",
+          "venue": "Volksbühne am Rosa-Luxemburg-Platz | Roter Salon",
+          "url": "https://www.berlin-buehnen.de/de/spielplan/the-school-of-self-defense/events/371541/",
+          "price": null
+        },
+        {
+          "title": "Schneewittchen - Mitspieltheater",
+          "date": "2026-11-01",
+          "time": "12:00",
+          "venue": "Galli Theater Berlin",
+          "url": "https://www.berlin-buehnen.de/de/spielplan/schneewittchen-mitspieltheater-4/events/374491/",
+          "price": null
+        },
+        {
+          "title": "Historische Führung",
+          "date": "2026-11-01",
+          "time": "12:00",
+          "venue": "Berliner Ensemble",
+          "url": "https://www.berlin-buehnen.de/de/spielplan/historische-fuehrung/events/374733/",
+          "price": null
+        },
+        {
+          "title": "Cirque du Soleil ALIZÉ",
+          "date": "2026-11-01",
+          "time": "13:00",
+          "venue": "Theater am Potsdamer Platz | Cirque du Soleil",
+          "url": "https://www.berlin-buehnen.de/de/spielplan/cirque-soleil-alize-2/events/359327/",
+          "price": null
+        },
+        {
+          "title": "DISCO - Show & Brunch",
+          "date": "2026-11-01",
+          "time": "13:00",
+          "venue": "Das Wintergarten Varieté",
+          "url": "https://www.berlin-buehnen.de/de/spielplan/disco-show-brunch/events/371772/",
+          "price": null
+        },
+        {
+          "title": "Sonntagsbrunch mit Livemusik",
+          "date": "2026-11-01",
+          "time": "13:00",
+          "venue": "Ballhaus Wedding | The Wildfires",
+          "url": "https://www.berlin-buehnen.de/de/spielplan/sonntagsbrunch-livemusik-5/events/377588/",
+          "price": null
+        },
+        {
+          "title": "MISSVERSTEHEN SIE MICH RICHTIG – Marcel Reif zu Gast bei Kevin Kühnert",
+          "date": "2026-11-01",
+          "time": "14:00",
+          "venue": "DISTEL Kabarett-Theater",
+          "url": "https://www.berlin-buehnen.de/de/spielplan/missverstehen-sie-mich-richtig-marcel-reif-gast-kevin-kuehnert/events/372436/",
+          "price": null
+        },
+        {
+          "title": "Transport: Fasten your Seatbelts!",
+          "date": "2026-11-01",
+          "time": "14:00",
+          "venue": "Schaubude Berlin | Klaipėdos lėlių teatras, Litauen",
+          "url": "https://www.berlin-buehnen.de/de/spielplan/transport-fasten-your-seatbelts/events/376797/",
+          "price": null
+        },
+        {
+          "title": "Jack and the Beanstalk - Storyacting",
+          "date": "2026-11-01",
+          "time": "14:00",
+          "venue": "Galli Theater Berlin | Galli Theater Berlin",
+          "url": "https://www.berlin-buehnen.de/de/spielplan/jack-and-the-beanstalk/events/374494/",
+          "price": null
+        },
+        {
+          "title": "Historische Führung",
+          "date": "2026-11-01",
+          "time": "14:00",
+          "venue": "Berliner Ensemble",
+          "url": "https://www.berlin-buehnen.de/de/spielplan/historische-fuehrung/events/374734/",
+          "price": null
+        },
+        {
+          "title": "Führung",
+          "date": "2026-11-01",
+          "time": "14:00",
+          "venue": "Staatsoper Unter den Linden",
+          "url": "https://www.berlin-buehnen.de/de/spielplan/fuehrung-4097/events/375085/",
+          "price": null
+        },
+        {
+          "title": "Wochenend-Workshop für Familien",
+          "date": "2026-11-01",
+          "time": "14:30",
+          "venue": "Komische Oper Berlin | Schillertheater",
+          "url": "https://www.berlin-buehnen.de/de/spielplan/wochenend-workshop-familien/events/364511/",
+          "price": null
+        },
+        {
+          "title": "SALON ROSIE – Zwei Schwestern an der Kippe",
+          "date": "2026-11-01",
+          "time": "14:30",
+          "venue": "Theater des Westens",
+          "url": "https://www.berlin-buehnen.de/de/spielplan/salon-rosie-zwei-schwestern-kippe/events/377379/",
+          "price": null
+        }
+      ]
+    },
+    {
+      "listing_url": "https://www.berlin-buehnen.de/de/spielplan/?date=2026-11-02",
+      "captured_response_sha256": "41f2eb4cc38859c53c040828b2a6e8d7ba624ff0a4c9048d841a210d74c4aac8",
+      "event_cards": 24,
+      "adapter_records": 24,
+      "missing_specific_links": 0,
+      "missing_venues": 0,
+      "pagination_next": "2",
+      "fixture": "tests/fixtures/berlin_buehnen_listing_2026-11-02_captured_2026-10-29.html",
+      "fixture_sha256": "38639db01b87ae42912f86cf7c2cf434a29a065f6522f19d87c7bc41f8825e52",
+      "extracted_records": [
+        {
+          "title": "aneinander-vorbei",
+          "date": "2026-11-02",
+          "time": "10:00",
+          "venue": "GRIPS Theater | GRIPS Podewil",
+          "url": "https://www.berlin-buehnen.de/de/spielplan/aneinander-vorbei-80/events/372090/",
+          "price": null
+        },
+        {
+          "title": "Die Verwandlung",
+          "date": "2026-11-02",
+          "time": "10:30",
+          "venue": "ATZE Musiktheater | Großer Saal",
+          "url": "https://www.berlin-buehnen.de/de/spielplan/die-verwandlung-2/events/375821/",
+          "price": null
+        },
+        {
+          "title": "Pippi Langstrumpf",
+          "date": "2026-11-02",
+          "time": "11:00",
+          "venue": "Komische Oper Berlin | Schillertheater - Großer Saal",
+          "url": "https://www.berlin-buehnen.de/de/spielplan/pippi-langstrumpf/events/364514/",
+          "price": null
+        },
+        {
+          "title": "Dreamland / Territorium der Träume",
+          "date": "2026-11-02",
+          "time": "15:00",
+          "venue": "Schaubude Berlin | Théâtre Rude Ingénierie, Québec, Kanada",
+          "url": "https://www.berlin-buehnen.de/de/spielplan/dreamland-territorium-traeume/events/376826/",
+          "price": null
+        },
+        {
+          "title": "Transport: Connecting Flights",
+          "date": "2026-11-02",
+          "time": "17:00",
+          "venue": "Schaubude Berlin | Białostocki Teatr Lalek, Polen",
+          "url": "https://www.berlin-buehnen.de/de/spielplan/transport-connecting-flights/events/376734/",
+          "price": null
+        },
+        {
+          "title": "Dreamland / Territorium der Träume",
+          "date": "2026-11-02",
+          "time": "17:00",
+          "venue": "Schaubude Berlin | Théâtre Rude Ingénierie, Québec, Kanada",
+          "url": "https://www.berlin-buehnen.de/de/spielplan/dreamland-territorium-traeume/events/376827/",
+          "price": null
+        },
+        {
+          "title": "The Game",
+          "date": "2026-11-02",
+          "time": "17:00",
+          "venue": "Schaubude Berlin | Trickster-p, Schweiz",
+          "url": "https://www.berlin-buehnen.de/de/spielplan/the-game/events/376833/",
+          "price": null
+        },
+        {
+          "title": "FAIRSTAGE Treffpunkt",
+          "date": "2026-11-02",
+          "time": "17:00",
+          "venue": "HAU Hebbel am Ufer",
+          "url": "https://www.berlin-buehnen.de/de/spielplan/mit-konstantin-kohl/events/376559/",
+          "price": null
+        },
+        {
+          "title": "Künstlerinnengespräch »A house and two windows«",
+          "date": "2026-11-02",
+          "time": "17:30",
+          "venue": "Schaubude Berlin | Myriam Jacob-Allard, Québec, Kanada",
+          "url": "https://www.berlin-buehnen.de/de/spielplan/kuenstlerinnengespraech-a-house-and-two-windows/events/375376/",
+          "price": null
+        },
+        {
+          "title": "Führung durch den Puppen- und Maskenfundus",
+          "date": "2026-11-02",
+          "time": "18:00",
+          "venue": "Hochschule für Schauspielkunst Ernst Busch",
+          "url": "https://www.berlin-buehnen.de/de/spielplan/fuehrung-puppen-maskenfundus-2/events/372900/",
+          "price": null
+        },
+        {
+          "title": "AKADEMIE-FORUM: ALENA JABARINE",
+          "date": "2026-11-02",
+          "time": "18:00",
+          "venue": "Pierre Boulez Saal",
+          "url": "https://www.berlin-buehnen.de/de/spielplan/akademie-forum-alena-jabarine/events/376604/",
+          "price": null
+        },
+        {
+          "title": "Transport: Cargo",
+          "date": "2026-11-02",
+          "time": "18:00",
+          "venue": "Schaubude Berlin | Lutkovno gledališče Maribor, Slowenien",
+          "url": "https://www.berlin-buehnen.de/de/spielplan/transport-cargo/events/376742/",
+          "price": null
+        },
+        {
+          "title": "Kolkata to Berlin",
+          "date": "2026-11-02",
+          "time": "18:30",
+          "venue": "theatre pool",
+          "url": "https://www.berlin-buehnen.de/de/spielplan/kolkata-to-berlin/events/379196/",
+          "price": null
+        },
+        {
+          "title": "Transport: Departure",
+          "date": "2026-11-02",
+          "time": "19:00",
+          "venue": "Schaubude Berlin | Lutkovno gledališče Ljubljana, Slowenien",
+          "url": "https://www.berlin-buehnen.de/de/spielplan/transport-departure/events/376738/",
+          "price": null
+        },
+        {
+          "title": "SOHLE EINS-ACHTZIG",
+          "date": "2026-11-02",
+          "time": "19:00",
+          "venue": "Schaubude Berlin | schoenbrodtkuerschner, Deutschland",
+          "url": "https://www.berlin-buehnen.de/de/spielplan/sohle-eins-achtzig/events/376817/",
+          "price": null
+        },
+        {
+          "title": "Deutscher Herbst",
+          "date": "2026-11-02",
+          "time": "19:00",
+          "venue": "Deutsches Theater Berlin | DT Bühne",
+          "url": "https://www.berlin-buehnen.de/de/spielplan/deutscher-herbst/events/377036/",
+          "price": null
+        },
+        {
+          "title": "Enad Marouf: Losers",
+          "date": "2026-11-02",
+          "time": "19:00",
+          "venue": "Sophiensæle | Festsaal",
+          "url": "https://www.berlin-buehnen.de/de/spielplan/enad-marouf-losers/events/377797/",
+          "price": null
+        },
+        {
+          "title": "JAMIE BAUM QUARTET, ANKE HELFRICH TRIO & JUDITH OWEN SEPTETT",
+          "date": "2026-11-02",
+          "time": "19:30",
+          "venue": "Heimathafen Neukölln",
+          "url": "https://www.berlin-buehnen.de/de/spielplan/jamie-baum-quartet-anke-helfrich-trio/events/368296/",
+          "price": null
+        },
+        {
+          "title": "Joe Jackson & Band - Hope and Fury Tour 2026",
+          "date": "2026-11-02",
+          "time": "19:30",
+          "venue": "Admiralspalast",
+          "url": "https://www.berlin-buehnen.de/de/spielplan/joe-jackson-band-hope-and-fury-tour-2026/events/357212/",
+          "price": null
+        },
+        {
+          "title": "Die SchMERZtherapie",
+          "date": "2026-11-02",
+          "time": "19:30",
+          "venue": "DISTEL Kabarett-Theater",
+          "url": "https://www.berlin-buehnen.de/de/spielplan/die-schmerztherapie-3/events/373748/",
+          "price": null
+        },
+        {
+          "title": "Ein Leben für die Freiheit und Demokratie\" -100 Jahre Mikis Theodorakis",
+          "date": "2026-11-02",
+          "time": "19:30",
+          "venue": "Renaissance-Theater Berlin | Renaissance-Theater Berlin",
+          "url": "https://www.berlin-buehnen.de/de/spielplan/ein-leben-freiheit-demokratie-100-jahre-mikis-theodorakis/events/376265/",
+          "price": null
+        },
+        {
+          "title": "4.48 Psychose",
+          "date": "2026-11-02",
+          "time": "19:30",
+          "venue": "Hochschule für Schauspielkunst Ernst Busch | HfS UNTEN",
+          "url": "https://www.berlin-buehnen.de/de/spielplan/448-psychose/events/375505/",
+          "price": null
+        },
+        {
+          "title": "Wencke Myhre pur – ein Wohnzimmerkonzert",
+          "date": "2026-11-02",
+          "time": "20:00",
+          "venue": "Schlosspark Theater",
+          "url": "https://www.berlin-buehnen.de/de/spielplan/wencke-myhre-pur-wohnzimmerkonzert/events/369052/",
+          "price": null
+        },
+        {
+          "title": "Chaos Royal: Wer stiehlt mir die Improshow?",
+          "date": "2026-11-02",
+          "time": "20:00",
+          "venue": "BKA Theater",
+          "url": "https://www.berlin-buehnen.de/de/spielplan/chaos-royal-wer-stiehlt-mir-improshow/events/353167/",
+          "price": null
+        }
+      ]
+    }
+  ],
+  "local_tests_passed": 205
+}

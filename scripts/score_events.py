@@ -34,10 +34,13 @@ import json
 import os
 import re
 import sys
+from pathlib import Path
 from datetime import date
 from typing import Any, Dict, List, Optional
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from event_utils import (  # noqa: E402
     DEFAULT_MAX_PRICE,
@@ -481,7 +484,8 @@ def score_event(event: Dict[str, Any], today: Optional[date] = None) -> Dict[str
     scored = dict(event)
     scored["stream"] = event_stream(primary, secondary)
     scored["price"] = price
-    scored["price_label"] = format_price_label(price)
+    from scripts.ticket_evidence import enrich_evidence
+    scored.update(enrich_evidence(scored))
     scored["matched_categories"] = matched
     scored["category"] = ", ".join(content_categories) if content_categories else (event.get("category") or "general")
     scored["score"] = max(0, min(100, score))
@@ -506,6 +510,21 @@ def score_and_filter_events(
         kept.append(event)
     deduped = kept
     scored = [score_event(e, today) for e in deduped]
+    # The cap is re-applied AFTER scoring, because `score_event()` calls
+    # `enrich_evidence()`, which can *reprices* a row from its own text: a
+    # listing scraped with `price: 0.0` whose description says "Fee: 430 EUR"
+    # comes out of enrichment at 430.0. The filter above only saw the raw
+    # value, so without this pass such a row would be published far above the
+    # cap. Filtering on the enriched price is the only way the cutoff holds
+    # for what is actually displayed.
+    over_cap = [
+        e for e in scored
+        if isinstance(e.get("price"), (int, float)) and not isinstance(e.get("price"), bool)
+        and e["price"] > max_price
+    ]
+    if over_cap:
+        EXCLUDED_COUNTS["over_price_cap"] = EXCLUDED_COUNTS.get("over_price_cap", 0) + len(over_cap)
+        scored = [e for e in scored if e not in over_cap]
     # Day-grouped: earliest date first, and within each day free events first
     # then ascending by price. The rating stays on every row and remains
     # sortable in the page, but it no longer decides the reading order.

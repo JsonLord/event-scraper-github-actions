@@ -1,0 +1,108 @@
+{
+  "provenance": {
+    "actions_run": 40225678325,
+    "artifact": "scrape-rausgegangen_de",
+    "original_raw_sha256": "262277701b04d30176fd19cbda648ebb46116e13a01469f0209c13b70e2a820d",
+    "scraped_at": "2026-10-25T19:22:49.154327",
+    "warning": "These are extracted listing rows, not verified detail evidence or original listing DOM."
+  },
+  "source": "https://rausgegangen.de/en/berlin/eventsbydate/?geospatial_query_type=CITY&lat=52.5&lng=13.405&city=berlin&active_city_name=Berlin&start_date=2026-10-25&end_date=2026-11-01",
+  "events": [
+    {
+      "title": "Zur Situation Der Frau In Familie Und Gesellschaft",
+      "date": "2026-10-25",
+      "time": "10:00",
+      "price": 0.0,
+      "category": "",
+      "description": "Today, 25. Okt | 10:00 Zur Situation der Frau in Familie und Gesellschaft Galerie im Körnerpark Free admission Ausstellung",
+      "url": "https://rausgegangen.de/en/events/zur-situation-der-frau-in-familie-und-gesellschaft-8/",
+      "venue": "Galerie im Körnerpark",
+      "source_url": "https://rausgegangen.de/en/berlin/eventsbydate/?geospatial_query_type=CITY&lat=52.5&lng=13.405&city=berlin&active_city_name=Berlin&start_date=2026-10-25&end_date=2026-11-01",
+      "has_detail_link": true
+    },
+    {
+      "title": "Flowmarkt Schoneberg",
+      "date": "2026-10-25",
+      "time": "11:00",
+      "price": 0.0,
+      "category": "",
+      "description": "Today, 25. Okt | 11:00 Flowmarkt Schöneberg Free admission Markt",
+      "url": "https://rausgegangen.de/en/events/flowmarkt-schoneberg-33/",
+      "venue": "",
+      "source_url": "https://rausgegangen.de/en/berlin/eventsbydate/?geospatial_query_type=CITY&lat=52.5&lng=13.405&city=berlin&active_city_name=Berlin&start_date=2026-10-25&end_date=2026-11-01",
+      "has_detail_link": true
+    },
+    {
+      "title": "Boxhopping Mondays",
+      "date": "2026-10-26",
+      "time": "18:00",
+      "price": 10.0,
+      "category": "",
+      "description": "Tomorrow, 26. Okt | 18:00 Boxhopping Mondays Monster Ronson's Karaoke 10,00 €",
+      "url": "https://rausgegangen.de/en/events/boxhopping-mondays-7/",
+      "venue": "Monster Ronson's Karaoke",
+      "source_url": "https://rausgegangen.de/en/berlin/eventsbydate/?geospatial_query_type=CITY&lat=52.5&lng=13.405&city=berlin&active_city_name=Berlin&start_date=2026-10-25&end_date=2026-11-01",
+      "has_detail_link": true
+    },
+    {
+      "title": "Manicmonday With Sebastian Rebig",
+      "date": "2026-10-26",
+      "time": "18:00",
+      "price": 0.0,
+      "category": "",
+      "description": "Tomorrow, 26. Okt | 18:00 Manic.Monday with Sebastian Rebig Minimal Bar Free admission",
+      "url": "https://rausgegangen.de/en/events/manicmonday-with-sebastian-rebig-0/",
+      "venue": "",
+      "source_url": "https://rausgegangen.de/en/berlin/eventsbydate/?geospatial_query_type=CITY&lat=52.5&lng=13.405&city=berlin&active_city_name=Berlin&start_date=2026-10-25&end_date=2026-11-01",
+      "has_detail_link": true
+    },
+    {
+      "title": "BUCHBERLIN26 Arena Berlin",
+      "date": "2026-10-31",
+      "time": "10:00",
+      "price": 12.0,
+      "category": "",
+      "description": "Sa, 31. Okt | 10:00 BUCHBERLIN26 Arena Berlin 12,00 € WIN Lottery Feste & Festival",
+      "url": "https://rausgegangen.de/en/events/buchberlin26-0/",
+      "venue": "",
+      "source_url": "https://rausgegangen.de/en/berlin/eventsbydate/?geospatial_query_type=CITY&lat=52.5&lng=13.405&city=berlin&active_city_name=Berlin&start_date=2026-10-25&end_date=2026-11-01",
+      "has_detail_link": true
+    },
+    {
+      "title": "Sando Saturday",
+      "date": "2026-10-31",
+      "time": "12:00",
+      "price": 0.0,
+      "category": "",
+      "description": "Sa, 31. Okt | 12:00 SANDO SATURDAY Aeka Café Free admission Essen & Trinken",
+      "url": "https://rausgegangen.de/en/events/sando-saturday-1/",
+      "venue": "Aeka Café",
+      "source_url": "https://rausgegangen.de/en/berlin/eventsbydate/?geospatial_query_type=CITY&lat=52.5&lng=13.405&city=berlin&active_city_name=Berlin&start_date=2026-10-25&end_date=2026-11-01",
+      "has_detail_link": true
+    },
+    {
+      "title": "Berlin Science Week",
+      "date": "2026-11-01",
+      "time": "10:00",
+      "price": 0.0,
+      "category": "",
+      "description": "So, 01. Nov | 10:00 Berlin Science Week 2026 | 1.—10. NOV 26 Berlin Free admission Feste & Festival",
+      "url": "https://rausgegangen.de/en/events/berlin-science-week-2026-10/",
+      "venue": "2026 | 1.—10. NOV 26 Berlin",
+      "source_url": "https://rausgegangen.de/en/berlin/eventsbydate/?geospatial_query_type=CITY&lat=52.5&lng=13.405&city=berlin&active_city_name=Berlin&start_date=2026-10-25&end_date=2026-11-01",
+      "has_detail_link": true
+    },
+    {
+      "title": "Leica Ein Jahrhundert In Bildern Kinotour Mit Reiner Holzeme",
+      "date": "2026-11-01",
+      "time": "11:00",
+      "price": 0.0,
+      "category": "",
+      "description": "So, 01. Nov | 11:00 Kinotour | Leica - Ein Jahrhundert in Bildern | mit Regisseur Reiner Holzemer | BERLIN Kino International Preis an AK Film",
+      "url": "https://rausgegangen.de/en/events/leica-ein-jahrhundert-in-bildern-kinotour-mit-reiner-holzeme-0/",
+      "venue": "",
+      "source_url": "https://rausgegangen.de/en/berlin/eventsbydate/?geospatial_query_type=CITY&lat=52.5&lng=13.405&city=berlin&active_city_name=Berlin&start_date=2026-10-25&end_date=2026-11-01",
+      "has_detail_link": true
+    }
+  ]
+}

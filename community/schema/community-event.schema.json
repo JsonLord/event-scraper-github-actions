@@ -1,0 +1,224 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://jsonlord.github.io/event-scraper-github-actions/community/schema/community-event.schema.json",
+  "title": "Community event issue",
+  "description": "One weekly community issue: candidate, reviewed or approved. The same schema covers all three lifecycle stages so a file can be promoted without being reshaped; the stage is recorded in issue.status.",
+  "type": "object",
+  "required": ["schema_version", "issue_week", "generated_at", "events"],
+  "additionalProperties": true,
+  "properties": {
+    "schema_version": {
+      "const": "1.0"
+    },
+    "issue_week": {
+      "type": "object",
+      "required": ["start", "end", "timezone"],
+      "additionalProperties": false,
+      "properties": {
+        "start": { "type": "string", "format": "date" },
+        "end": { "type": "string", "format": "date" },
+        "timezone": { "const": "Europe/Berlin" }
+      }
+    },
+    "generated_at": {
+      "type": "string",
+      "description": "ISO 8601 timestamp with offset, in Europe/Berlin."
+    },
+    "status": {
+      "description": "Lifecycle stage of this file.",
+      "enum": ["candidates", "reviewed", "approved"]
+    },
+    "published_at": {
+      "type": ["string", "null"],
+      "description": "Set only on approved issues, when promotion ran."
+    },
+    "summary": {
+      "type": "object",
+      "description": "Editorial handoff counts. Required on candidates, optional elsewhere.",
+      "additionalProperties": true
+    },
+    "publication": {
+      "type": "object",
+      "description": "Set only on approved issues. States whether every approved event reached the page, so a partial publication is visible in the file rather than only inferable from the counts.",
+      "additionalProperties": true,
+      "properties": {
+        "approved_requested": { "type": "integer", "minimum": 0 },
+        "published": { "type": "integer", "minimum": 0 },
+        "excluded": { "type": "integer", "minimum": 0 },
+        "complete": { "type": "boolean" },
+        "policy": { "enum": ["complete", "partial"] },
+        "exclusion_reasons": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "refused": {
+      "type": "array",
+      "description": "Approved events excluded for failing a publication rule, each with its reasons.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "event_id": { "type": "string" },
+          "problems": { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    },
+    "events": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/communityEvent" }
+    }
+  },
+  "$defs": {
+    "communityEvent": {
+      "type": "object",
+      "required": [
+        "event_id", "title", "date", "venue", "price_eur", "price_status",
+        "category", "event_url", "verification", "community"
+      ],
+      "additionalProperties": true,
+      "properties": {
+        "event_id": {
+          "type": "string",
+          "pattern": "^ce-[0-9a-f]{24}$",
+          "description": "Stable deterministic id over title, canonical URL, occurrence date, venue and start time."
+        },
+        "title": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "date": {
+          "type": "string",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+          "description": "Occurrence date in Europe/Berlin."
+        },
+        "time": { "type": ["string", "null"], "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$" },
+        "end_time": { "type": ["string", "null"], "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$" },
+        "venue": { "type": "string" },
+        "district": { "type": ["string", "null"] },
+        "address": { "type": ["string", "null"] },
+        "price_eur": {
+          "type": ["number", "null"],
+          "minimum": 0,
+          "description": "The entry price: the lower bound of a range, the price of a single-price event, 0 for confirmed free. Null means unknown. Never coerced to 0."
+        },
+        "price_max_eur": {
+          "type": ["number", "null"],
+          "minimum": 0,
+          "description": "The upper bound of a confirmed price span. Equal to price_eur for a single-price event, null when no price is known. Never used to decide the cap: the cap applies to the entry price."
+        },
+        "price_status": {
+          "enum": [
+            "confirmed_free",
+            "confirmed_paid",
+            "range",
+            "donation_based",
+            "unknown",
+            "needs_verification"
+          ],
+          "description": "Canonical entry-price state, per scripts/price_status.py. 'confirmed_free' requires real evidence of free entry; a bare price of 0 with nothing corroborating it is 'unknown'. 'range' means a confirmed span whose entry price is the low end."
+        },
+        "price_provenance": {
+          "type": "object",
+          "description": "What the price status rests on, and which pipeline established it. Provenance only; nothing decides behaviour from it.",
+          "additionalProperties": true,
+          "properties": {
+            "schema_version": { "type": "string" },
+            "status": {
+              "enum": [
+                "confirmed_free", "confirmed_paid", "range",
+                "donation_based", "unknown", "needs_verification"
+              ]
+            },
+            "origin": {
+              "type": "object",
+              "additionalProperties": true,
+              "properties": {
+                "pipeline": { "enum": ["community", "scraping", "unknown"] },
+                "model": { "type": "string" }
+              }
+            },
+            "free_admission_confirmed": { "type": "boolean" },
+            "offer_count": { "type": "integer", "minimum": 0 }
+          }
+        },
+        "price_note": { "type": ["string", "null"] },
+        "category": {
+          "enum": [
+            "electronic", "music", "nightlife", "arts", "culture",
+            "workshops", "outdoor", "sports", "markets", "community", "other"
+          ]
+        },
+        "description": { "type": "string" },
+        "event_url": { "type": "string" },
+        "listing_url": { "type": ["string", "null"] },
+        "source_url": { "type": ["string", "null"] },
+        "scraped_at": { "type": ["string", "null"] },
+        "image_url": { "type": ["string", "null"] },
+        "image_source": { "type": ["string", "null"] },
+        "image_verified": { "type": ["boolean", "null"] },
+        "image_checked_at": { "type": ["string", "null"] },
+        "verification": { "$ref": "#/$defs/verification" },
+        "community": { "$ref": "#/$defs/community" }
+      }
+    },
+    "verification": {
+      "type": "object",
+      "required": ["status", "checked_at", "official_source_url", "fields"],
+      "additionalProperties": true,
+      "properties": {
+        "status": {
+          "enum": ["matched", "corrected", "not_confirmed", "rejected", "pending"]
+        },
+        "checked_at": { "type": ["string", "null"] },
+        "official_source_url": { "type": ["string", "null"] },
+        "fields": {
+          "type": "object",
+          "description": "Per-field outcome against the official source.",
+          "additionalProperties": {
+            "enum": ["match", "corrected", "not_confirmed", "rejected"]
+          },
+          "properties": {
+            "title": { "$ref": "#/$defs/fieldStatus" },
+            "date": { "$ref": "#/$defs/fieldStatus" },
+            "time": { "$ref": "#/$defs/fieldStatus" },
+            "venue": { "$ref": "#/$defs/fieldStatus" },
+            "price": { "$ref": "#/$defs/fieldStatus" },
+            "availability": { "$ref": "#/$defs/fieldStatus" },
+            "cancellation": { "$ref": "#/$defs/fieldStatus" },
+            "image": { "$ref": "#/$defs/fieldStatus" }
+          }
+        },
+        "corrections": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["field", "scraped", "verified"],
+            "properties": {
+              "field": { "type": "string" },
+              "scraped": { "type": ["string", "number", "boolean", "null"] },
+              "verified": { "type": ["string", "number", "boolean", "null"] }
+            }
+          }
+        },
+        "notes": { "type": "string" }
+      }
+    },
+    "community": {
+      "type": "object",
+      "required": ["recommendation_reason", "price_priority", "selection_status"],
+      "additionalProperties": true,
+      "properties": {
+        "recommendation_reason": { "type": "string", "maxLength": 240 },
+        "selection_score": { "type": ["number", "null"] },
+        "price_priority": {
+          "enum": ["free", "donation", "paid", "needs_verification", "unknown"]
+        },
+        "selection_status": {
+          "enum": ["proposed", "approved", "rejected", "unresolved"]
+        },
+        "review_note": { "type": ["string", "null"] }
+      }
+    },
+    "fieldStatus": {
+      "enum": ["match", "corrected", "not_confirmed", "rejected"]
+    }
+  }
+}

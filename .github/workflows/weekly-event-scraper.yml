@@ -6,7 +6,12 @@ permissions:
   id-token: write
 
 concurrency:
-  group: "pages"
+  # Shared with community-prepare and community-promote: all three read or
+  # write data/events.json, data/events_scored.json and the community issue
+  # files, so they must not overlap. The Pages deployment keeps its own
+  # "pages" group in jekyll-gh-pages.yml, which this workflow no longer
+  # competes with directly.
+  group: "weekly-event-data"
   cancel-in-progress: false
 
 on:
@@ -80,7 +85,7 @@ jobs:
           - { name: berlin_buehnen,         url: "https://www.berlin-buehnen.de/de/spielplan", date_horizon: true }
           - { name: zku_berlin,             url: "https://www.zku-berlin.org/de/timeline/" }
           - { name: ufafabrik,              url: "https://ufafabrik.de/spielplan.html" }
-          - { name: stadtmuseum,            url: "https://www.stadtmuseum.de/programm" }
+          - { name: stadtmuseum,            url: "https://www.berlin.museum/programm" }
           # The werk9 homepage is a block-theme shell whose entire body is 275
           # characters of nav and address - no programme at all. /kalender/ is
           # where the dates actually are. It is a small venue and often lists
@@ -103,7 +108,7 @@ jobs:
           # Empty outside the season: the house publishes its whole programme
           # but the nearest dates can be weeks out (21 events within 30 days,
           # none within 7, when this was last measured in mid-September).
-          - { name: volksbuehne,            url: "https://www.volksbuehne.berlin/" }
+          - { name: volksbuehne,            url: "https://www.volksbuehne-berlin.de/" }
           # The "/januar/" slug is not a stale month page - it is what the
           # site's own "Spielplan / Uebersicht" nav points at, and it serves
           # the current programme. Expect few or no rows: extraction finds
@@ -208,8 +213,8 @@ jobs:
       # Sites without placeholders are unaffected.
       - name: Resolve dynamic dates in URL
         run: |
-          START_DATE="$(date -u +%Y-%m-%d)"
-          END_DATE="$(date -u -d '+7 days' +%Y-%m-%d)"
+          START_DATE="$(TZ=Europe/Berlin date +%Y-%m-%d)"
+          END_DATE="$(TZ=Europe/Berlin date -d '+7 days' +%Y-%m-%d)"
           RESOLVED="${TARGET_URL}"
           RESOLVED="${RESOLVED//__START_DATE__/${START_DATE}}"
           RESOLVED="${RESOLVED//__END_DATE__/${END_DATE}}"
@@ -249,6 +254,7 @@ jobs:
             --price-max 20 \
             --date-days 7 \
             $HORIZON \
+            --image-enrich-limit 24 \
             --save-html \
             --html-output "data/html/${{ steps.site-info.outputs.site_name }}.html"
 
@@ -395,10 +401,19 @@ jobs:
       - name: Persist scored events in repository
         run: cp docs/events_scored.json data/events_scored.json
 
-      - name: Publish frontend
+      - name: Assemble Pages artifact
+        # The same allowlisted assembler the standalone Pages workflow uses,
+        # so both paths publish exactly the same set of files. It also copies
+        # the approved community issue, which is why a Sunday scrape cannot
+        # drop the community page from the site.
+        #
+        # Assembled into _site, not docs: the builder owns its output directory
+        # completely (it clears it first), and docs/ is where this job's own
+        # intermediate files live.
         run: |
-          cp web/index.html docs/index.html
-          touch docs/.nojekyll
+          python scripts/build_pages_site.py \
+            --site-dir _site \
+            --scored-json data/events_scored.json
 
       - name: Set up GitHub Pages
         uses: actions/configure-pages@v5
@@ -406,7 +421,7 @@ jobs:
       - name: Upload synthesised event findings
         uses: actions/upload-pages-artifact@v3
         with:
-          path: ./docs
+          path: ./_site
 
       # A plain "pull --rebase && push" left a fully successful run's data
       # stranded uncommitted and Pages undeployed: this exact scenario, live -
