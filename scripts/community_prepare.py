@@ -65,6 +65,7 @@ from community_select import (  # noqa: E402
     select_community_events,
 )
 from community_verify import official_url_for, verify_events  # noqa: E402
+from community_image_stats import image_stats  # noqa: E402
 
 
 def load_json(path: str, default: Any = None) -> Any:
@@ -294,6 +295,10 @@ def prepare_issue(
         "aggregate_end": max(
             (str(e.get("date"))[:10] for e in raw_events or []
              if e.get("date")), default=None),
+        # Coverage is reported over the whole discovery pool, not just the
+        # shortlist: the point is whether the scrape is finding artwork, and a
+        # pool-wide count answers that. Failures here never affect selection.
+        "images": image_stats(pool),
     }
 
     issue_events = []
@@ -382,6 +387,13 @@ def main() -> int:
     )
     print(f"  candidates -> {output}")
     print(f"  review summary -> {summary_path}")
+    images = stats.get("images", {}).get("totals", {})
+    if images:
+        print(
+            f"  image coverage: {images.get('with_image', 0)}/{images.get('events', 0)} "
+            f"({images.get('coverage_percent', 0.0)}%), "
+            f"{images.get('rejected', 0)} failed, {images.get('unchecked', 0)} unchecked"
+        )
     if not stats["discovery_pool"]:
         # Loud, because the alternative is a silently empty week: the
         # aggregate only covers the window the scraper last ran for, so a

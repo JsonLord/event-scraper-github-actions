@@ -330,6 +330,76 @@ def best_document_image(html: str, page_url: str) -> Optional[Dict[str, str]]:
     return None
 
 
+def main_content_image(html: str, page_url: str) -> Optional[Dict[str, str]]:
+    """The best image in the document's *content*, or None.
+
+    Strict metadata is not the only way a detail page states its artwork.
+    deutschestheater.de publishes a full set of production photographs as
+    figure markup with no Open Graph tag and no JSON-LD image at all, so a
+    metadata-only pass reported 0% coverage for a page covered in posters.
+
+    This is the fallback for that shape, and it is deliberately narrower than
+    "first image on the page": chrome is removed first (navigation, header,
+    footer, aside), then the largest declared raster within the remaining
+    content is taken. SVG is skipped because it is almost always an icon
+    sprite at the sizes these sites use, and the decoration filter still
+    applies.
+    """
+    if not html:
+        return None
+    try:
+        from bs4 import BeautifulSoup
+    except Exception:  # noqa: BLE001
+        return None
+    try:
+        soup = BeautifulSoup(html, "lxml")
+        for tag in soup.find_all(["script", "style", "nav", "header", "footer",
+                                  "aside", "form", "noscript"]):
+            tag.decompose()
+        best_url, best_score = "", -1.0
+        for img in soup.find_all("img"):
+            classes = " ".join(img.get("class", []) or [])
+            alt = img.get("alt", "") or ""
+            for attr in ("data-src", "data-original", "data-lazy-src", "srcset", "src"):
+                raw = img.get(attr)
+                if not raw:
+                    continue
+                candidate = _best_from_srcset(raw) if attr.endswith("srcset") else raw
+                if not candidate:
+                    continue
+                if candidate.lower().endswith(".svg"):
+                    continue
+                if looks_decorative(candidate, alt, classes,
+                                    img.get("width"), img.get("height")):
+                    continue
+                score = _declared_area(img)
+                if score > best_score:
+                    best_url, best_score = candidate, score
+                break
+        if not best_url:
+            return None
+        resolved = resolve_image_url(best_url, page_url)
+        return {"url": resolved, "source": "page_content_image"} if resolved else None
+    except Exception:  # noqa: BLE001 - images are decoration, never fatal
+        return None
+
+
+def _declared_area(img) -> float:
+    """Declared pixel area, used only to rank one candidate above another."""
+    def _number(value) -> float:
+        try:
+            return float(str(value).strip().rstrip("px"))
+        except (TypeError, ValueError):
+            return 0.0
+
+    width, height = _number(img.get("width")), _number(img.get("height"))
+    if width and height:
+        return width * height
+    # No dimensions declared: prefer the lazy-loaded variant, which is the
+    # one these sites use for the real photograph rather than the blur.
+    return 1.0 if (img.get("data-src") or img.get("data-original")) else 0.5
+
+
 # --------------------------------------------------------------------------
 # Bounded HTTP validation
 # --------------------------------------------------------------------------

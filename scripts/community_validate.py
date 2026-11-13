@@ -43,6 +43,7 @@ from community_common import (  # noqa: E402
     in_issue_week,
 )
 from community_issue import publication_problems  # noqa: E402
+import price_status  # noqa: E402
 
 KINDS = ("candidates", "reviewed", "approved")
 
@@ -113,14 +114,17 @@ def structural_problems(issue: Dict[str, Any]) -> List[str]:
             if value is not None and not TIME_RE.match(str(value)):
                 problems.append(f"{where}.{field} is not HH:MM or null")
         status = event.get("price_status")
-        if status not in PRICE_STATUSES:
-            problems.append(f"{where}.price_status {status!r} is not a known status")
+        if not price_status.is_canonical(status):
+            problems.append(
+                f"{where}.price_status {status!r} is not a canonical status; "
+                f"expected one of {', '.join(price_status.CANONICAL_STATUSES)}"
+            )
         price = event.get("price_eur")
         if price is not None and (not isinstance(price, (int, float)) or float(price) < 0):
             problems.append(f"{where}.price_eur must be a non-negative number or null")
         if status == PRICE_STATUS_CONFIRMED_FREE and price not in (None, 0, 0.0):
             problems.append(f"{where} is confirmed_free but price_eur is {price}")
-        if status in ("unknown", "needs_verification") and price == 0:
+        if status in (price_status.UNKNOWN, price_status.NEEDS_VERIFICATION) and price == 0:
             problems.append(f"{where} claims price 0 while its price is {status}")
         for field in ("event_id", "title", "date", "venue", "price_eur", "price_status",
                       "category", "event_url", "verification", "community"):

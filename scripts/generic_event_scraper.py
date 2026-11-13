@@ -75,6 +75,7 @@ from image_utils import (  # noqa: E402
     best_document_image,
     card_image,
     jsonld_image,
+    main_content_image,
     verify_event_images,
 )
 
@@ -1204,12 +1205,15 @@ def _image_from_detail_page(html: str, url: str) -> Optional[Dict[str, str]]:
 
     Read in the same order as the listing pass - schema.org first, then the
     page's own Open Graph/Twitter preview - because a detail page usually has
-    both while the listing card often had neither.
+    both while the listing card often had neither. A page that states neither
+    still usually shows the artwork in its content, so that is the last try:
+    deutschestheater.de has production photographs in figure markup and no
+    metadata at all, which read as 0% coverage before this fallback existed.
     """
     for node in extract_jsonld_events(html, url):
         if node.get("image_url"):
             return {"url": node["image_url"], "source": node.get("image_source") or "jsonld_image"}
-    return best_document_image(html, url)
+    return best_document_image(html, url) or main_content_image(html, url)
 
 
 def enrich_missing_images(

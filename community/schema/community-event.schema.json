@@ -37,6 +37,33 @@
       "description": "Editorial handoff counts. Required on candidates, optional elsewhere.",
       "additionalProperties": true
     },
+    "publication": {
+      "type": "object",
+      "description": "Set only on approved issues. States whether every approved event reached the page, so a partial publication is visible in the file rather than only inferable from the counts.",
+      "additionalProperties": true,
+      "properties": {
+        "approved_requested": { "type": "integer", "minimum": 0 },
+        "published": { "type": "integer", "minimum": 0 },
+        "excluded": { "type": "integer", "minimum": 0 },
+        "complete": { "type": "boolean" },
+        "policy": { "enum": ["complete", "partial"] },
+        "exclusion_reasons": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "refused": {
+      "type": "array",
+      "description": "Approved events excluded for failing a publication rule, each with its reasons.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "event_id": { "type": "string" },
+          "problems": { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    },
     "events": {
       "type": "array",
       "items": { "$ref": "#/$defs/communityEvent" }
@@ -76,10 +103,36 @@
           "enum": [
             "confirmed_free",
             "confirmed_paid",
+            "range",
             "donation_based",
             "unknown",
             "needs_verification"
-          ]
+          ],
+          "description": "Canonical entry-price state, per scripts/price_status.py. 'confirmed_free' requires real evidence of free entry; a bare price of 0 with nothing corroborating it is 'unknown'. 'range' means a confirmed span whose entry price is the low end."
+        },
+        "price_provenance": {
+          "type": "object",
+          "description": "What the price status rests on, and which pipeline established it. Provenance only; nothing decides behaviour from it.",
+          "additionalProperties": true,
+          "properties": {
+            "schema_version": { "type": "string" },
+            "status": {
+              "enum": [
+                "confirmed_free", "confirmed_paid", "range",
+                "donation_based", "unknown", "needs_verification"
+              ]
+            },
+            "origin": {
+              "type": "object",
+              "additionalProperties": true,
+              "properties": {
+                "pipeline": { "enum": ["community", "scraping", "unknown"] },
+                "model": { "type": "string" }
+              }
+            },
+            "free_admission_confirmed": { "type": "boolean" },
+            "offer_count": { "type": "integer", "minimum": 0 }
+          }
         },
         "price_note": { "type": ["string", "null"] },
         "category": {

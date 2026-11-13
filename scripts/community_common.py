@@ -11,11 +11,20 @@ decides whether an event may be published.
 from __future__ import annotations
 
 import hashlib
+import os
 import re
+import sys
 import unicodedata
 from datetime import date, datetime, timedelta
 from typing import Any, Dict, Iterable, List, Optional, Tuple
 from zoneinfo import ZoneInfo
+
+# Sibling modules are imported flat ("import price_status"), matching the rest
+# of scripts/, so the directory has to be on the path even when this file is
+# imported as part of the package (tests, tooling).
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
+import price_status
 
 SCHEMA_VERSION = "1.0"
 ISSUE_TIMEZONE = "Europe/Berlin"
@@ -240,32 +249,13 @@ def is_confirmed_entry_price(price_status: str, price: Optional[float],
     return False
 
 
-# The evidence model's status vocabulary, mapped onto this one.
-#
-# ``ticket_evidence.enrich_evidence()`` (the scraping pipeline's own model)
-# already classifies price with more proof than a bare number: it separates a
-# 0 that a page proves is free from a legacy 0 that proves nothing, and it
-# reports a range separately. Where its status is present it is *more*
-# informed than re-deriving from ``price`` alone, so it is consulted first and
-# the text-derived classification is the fallback.
-#
-# ``range`` is deliberately absent: the entry price is the low end, so a range
-# whose minimum is 0 genuinely is free entry from a pay-more tier. That case
-# falls through to the text/model check rather than being flattened here.
-EVIDENCE_STATUS_MAP = {
-    "free": PRICE_STATUS_CONFIRMED_FREE,
-    "known": PRICE_STATUS_CONFIRMED_PAID,
-    "unknown": PRICE_STATUS_UNKNOWN,
-}
-
-
 def price_status_for(event: Dict[str, Any]) -> str:
     """The community price status for an aggregated event row.
 
     Precedence, most-informed first:
 
-      1. an explicit community ``price_status`` already on the row
-      2. the scraping pipeline's evidence status (``free``/``known``/``unknown``)
+      1. a ``price_status`` already on the row, canonicalised
+      2. the scraping pipeline's evidence status, via the same canonicaliser
       3. a classification derived from the price and the row's own text
 
     Step 2 matters because the pipeline's ``free`` is a *confirmed* free: it
@@ -273,41 +263,26 @@ def price_status_for(event: Dict[str, Any]) -> str:
     ``unknown`` rather than being mistaken for free entry. Step 3 is what
     keeps an unstamped row safe: ``price is None`` stays unknown, never zero.
 
-    One field name, two vocabularies: ``ticket_evidence.enrich_evidence()``
-    writes its own status into a field also called ``price_status``. The two
-    vocabularies are disjoint - community uses ``confirmed_free`` /
-    ``confirmed_paid`` / ``donation_based`` / ``unknown`` /
-    ``needs_verification``; evidence uses ``free`` / ``known`` / ``range`` /
-    ``unknown`` - so a value can be attributed to the right model without
-    guessing. An evidence ``free`` must be read as confirmed free, not as an
-    unrecognised value to re-derive, because re-deriving from a bare 0 would
-    discard the proof that made it free in the first place.
+    The vocabulary question is settled by ``scripts/price_status.py``, which
+    owns the canonical enum and the one-way map from historical spellings
+    (``free`` -> ``confirmed_free``, ``known`` -> ``confirmed_paid``). This
+    function therefore never has to ask which pipeline wrote the value.
     """
     if not isinstance(event, dict):
         return PRICE_STATUS_UNKNOWN
-    explicit = str(event.get("price_status") or "").strip()
-    if explicit in PRICE_STATUSES:
-        return explicit
-    # An evidence-vocabulary value may arrive in either field: `price_status`
-    # when the scoring pass stamped the row, `evidence_status` when it was
-    # read straight from the aggregate.
-    evidence_value = ""
-    for field in ("evidence_status", "price_status"):
+    # A status already on the row is canonical or a documented legacy alias;
+    # either way one call settles it.
+    for field in ("price_status_canonical", "price_status", "evidence_status"):
         candidate = str(event.get(field) or "").strip()
-        if candidate in EVIDENCE_STATUS_MAP or candidate == "range":
-            evidence_value = candidate
-            break
-    evidence = EVIDENCE_STATUS_MAP.get(evidence_value)
+        if not candidate:
+            continue
+        canonical = price_status.canonicalize(candidate, default="")
+        if canonical:
+            if canonical == PRICE_STATUS_CONFIRMED_PAID and event.get("price_eur", event.get("price")) is None:
+                # A paid status without a number establishes nothing.
+                break
+            return canonical
     price = event.get("price_eur", event.get("price"))
-    if evidence == PRICE_STATUS_CONFIRMED_PAID and price is None:
-        # "known" without a number cannot be a confirmed paid price.
-        evidence = None
-    if evidence is not None:
-        if evidence == PRICE_STATUS_CONFIRMED_FREE:
-            return evidence
-        if evidence == PRICE_STATUS_CONFIRMED_PAID and price is not None \
-                and float(price) > 0:
-            return evidence
     text = " ".join(
         str(event.get(field) or "")
         for field in ("title", "description", "price_note")

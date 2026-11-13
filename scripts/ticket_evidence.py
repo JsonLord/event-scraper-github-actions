@@ -99,4 +99,15 @@ def enrich_evidence(event, observed_at=None):
                   detail_link_status=event.get('detail_link_status') or ('candidate' if event.get('has_detail_link') else 'missing'),
                   last_verified_at=event.get('last_verified_at'))
     result['event_id'] = occurrence_id(result)
+
+    # Shared records carry one canonical status, so a consumer never has to
+    # know which pipeline produced the row. `price_status` above keeps the
+    # evidence model's own spelling: `scripts/raus_html.py` builds its
+    # publication gate on it and the existing assertions pin it. The two are
+    # equivalent by construction - see scripts/price_status.py - and the
+    # canonical field is additive, so nothing that reads the old one changes.
+    from scripts import price_status as canonical
+
+    result['price_status_canonical'] = canonical.canonicalize(status)
+    result['price_status_schema'] = canonical.SCHEMA_VERSION
     return result

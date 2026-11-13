@@ -212,35 +212,61 @@ not confirmed that tickets remain, so requiring it would block every event.
 
 ## Price vocabulary
 
-| Status | Meaning | Selectable | Publishable |
+`scripts/price_status.py` owns the shared contract. Every record carries one
+canonical `price_status`, so no consumer has to work out which pipeline
+produced it:
+
+| status | meaning | entry price | publishable |
 | --- | --- | --- | --- |
-| `confirmed_free` | source states free entry, or price is 0 | yes | yes |
-| `confirmed_paid` | source states a price above 0 | yes, if ≤ €15 | yes, if ≤ €15 |
-| `donation_based` | entry on a donation basis | yes | yes, with a stated note |
-| `needs_verification` | source says "price on request" / "TBA" | yes | no |
-| `unknown` | source states no price at all | yes | no |
+| `confirmed_free` | free entry, established by evidence | 0 | yes |
+| `confirmed_paid` | one confirmed price | that price | if ≤ €15 |
+| `range` | a confirmed low-to-high span | the low end | if low ≤ €15 |
+| `donation_based` | pay-what-you-want | not applicable | yes, with a note |
+| `needs_verification` | source defers ("on request", "TBA") | unknown | no |
+| `unknown` | no price stated | unknown | no |
 
-`unknown` never becomes `confirmed_free`. The only path from the first column
-to the second is a price the source actually states.
+An event is *selectable* in every state - an unsettled price is exactly what
+verification is for - but only the confirmed states are publishable.
 
-### Two price vocabularies, one field name
+Two invariants, both inherited from the pipelines that predate the contract:
 
-The scraping pipeline's evidence model (`scripts/ticket_evidence.py`) writes
-its own status into a field also called `price_status`: `free`, `known`,
-`range` or `unknown`. Its `free` is a *confirmed* free - it required
-independent proof - and its `unknown` is what a bare `price: 0` becomes when
-nothing corroborates it.
+1. **A bare numeric zero is not evidence of free entry.** A `price: 0` that
+   nothing corroborates is `unknown`, because several sources emit zero when
+   they failed to find a price. This is what stops an unverified price being
+   published as Free.
+2. **Absence never becomes certainty.** A missing number is never upgraded to
+   a confident status, and no status can invent a number that is not there.
+   (A present positive number is treated as stated, which is the search
+   branch's established behaviour and is pinned in `tests/test_price_status.py`.)
 
-The two vocabularies are disjoint, so `community_common.price_status_for()`
-attributes a value to whichever model produced it instead of guessing:
+**Migration.** Records already on disk keep working. `price_status.py` maps the
+historical evidence spellings one way - `free` → `confirmed_free`, `known` →
+`confirmed_paid` - and passes `range`/`unknown` through unchanged. It never
+downgrades a current record, so reading and re-writing is lossless.
 
-1. an explicit community status (`confirmed_free` …) passes through
-2. an evidence status is mapped (`free`→`confirmed_free`, `known`→
-   `confirmed_paid`, `unknown`→`unknown`)
-3. otherwise the price is classified from the row's own price and text
+**Provenance.** Canonicalising the status does not discard the evidence behind
+it. Records keep `offers`, `free_admission_confirmed`, `price_min`/`price_max`,
+`evidence` and `observed_at`, and community records carry a `price_provenance`
+block naming the pipeline and model that established the status. The status
+says *what is known*; the provenance says *how*.
 
-The result is that a legacy `price: 0` with no corroborating text is `unknown`
-on both sides of the seam - never published, never labelled Free.
+### Publication completeness
+
+`require_complete` is off by default and stays that way. A week publishes every
+eligible approved event, excludes any that break a publication rule, and
+reports each exclusion with its reason. The approved issue records this
+explicitly:
+
+```json
+"publication": {
+  "approved_requested": 12, "published": 11, "excluded": 1,
+  "complete": false, "policy": "partial",
+  "exclusion_reasons": ["price_unknown"]
+}
+```
+
+One broken event never blanks a week, and an incomplete week is never silently
+incomplete. `--require-complete` remains available for all-or-nothing runs.
 
 ### Identity namespaces
 

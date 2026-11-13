@@ -26,6 +26,7 @@ This system scrapes event listings from various Berlin websites, filters for aff
 │   ├── generic_event_scraper.py        # The scraper every source runs through
 │   ├── event_utils.py                  # Date/price parsing, validation, dedupe
 │   ├── image_utils.py                  # Optional event-image discovery + checks
+│   ├── price_status.py                 # Canonical price-status contract + migration
 │   ├── score_events.py                 # Ranking, categorisation, price filter
 │   ├── recover_failed.py               # Second pass over sources that came back empty
 │   ├── ticket_evidence.py              # Occurrence-scoped price/ticket evidence
@@ -42,6 +43,7 @@ This system scrapes event listings from various Berlin websites, filters for aff
 │   ├── community_prepare.py            # Candidate generation CLI
 │   ├── community_promote.py            # Approval gate and publication CLI
 │   ├── community_validate.py           # Schema + business-rule validation
+│   ├── community_image_stats.py        # Per-source image coverage reporting
 │   ├── build_pages_site.py             # Allowlisted Pages artifact assembler
 │   └── rausgegangen_scraper.py         # Site-specific scraper (unused by the matrix)
 ├── data/
@@ -110,12 +112,13 @@ else:
 They meet at exactly two points, both of which are pinned by tests in
 `tests/test_community_integration.py`:
 
-* **Price.** The scraping pipeline's evidence model uses `free` / `known` /
-  `range` / `unknown`; the community pipeline uses `confirmed_free` /
-  `confirmed_paid` / `donation_based` / `needs_verification` / `unknown`.
-  The vocabularies are disjoint, so `community_common.price_status_for()`
-  attributes a value to whichever model produced it. A `price: 0` that nothing
-  corroborates stays unpriced on both sides.
+* **Price.** One canonical status, owned by `scripts/price_status.py`:
+  `confirmed_free` / `confirmed_paid` / `range` / `donation_based` /
+  `needs_verification` / `unknown`. Records already on disk keep working
+  through a documented one-way migration (`free` → `confirmed_free`,
+  `known` → `confirmed_paid`), so no consumer has to know which pipeline
+  produced a row. A `price: 0` that nothing corroborates stays unpriced on
+  both sides.
 * **Identity.** The scraping pipeline assigns `sha256:…` occurrence ids; the
   community files require `ce-…`. `event_record()` accepts only a `ce-` id and
   mints its own otherwise, because an approval names an id and the id must

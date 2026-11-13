@@ -151,6 +151,7 @@ def promote(
         "published": len(approved.get("events", [])),
         "refused": approved.get("refused", []),
         "status": approved.get("status"),
+        "publication": approved.get("publication", {}),
     }
     if dry_run:
         report["dry_run"] = True
@@ -223,6 +224,14 @@ def main() -> int:
         print(f"  approved -> {report['approved_file']}")
         print(f"  latest   -> {report['latest_file']}")
         print(f"  archive  -> {report['archive_file']}")
+    publication = report.get("publication") or {}
+    if publication and not publication.get("complete", True):
+        # Loud on purpose: this is the visible signal that a run published
+        # less than the reviewer asked for, without failing the publication.
+        print(
+            f"::warning::Incomplete publication: {publication.get('excluded', 0)} approved "
+            f"event(s) were excluded for {', '.join(publication.get('exclusion_reasons', []))}"
+        )
     for refused in report.get("refused", []):
         print(f"  refused {refused['event_id']}: {', '.join(refused['problems'])}")
     return 0

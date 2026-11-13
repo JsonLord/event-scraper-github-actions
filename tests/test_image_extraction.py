@@ -27,6 +27,7 @@ from scripts.image_utils import (  # noqa: E402
     check_image_url,
     jsonld_image,
     looks_decorative,
+    main_content_image,
     meta_images,
     resolve_image_url,
 )
@@ -345,3 +346,69 @@ def _page_soup(html: str):
     from bs4 import BeautifulSoup
 
     return BeautifulSoup(html, "lxml")
+
+
+# ------------------------------------------------ detail pages without metadata ---
+
+def test_a_detail_page_without_metadata_still_yields_its_content_photo():
+    """deutschestheater.de has production photographs in figure markup only.
+
+    It publishes no Open Graph tag and no JSON-LD image, so a metadata-only
+    pass reported 0% coverage for a page covered in posters.
+    """
+    html = _page(body='''
+      <main>
+        <figure>
+          <img class="figure__image lazyload"
+               data-src="/fileadmin/_processed_/2/4/csm_Heimsuchung_A5A9225.jpg"
+               src="/fileadmin/_processed_/2/4/csm_Heimsuchung_blur.jpg"
+               width="1200" height="800" alt="Heimsuchung, production photograph">
+        </figure>
+      </main>''')
+    found = main_content_image(html, "https://www.deutschestheater.de/programm/produktionen/heimsuchung")
+    assert found is not None
+    assert found["url"].startswith("https://www.deutschestheater.de/fileadmin/")
+    assert found["source"] == "page_content_image"
+
+
+def test_a_page_whose_only_imagery_is_chrome_yields_nothing():
+    """Navigation and footer images are not event artwork."""
+    html = _page(body='''
+      <nav><img src="/logo.png" alt="Site logo"></nav>
+      <header><img src="/arrow.svg" alt=""></header>
+      <main><p>No artwork here.</p></main>
+      <footer><img src="/badge.png" alt="badge"></footer>''')
+    assert main_content_image(html, "https://x.de/e") is None
+
+
+def test_a_tracking_pixel_in_content_is_still_rejected():
+    html = _page(body="<main><img src='/pixel.gif' width='1' height='1' alt=''></main>")
+    assert main_content_image(html, "https://x.de/e") is None
+
+
+def test_an_svg_sprite_is_not_taken_as_artwork():
+    html = _page(body="<main><img src='/sprite.svg' width='800' height='600'></main>")
+    assert main_content_image(html, "https://x.de/e") is None
+
+
+def test_the_largest_declared_image_wins():
+    html = _page(body='''
+      <main>
+        <img src="/media/small.jpg" width="320" height="200" alt="Thumbnail">
+        <img src="/media/large.jpg" width="1600" height="900" alt="Production photo">
+      </main>''')
+    assert main_content_image(html, "https://x.de/e")["url"] == "https://x.de/media/large.jpg"
+
+
+def test_detail_page_falls_back_to_content_when_metadata_is_absent():
+    html = _page(body="<main><img data-src='/media/photo.jpg' width='900' height='600' alt='Photo'></main>")
+    found = _image_from_detail_page(html, "https://x.de/e")
+    assert found["url"] == "https://x.de/media/photo.jpg"
+
+
+def test_metadata_still_wins_over_content():
+    html = _page(
+        head='<meta property="og:image" content="https://x.de/og.jpg">',
+        body="<main><img src='/media/other.jpg' width='900' height='600' alt='Photo'></main>",
+    )
+    assert _image_from_detail_page(html, "https://x.de/e")["url"] == "https://x.de/og.jpg"

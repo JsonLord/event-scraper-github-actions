@@ -31,6 +31,9 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
 
+import price_status
+from price_status import origin_for as price_status_origin_for
+
 from community_common import (
     COMMUNITY_MAX_PRICE,
     FIELD_MATCH,
@@ -124,13 +127,14 @@ def event_record(
             price = float(price)
         except (TypeError, ValueError):
             price = None
-    # Normalised through the shared resolver rather than copied, because the
-    # aggregate may carry the other pipeline's vocabulary in this same field
-    # (`free` / `known` / `range`) and a record may only ever hold a community
-    # status. See community_common.price_status_for.
+    # Normalised through the shared resolver rather than copied, so a record
+    # always carries a canonical status regardless of which pipeline produced
+    # the row. `price_status_canonical` is preferred when the producer set it;
+    # `price_status_for` falls back to the documented legacy aliases and then
+    # to the row's own text.
     from community_common import price_status_for
 
-    price_status = price_status_for({**raw, "price_eur": price})
+    record_price_status = price_status_for({**raw, "price_eur": price})
 
     from community_common import classify_category, district_from_text
 
@@ -151,7 +155,7 @@ def event_record(
         "district": district,
         "address": _clean(raw.get("address")) or None,
         "price_eur": price,
-        "price_status": price_status,
+        "price_status": record_price_status,
         "price_note": _clean(raw.get("price_note")) or None,
         "category": category,
         "description": _clean(raw.get("description"))[:600],
@@ -174,8 +178,19 @@ def event_record(
         "community": raw.get("community") or {
             "recommendation_reason": "",
             "selection_score": raw.get("selection_score"),
-            "price_priority": price_priority(price_status),
+            "price_priority": price_priority(record_price_status),
             "selection_status": SELECTION_PROPOSED,
+        },
+        # What the price status is based on, and which pipeline established it.
+        # The status says what is known; this says how it came to be known, so
+        # a reviewer can tell a community verification from a scraper's
+        # structured-offer match without inferring it from the status value.
+        "price_provenance": {
+            "schema_version": price_status.SCHEMA_VERSION,
+            "status": record_price_status,
+            "origin": price_status_origin_for(raw),
+            "free_admission_confirmed": bool(raw.get("free_admission_confirmed")),
+            "offer_count": len(raw.get("offers") or []),
         },
     }
     if source_provenance:
@@ -219,25 +234,29 @@ def publication_problems(event: Dict[str, Any], week_start: date, week_end: date
     if fields.get("cancellation") == "rejected":
         problems.append("cancelled")
 
-    price_status = event.get("price_status")
+    declared_status = event.get("price_status")
     price = event.get("price_eur")
-    if price_status in (PRICE_STATUS_UNKNOWN, PRICE_STATUS_NEEDS_VERIFICATION):
+    canonical = price_status.canonicalize(declared_status, default="")
+    if not canonical:
+        problems.append("price_status_invalid")
+    elif canonical in (price_status.UNKNOWN, price_status.NEEDS_VERIFICATION):
         problems.append("price_unknown")
-    elif price_status == PRICE_STATUS_CONFIRMED_FREE:
-        pass
-    elif price_status == PRICE_STATUS_DONATION:
+    elif canonical == price_status.CONFIRMED_FREE:
+        if price not in (None, 0, 0.0):
+            problems.append("price_status_mismatch")
+    elif canonical == price_status.DONATION_BASED:
         # A donation has no entry price to cap, but it must be stated.
         if not _clean(event.get("price_note")):
             problems.append("donation_amount_unstated")
-    elif price_status == PRICE_STATUS_CONFIRMED_PAID:
+    elif canonical in (price_status.CONFIRMED_PAID, price_status.RANGE):
+        # `range` publishes on its entry price: the low end is what it costs to
+        # get in, which is the same number both producers already store.
         if price is None:
             problems.append("price_unknown")
         elif float(price) > max_price:
             problems.append("price_above_cap")
         elif float(price) <= 0:
             problems.append("price_status_mismatch")
-    else:
-        problems.append("price_status_invalid")
 
     if not _clean(event.get("event_url")):
         problems.append("missing_event_url")
@@ -400,6 +419,28 @@ def build_approved_issue(
     )
     payload["refused"] = refused
     payload["public_count"] = len(approved)
+    # Publication completeness, stated rather than inferred from the numbers.
+    #
+    # `complete` is true only when every event the reviewer approved actually
+    # made it onto the page. The default policy publishes the rest and reports
+    # the exclusions, because one broken event should not blank a week; this
+    # block makes that partial outcome explicit to anyone reading the file or
+    # the run log, so "published" never silently means "published less than
+    # asked".
+    approved_requested = sum(
+        1 for event in reviewed.get("events", [])
+        if (event.get("community") or {}).get("selection_status") == SELECTION_APPROVED
+    )
+    payload["publication"] = {
+        "approved_requested": approved_requested,
+        "published": len(approved),
+        "excluded": len(refused),
+        "complete": len(refused) == 0,
+        "policy": "partial" if refused else "complete",
+        "exclusion_reasons": sorted({
+            problem for entry in refused for problem in entry.get("problems", [])
+        }),
+    }
     return payload
 
 
@@ -587,6 +628,11 @@ def render_review_summary(
         for name, count in stats["categories"].items():
             lines.append(f"- {category_label(name)} ({name}): {count}")
         lines.append("")
+
+    if stats.get("images"):
+        from community_image_stats import render_stats_block
+
+        lines.extend(render_stats_block(stats["images"]))
 
     lines.append("## Proposed selection")
     lines.append("")
